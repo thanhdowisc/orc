@@ -1,0 +1,109 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.apache.hive</groupId>
+  <artifactId>orc</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>orc</name>
+  <url>http://maven.apache.org</url>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <generated.sourceDirectory>target/generated-sources/protoc</generated.sourceDirectory>
+  </properties>
+
+  <dependencies>
+      <dependency>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-core</artifactId>
+          <version>0.20.2</version>
+      </dependency>
+      <dependency>
+          <groupId>junit</groupId>
+          <artifactId>junit</artifactId>
+          <version>3.8.1</version>
+          <scope>test</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.apache.hive</groupId>
+          <artifactId>hive-serde</artifactId>
+          <version>0.9.0</version>
+          <scope>compile</scope>
+      </dependency>
+      <dependency>
+          <groupId>com.google.protobuf</groupId>
+          <artifactId>protobuf-java</artifactId>
+          <version>2.4.1</version>
+      </dependency>
+      <dependency>
+          <groupId>org.xerial.snappy</groupId>
+          <artifactId>snappy-java</artifactId>
+          <version>1.0.4.1</version>
+          <type>jar</type>
+          <scope>compile</scope>
+      </dependency></dependencies>
+    <build>
+      <plugins>
+        <plugin>
+          <artifactId>maven-antrun-plugin</artifactId>
+          <executions>
+            <execution>
+              <id>compile-protoc</id>
+              <phase>generate-sources</phase>
+              <configuration>
+                <tasks>
+                  <mkdir dir="${generated.sourceDirectory}" />
+                  <path id="proto.path">
+                    <fileset dir="src/main/protobuf">
+                      <include name="**/*.proto" />
+                    </fileset>
+                  </path>
+                  <pathconvert pathsep=" " property="proto.files"
+                               refid="proto.path" />
+                  <exec executable="protoc" failonerror="true">
+                    <arg value="--java_out=${generated.sourceDirectory}" />
+                    <arg value="-I${project.basedir}/src/main/protobuf" />
+                    <arg line="${proto.files}" />
+                  </exec>
+                </tasks>
+              </configuration>
+              <goals>
+                <goal>run</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>build-helper-maven-plugin</artifactId>
+          <version>1.7</version>
+          <executions>
+            <execution>
+              <id>add-source</id>
+              <phase>generate-sources</phase>
+              <goals>
+                <goal>add-source</goal>
+              </goals>
+              <configuration>
+                <sources>
+                  <source>${generated.sourceDirectory}</source>
+                </sources>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>2.5.1</version>
+          <configuration>
+            <source>1.6</source>
+            <target>1.6</target>
+          </configuration>
+        </plugin>
+      </plugins>
+    </build>
+</project>
