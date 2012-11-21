@@ -11,7 +11,7 @@ public class ZlibCodec implements CompressionCodec {
   @Override
   public boolean compress(ByteBuffer in, ByteBuffer out,
                           ByteBuffer overflow) throws IOException {
-    Deflater deflater = new Deflater(Deflater.DEFAULT_STRATEGY, true);
+    Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
     int length = in.remaining();
     deflater.setInput(in.array(), in.arrayOffset() + in.position(), length);
     deflater.finish();
@@ -24,6 +24,10 @@ public class ZlibCodec implements CompressionCodec {
       offset += size;
       // if we run out of space in the out buffer, use the overflow
       if (out.remaining() == 0) {
+        if (overflow == null) {
+          deflater.end();
+          return false;
+        }
         out = overflow;
         offset = out.arrayOffset() + out.position();
       }
@@ -48,5 +52,7 @@ public class ZlibCodec implements CompressionCodec {
       }
     }
     inflater.end();
+    in.position(in.limit());
   }
+
 }

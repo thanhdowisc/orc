@@ -30,10 +30,10 @@ import java.util.Map;
  * bytes of the string are stored in a buffer. Each entry in the dictionary is
  * encoded as the number of bytes in each string. The rows are encoded as a
  * vector of positive integers. Finally, the number of repetitions of each
- * dictionary entry is given in the count stream.
+ * dictionary entry is given in the count outStream.
  */
 class DictionaryWriter {
-  private final OutputStream stringOutput;
+  private final PositionedOutputStream stringOutput;
   private final RunLengthIntegerWriter lengthOutput;
   private final RunLengthIntegerWriter rowOutput;
   private final RunLengthIntegerWriter countOutput;
@@ -45,10 +45,10 @@ class DictionaryWriter {
     int id;
   }
 
-  DictionaryWriter(OutputStream stringOutput,
-                   OutputStream lengthOutput,
-                   OutputStream rowOutput,
-                   OutputStream countOutput) throws IOException {
+  DictionaryWriter(PositionedOutputStream stringOutput,
+                   PositionedOutputStream lengthOutput,
+                   PositionedOutputStream rowOutput,
+                   PositionedOutputStream countOutput) throws IOException {
     this.stringOutput = stringOutput;
     this.lengthOutput = new RunLengthIntegerWriter(lengthOutput, false);
     this.rowOutput = new RunLengthIntegerWriter(rowOutput, false);
@@ -96,4 +96,7 @@ class DictionaryWriter {
     dictionary.clear();
   }
 
+  void recordPosition(PositionRecorder recorder) throws IOException {
+    rowOutput.getPosition(recorder);
+  }
 }

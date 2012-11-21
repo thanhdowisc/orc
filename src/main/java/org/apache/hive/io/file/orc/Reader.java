@@ -18,8 +18,8 @@
 
 package org.apache.hive.io.file.orc;
 
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
-import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.RecordReader;
 
 import java.io.IOException;
@@ -59,10 +59,10 @@ public interface Reader {
     Iterable<StripeInformation> getStripes();
 
     /**
-     * Get the type of the records in this file.
-     * @return the type information
+     * Get the object inspector for looking at the objects.
+     * @return an object inspector for each row returned
      */
-    TypeInfo getSchema();
+    ObjectInspector getObjectInspector();
 
     /**
      * Get the length of the file.
@@ -71,15 +71,13 @@ public interface Reader {
     long getLength();
 
     /**
-     * Get the statistics about the given primitive column with in the file.
-     * @param column the column of interest. It must be one of the objects
-     *               reachable from getSchema().
+     * Get the statistics about the columns in the file
      * @return the information about the column
      */
-    ColumnStatistics getStatistics(TypeInfo column);
+    ColumnStatistics[] getStatistics();
   }
 
-  public interface StripeInformation extends Writable {
+  public interface StripeInformation {
     /**
      * Get the byte offset of the start of the stripe.
      * @return the bytes from the start of the file
@@ -107,18 +105,6 @@ public interface Reader {
 
   public interface ColumnStatistics {
     /**
-     * Get the minimum value for this column.
-     * @return the minimum value
-     */
-    Object getMinimum();
-
-    /**
-     * Get the maximum value for this column
-     * @return the maximum value
-     */
-    Object getMaximum();
-
-    /**
      * Get the number of values in this column. It will differ from the number
      * of rows because of NULL values and repeated values.
      * @return the number of values
@@ -126,12 +112,55 @@ public interface Reader {
     long getNumberOfValues();
   }
 
+  public interface BooleanColumnStatistics extends ColumnStatistics {
+    long getFalseCount();
+    long getTrueCount();
+  }
+
+  public interface IntegerColumnStatistics extends ColumnStatistics {
+    /**
+     * Get the smallest value in the column. Only defined if getNumberOfValues
+     * is non-zero.
+     * @return the minimum
+     */
+    long getMinimum();
+
+    /**
+     * Get the largest value in the column. Only defined if getNumberOfValues
+     * is non-zero.
+     * @return the maximum
+     */
+    long getMaximum();
+
+    /**
+     * Is the sum defined? If the sum overflowed the counter or there are
+     * 0 values this will be false.
+     * @return is the sum available
+     */
+    boolean isSumDefined();
+
+    /**
+     * Get the sum of the column. Only valid if isSumDefined returns true.
+     * @return the sum of the column
+     */
+    long getSum();
+  }
+
+  public interface DoubleColumnStatistics extends ColumnStatistics {
+    double getMinimum();
+    double getMaximum();
+    double getSum();
+  }
+
+  public interface StringColumnStatistics extends ColumnStatistics {
+    String getMinimum();
+    String getMaximum();
+  }
+
   public FileInformation getFileInformation() throws IOException;
 
   public RecordReader rows() throws IOException;
 
-  public RecordReader rows(StripeInformation[] stripes) throws IOException;
+  public RecordReader rows(long offset, long length) throws IOException;
 
-  public ColumnStatistics getStatistics(StripeInformation stripe
-                                        ) throws IOException;
 }

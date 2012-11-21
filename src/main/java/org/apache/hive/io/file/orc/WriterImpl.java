@@ -20,13 +20,11 @@ package org.apache.hive.io.file.orc;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.CodedOutputStream;
-import com.google.protobuf.Message;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.IntObjectInspector;
@@ -40,33 +38,49 @@ import java.util.*;
 
 class WriterImpl implements Writer {
 
+  private static final long STRIPE_SIZE = 256*1024*1024;
+  private static final boolean PRINT_DEBUG = true;
+  private static final int ROW_INDEX_FREQUENCY = 10000;
+
+  private final FileSystem fs;
   private final Path path;
   private final Configuration conf;
   private final CompressionKind compress;
   private final CompressionCodec codec;
   private final int bufferSize;
   private final TypeInfo type;
-  private final TypeInfo[] allTypes;
+  // how many compressed bytes in the current stripe so far
+  private long bytesInStripe = 0;
+  // the streams that make up the current stripe
+  private final Map<StreamName,BufferedStream> streams =
+    new TreeMap<StreamName, BufferedStream>();
 
-  private FSDataOutputStream writer = null;
+  private FSDataOutputStream rawWriter = null;
+  // the compressed metadata information outStream
+  private OutStream writer = null;
+  // a protobuf outStream around writer
   private CodedOutputStream protobufWriter = null;
-  private long stripeOffset;
+  private long headerLength;
+  private int columnCount;
   private long rowCount = 0;
+  private long rowsInStripe = 0;
+  private int rowsInIndex = 0;
   private final List<OrcProto.StripeInformation> stripes =
     new ArrayList<OrcProto.StripeInformation>();
   private final Map<String, ByteString> userMetadata =
     new TreeMap<String, ByteString>();
-  private final Map<TypeInfo, Integer> typeIds =
-    new IdentityHashMap<TypeInfo, Integer>();
-  private final int nonPrimitiveTypes;
+  private final SectionWriter sectionWriter = new SectionWriterImpl();
   private final TreeWriter treeWriter;
+  private OrcProto.RowIndex.Builder rowIndex = OrcProto.RowIndex.newBuilder();
 
-  WriterImpl(Path path,
+  WriterImpl(FileSystem fs,
+             Path path,
              TypeInfo type,
              ObjectInspector inspector,
              CompressionKind compress,
              int bufferSize,
              Configuration conf) throws IOException {
+    this.fs = fs;
     this.path = path;
     this.type = type;
     this.conf = conf;
@@ -86,61 +100,68 @@ class WriterImpl implements Writer {
           compress);
     }
     this.bufferSize = bufferSize;
-    assignTypeIds(type, false);
-    nonPrimitiveTypes = typeIds.size();
-    assignTypeIds(type, true);
-    // create an array with the complete set of types
-    allTypes = new TypeInfo[typeIds.size()];
-    for(Map.Entry<TypeInfo, Integer> x: typeIds.entrySet()) {
-      allTypes[x.getValue()] = x.getKey();
-    }
-    treeWriter = createTreeWriter(type, inspector, new SectionWriterImpl(),
-      false);
+    treeWriter = createTreeWriter(type, inspector, sectionWriter, false);
+    // record the current position as the start of the stripe
+    treeWriter.recordPosition();
   }
 
-  private void assignTypeIds(TypeInfo type, boolean assignLeaves) {
-    switch (type.getCategory()) {
-      case PRIMITIVE:
-        if (assignLeaves) {
-          typeIds.put(type, typeIds.size());
-        }
-        break;
-      case LIST:
-        if (!assignLeaves) {
-          typeIds.put(type, typeIds.size());
-        }
-        ListTypeInfo listType = (ListTypeInfo) type;
-        assignTypeIds(listType.getListElementTypeInfo(), assignLeaves);
-        break;
-      case STRUCT:
-        if (!assignLeaves) {
-          typeIds.put(type, typeIds.size());
-        }
-        StructTypeInfo structType = (StructTypeInfo) type;
-        for(TypeInfo child: structType.getAllStructFieldTypeInfos()) {
-          assignTypeIds(child, assignLeaves);
-        }
-        break;
-      case MAP:
-        if (!assignLeaves) {
-          typeIds.put(type, typeIds.size());
-        }
-        MapTypeInfo mapType = (MapTypeInfo) type;
-        assignTypeIds(mapType.getMapKeyTypeInfo(), assignLeaves);
-        assignTypeIds(mapType.getMapValueTypeInfo(), assignLeaves);
-        break;
-      case UNION:
-        if (!assignLeaves) {
-          typeIds.put(type, typeIds.size());
-        }
-        UnionTypeInfo unionType = (UnionTypeInfo) type;
-        for(TypeInfo child: unionType.getAllUnionObjectTypeInfos()) {
-          assignTypeIds(child, assignLeaves);
-        }
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown type category: " +
-          type.getCategory());
+  private class BufferedStream implements OutStream.OutputReceiver {
+    final OutStream outStream;
+    final List<ByteBuffer> output = new ArrayList<ByteBuffer>();
+
+    BufferedStream(String name, int bufferSize,
+                   CompressionCodec codec) throws IOException {
+      outStream = new OutStream(name, bufferSize, codec, this);
+    }
+
+    @Override
+    public void output(ByteBuffer buffer) throws IOException {
+      output.add(buffer);
+      bytesInStripe += buffer.remaining();
+    }
+
+    public void flush() throws IOException {
+      outStream.flush();
+    }
+
+    public void clear() throws IOException {
+      outStream.clear();
+      output.clear();
+    }
+
+    @Override
+    public long getPosition() {
+      long result = 0;
+      for(ByteBuffer buffer: output) {
+        result += buffer.remaining();
+      }
+      return result;
+    }
+
+    void spillTo(OutputStream out) throws IOException {
+      for(ByteBuffer buffer: output) {
+        out.write(buffer.array(), buffer.arrayOffset() + buffer.position(),
+          buffer.remaining());
+      }
+    }
+  }
+
+  private class DirectStream implements OutStream.OutputReceiver {
+    final FSDataOutputStream output;
+
+    DirectStream(FSDataOutputStream output) {
+      this.output = output;
+    }
+
+    @Override
+    public void output(ByteBuffer buffer) throws IOException {
+      output.write(buffer.array(), buffer.arrayOffset() + buffer.position(),
+        buffer.remaining());
+    }
+
+    @Override
+    public long getPosition() throws IOException {
+      return output.getPos();
     }
   }
 
@@ -149,21 +170,23 @@ class WriterImpl implements Writer {
      * Append a set of bytes onto a section
      * @param column the column id for the section
      * @param kind the kind of section
-     * @return The output stream that the section needs to be written to.
+     * @return The output outStream that the section needs to be written to.
      * @throws IOException
      */
-    OutputStream createSection(int column,
-                               OrcProto.StripeSection.Kind kind
-                               ) throws IOException;
+    PositionedOutputStream createSection(int column,
+                                         OrcProto.StripeSection.Kind kind
+                                         ) throws IOException;
   }
 
   private static class StreamName implements Comparable<StreamName> {
     private final int column;
     private final OrcProto.StripeSection.Kind kind;
+
     public StreamName(int column, OrcProto.StripeSection.Kind kind) {
       this.column = column;
       this.kind = kind;
     }
+
     public boolean equals(Object obj) {
       if (obj == null || obj instanceof  StreamName) {
         StreamName other = (StreamName) obj;
@@ -178,229 +201,133 @@ class WriterImpl implements Writer {
       if (streamName == null) {
         return -1;
       } else if (column > streamName.column) {
-        return -1;
-      } else if (column < streamName.column) {
         return 1;
+      } else if (column < streamName.column) {
+        return -1;
       } else {
         return kind.compareTo(streamName.kind);
       }
     }
-  }
-
-  private static class Stream extends OutputStream {
-    private static final int HEADER_SIZE = 3;
-    private final List<ByteBuffer> done = new ArrayList<ByteBuffer>();
-    private ByteBuffer compressed = null;
-    private ByteBuffer overflow = null;
-    private ByteBuffer current;
-    private final int bufferSize;
-    private final CompressionCodec codec;
-
-    private Stream(int bufferSize,
-                   CompressionCodec codec) throws IOException {
-      this.bufferSize = bufferSize;
-      this.codec = codec;
-      getNewInputBuffer();
-    }
-
-    /**
-     * Write the length of the compressed bytes. Life is much easier if the
-     * header is constant length, so just use 3 bytes. Considering most of the
-     * codecs want between 32k (snappy) and 256k (lzo, zlib), 3 bytes should
-     * be plenty. We also use the low bit for whether it is the original or
-     * compressed bytes.
-     * @param buffer the buffer to write the header to
-     * @param position the position in the buffer to write at
-     * @param val the size in the file
-     * @param original is it uncompressed
-     */
-    private static void writeHeader(ByteBuffer buffer,
-                                    int position,
-                                    int val,
-                                    boolean original) {
-      buffer.put(position, (byte) ((val << 2) + (original ? 1 : 0)));
-      buffer.put(position+1, (byte) (val >> 7));
-      buffer.put(position+2, (byte) (val >> 15));
-    }
-
-    private void getNewInputBuffer() throws IOException {
-      if (codec == null) {
-        current = ByteBuffer.allocate(bufferSize);
-      } else {
-        current = ByteBuffer.allocate(bufferSize + HEADER_SIZE);
-        writeHeader(current, 0, bufferSize, true);
-      }
-      current.mark();
-    }
-
-    private ByteBuffer getNewOutputBuffer() throws IOException {
-      return ByteBuffer.allocate(bufferSize +
-                                 (codec == null ? 0 : HEADER_SIZE));
-    }
-
-    private void flip() {
-      current.limit(current.position());
-      current.reset();
-    }
 
     @Override
-    public void write(int i) throws IOException {
-      if (current.remaining() < 1) {
-        flush();
-      }
-      current.put((byte) i);
-    }
-
-    @Override
-    public void write(byte[] bytes, int offset, int length) throws IOException {
-      int remaining = Math.min(current.remaining(), length);
-      current.put(bytes, offset, remaining);
-      length -= remaining;
-      while (length != 0) {
-        flush();
-        offset += remaining;
-        remaining = Math.min(current.remaining(), length);
-        current.put(bytes, offset, remaining);
-        length -= remaining;
-      }
-    }
-
-    @Override
-    public void flush() throws java.io.IOException {
-      flip();
-      if (codec == null) {
-        done.add(current);
-        getNewInputBuffer();
-      } else {
-        if (compressed == null) {
-          compressed = getNewOutputBuffer();
-        } else if (overflow == null) {
-          overflow = getNewOutputBuffer();
-        }
-        int sizePosn = compressed.position();
-        compressed.position(compressed.position()+HEADER_SIZE);
-        if (codec.compress(current, compressed, overflow)) {
-          // move position back to after the header
-          current.reset();
-          // find the total bytes in the chunk
-          int totalBytes = compressed.position() - sizePosn - HEADER_SIZE;
-          if (overflow != null) {
-            totalBytes += overflow.position();
-          }
-          writeHeader(compressed, sizePosn, totalBytes, false);
-          // if we have less than the next header left, flush it.
-          if (compressed.remaining() < HEADER_SIZE) {
-            compressed.flip();
-            done.add(compressed);
-            compressed = overflow;
-            overflow = null;
-          }
-        } else {
-          // we are using the original, but need to flush the current
-          // compressed buffer first. So back up to where we started,
-          // flip it and add it to done.
-          compressed.position(sizePosn);
-          compressed.flip();
-          done.add(compressed);
-
-          // if we have an overflow, clear it and make it the new compress
-          // buffer
-          if (overflow != null) {
-            overflow.clear();
-            compressed = overflow;
-          }
-
-          // now add the current buffer into the done list and get a new one.
-          current.rewind();
-          done.add(current);
-          getNewInputBuffer();
-        }
-      }
+    public String toString() {
+      return "OutStream for column " + column + " kind " + kind;
     }
   }
 
+  private static class RowIndexPositionRecorder implements PositionRecorder {
+    private final OrcProto.ColumnPosition.Builder builder =
+      OrcProto.ColumnPosition.newBuilder();
+
+    RowIndexPositionRecorder(int columnId) {
+      builder.setColumn(columnId);
+    }
+
+    @Override
+    public void addPosition(long position) {
+      builder.addOffsets(position);
+    }
+
+    public OrcProto.ColumnPosition getPosition() {
+      OrcProto.ColumnPosition result = builder.build();
+      builder.clearOffsets();
+      return result;
+    }
+  }
 
   private class SectionWriterImpl implements SectionWriter {
 
-    private final Map<StreamName,Stream> streams =
-      new TreeMap<StreamName, Stream>();
-
     @Override
-    public OutputStream createSection(int column,
-                                      OrcProto.StripeSection.Kind kind
-                                      ) throws IOException {
+    public PositionedOutputStream createSection(int column,
+                                                OrcProto.StripeSection.Kind kind
+                                                ) throws IOException {
       StreamName name = new StreamName(column, kind);
-      Stream result = streams.get(name);
+      BufferedStream result = streams.get(name);
       if (result == null) {
-        result = new Stream(bufferSize, codec);
+        result = new BufferedStream(name.toString(), bufferSize, codec);
         streams.put(name, result);
       }
-      return result;
+      return result.outStream;
     }
   }
 
   abstract class TreeWriter {
     protected final int id;
+    protected final TypeInfo type;
     protected final ObjectInspector inspector;
     protected final SectionWriter writer;
-    private final BitFieldWriter isNull;
+    private final BitFieldWriter isPresent;
     protected final ColumnStatistics stripeStatistics;
     private final ColumnStatistics fileStatistics;
     protected TreeWriter[] childrenWriters;
+    protected final RowIndexPositionRecorder rowIndexPosition;
 
-    TreeWriter(TypeInfo type, ObjectInspector inspector,
+    TreeWriter(int columnId, TypeInfo type, ObjectInspector inspector,
                SectionWriter writer, boolean nullable) throws IOException {
-      this.id = typeIds.get(type);
+      this.id = columnId;
+      this.type = type;
       this.inspector = inspector;
       this.writer = writer;
       if (nullable) {
-        isNull = new BitFieldWriter(writer.createSection(id,
+        isPresent = new BitFieldWriter(writer.createSection(id,
           OrcProto.StripeSection.Kind.PRESENT), 1);
       } else {
-        isNull = null;
+        isPresent = null;
       }
-      stripeStatistics = new ColumnStatistics(id, type);
-      fileStatistics = new ColumnStatistics(id, type);
+      stripeStatistics = ColumnStatistics.create(id, type);
+      fileStatistics = ColumnStatistics.create(id, type);
       childrenWriters = new TreeWriter[0];
+      rowIndexPosition = new RowIndexPositionRecorder(id);
     }
 
     void write(Object obj) throws IOException {
       if (obj != null) {
         stripeStatistics.increment();
       }
-      if (isNull != null) {
-        isNull.append(obj == null ? 1: 0);
+      if (isPresent != null) {
+        isPresent.append(obj == null ? 0: 1);
       }
     }
 
-    void writeStripe() throws IOException {
-      if (isNull != null) {
-        isNull.flush();
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      if (isPresent != null) {
+        isPresent.flush();
       }
-      fileStatistics.merge(stripeStatistics);
-      stripeStatistics.reset();
-    }
-
-    ColumnStatistics getStripeStatistics() {
-      return stripeStatistics;
-    }
-
-    ColumnStatistics getFileStatistics() {
-      return fileStatistics;
     }
 
     TreeWriter[] getChildrenWriters() {
       return childrenWriters;
     }
+
+    void recordPosition() throws IOException {
+      if (isPresent != null) {
+        isPresent.getPosition(rowIndexPosition);
+      }
+      for(TreeWriter child: childrenWriters) {
+        child.recordPosition();
+      }
+    }
+
+    void getPosition(OrcProto.RowIndexEntry.Builder entry) {
+      entry.addPositions(rowIndexPosition.getPosition());
+      entry.addStatistics(stripeStatistics.serialize());
+      fileStatistics.merge(stripeStatistics);
+      stripeStatistics.reset();
+      for(TreeWriter child: childrenWriters) {
+        child.getPosition(entry);
+      }
+    }
+
   }
 
   class StructTreeWriter extends TreeWriter {
     private final List<? extends StructField> fields;
-    StructTreeWriter(TypeInfo type,
+    StructTreeWriter(int columnId,
+                     TypeInfo type,
                      ObjectInspector inspector,
                      SectionWriter writer,
                      boolean nullable) throws IOException {
-      super(type, inspector, writer, nullable);
+      super(columnId, type, inspector, writer, nullable);
       StructTypeInfo structTypeInfo = (StructTypeInfo) type;
       StructObjectInspector structObjectInspector =
         (StructObjectInspector) inspector;
@@ -427,10 +354,10 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe() throws IOException {
-      super.writeStripe();
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
       for(TreeWriter child: childrenWriters) {
-        child.writeStripe();
+        child.writeStripe(builder);
       }
     }
   }
@@ -438,69 +365,80 @@ class WriterImpl implements Writer {
   class IntegerTreeWriter extends TreeWriter {
     private final RunLengthIntegerWriter writer;
 
-    IntegerTreeWriter(TypeInfo type,
+    IntegerTreeWriter(int columnId, TypeInfo type,
                       ObjectInspector inspector,
                       SectionWriter writer,
                       boolean nullable) throws IOException {
-      super(type, inspector, writer, nullable);
-      OutputStream out = writer.createSection(id,
+      super(columnId, type, inspector, writer, nullable);
+      PositionedOutputStream out = writer.createSection(id,
         OrcProto.StripeSection.Kind.INT_ROW_DATA);
       this.writer = new RunLengthIntegerWriter(out, true);
     }
 
     @Override
     void write(Object obj) throws IOException {
-      super.write(obj);
       if (obj != null) {
         Integer val = ((IntObjectInspector) inspector).get(obj);
-        stripeStatistics.update(val);
+        stripeStatistics.updateInteger(val);
         writer.write(val);
       }
+      super.write(obj);
     }
 
     @Override
-    void writeStripe() throws IOException {
-      super.writeStripe();
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
       writer.flush();
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      writer.getPosition(rowIndexPosition);
     }
   }
 
   class StringTreeWriter extends TreeWriter {
     private final DictionaryWriter writer;
 
-    StringTreeWriter(TypeInfo type,
+    StringTreeWriter(int columnId,
+                     TypeInfo type,
                      ObjectInspector inspector,
                      SectionWriter writer,
                      boolean nullable) throws IOException {
-      super(type, inspector, writer, nullable);
-      OutputStream outData = writer.createSection(id,
+      super(columnId, type, inspector, writer, nullable);
+      PositionedOutputStream outData = writer.createSection(id,
         OrcProto.StripeSection.Kind.DICTIONARY_DATA);
-      OutputStream outLen = writer.createSection(id,
+      PositionedOutputStream outLen = writer.createSection(id,
         OrcProto.StripeSection.Kind.DICTIONARY_LENGTH);
-      OutputStream outRows = writer.createSection(id,
+      PositionedOutputStream outRows = writer.createSection(id,
         OrcProto.StripeSection.Kind.DICTIONARY_ROWS);
-      OutputStream outCounts = writer.createSection(id,
+      PositionedOutputStream outCounts = writer.createSection(id,
         OrcProto.StripeSection.Kind.DICTIONARY_COUNT);
       this.writer = new DictionaryWriter(outData, outLen, outRows, outCounts);
     }
 
     @Override
     void write(Object obj) throws IOException {
-      super.write(obj);
       if (obj != null) {
         String val = ((StringObjectInspector) inspector)
           .getPrimitiveJavaObject(obj);
-        // only update the min/max if it is a new word
-        if (writer.write(val)) {
-          stripeStatistics.update(val);
-        }
+        writer.write(val);
+        stripeStatistics.updateString(val);
       }
+      super.write(obj);
     }
 
     @Override
-    void writeStripe() throws IOException {
-      super.writeStripe();
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
       writer.flush();
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      writer.recordPosition(rowIndexPosition);
     }
   }
 
@@ -512,124 +450,169 @@ class WriterImpl implements Writer {
       case PRIMITIVE:
         switch (((PrimitiveTypeInfo) type).getPrimitiveCategory()) {
           case INT:
-            return new IntegerTreeWriter(type, inspector, writer,
+            return new IntegerTreeWriter(columnCount++, type, inspector, writer,
               nullable);
           case STRING:
-            return new StringTreeWriter(type, inspector, writer, nullable);
+            return new StringTreeWriter(columnCount++, type, inspector, writer,
+              nullable);
           default:
             throw new IllegalArgumentException("Bad primitive category " +
               ((PrimitiveTypeInfo) type).getPrimitiveCategory());
         }
       case STRUCT:
-        return new StructTreeWriter(type, inspector, writer, nullable);
+        return new StructTreeWriter(columnCount++, type, inspector, writer,
+          nullable);
       default:
         throw new IllegalArgumentException("Bad category: " +
           type.getCategory());
     }
   }
 
-  private OrcProto.Type makeFlat(Map<TypeInfo, Integer> ids, TypeInfo type) {
-    OrcProto.Type.Builder builder = OrcProto.Type.newBuilder();
-    switch (type.getCategory()) {
+  private void makeFlat(OrcProto.Footer.Builder builder,
+                       TreeWriter treeWriter) {
+    OrcProto.Type.Builder type = OrcProto.Type.newBuilder();
+    switch (treeWriter.type.getCategory()) {
       case PRIMITIVE:
-        switch (((PrimitiveTypeInfo) type).getPrimitiveCategory()) {
+        switch (((PrimitiveTypeInfo) treeWriter.type).getPrimitiveCategory()) {
           case BOOLEAN:
-            builder.setKind(OrcProto.Type.Kind.BOOLEAN);
+            type.setKind(OrcProto.Type.Kind.BOOLEAN);
             break;
           case BYTE:
-            builder.setKind(OrcProto.Type.Kind.TINYINT);
+            type.setKind(OrcProto.Type.Kind.TINYINT);
             break;
           case SHORT:
-            builder.setKind(OrcProto.Type.Kind.SMALLINT);
+            type.setKind(OrcProto.Type.Kind.SMALLINT);
             break;
           case INT:
-            builder.setKind(OrcProto.Type.Kind.INT);
+            type.setKind(OrcProto.Type.Kind.INT);
             break;
           case LONG:
-            builder.setKind(OrcProto.Type.Kind.BIGINT);
+            type.setKind(OrcProto.Type.Kind.BIGINT);
             break;
           case FLOAT:
-            builder.setKind(OrcProto.Type.Kind.FLOAT);
+            type.setKind(OrcProto.Type.Kind.FLOAT);
             break;
           case DOUBLE:
-            builder.setKind(OrcProto.Type.Kind.DOUBLE);
+            type.setKind(OrcProto.Type.Kind.DOUBLE);
             break;
           case STRING:
-            builder.setKind(OrcProto.Type.Kind.STRING);
+            type.setKind(OrcProto.Type.Kind.STRING);
             break;
           case BINARY:
-            builder.setKind(OrcProto.Type.Kind.BINARY);
+            type.setKind(OrcProto.Type.Kind.BINARY);
             break;
           case TIMESTAMP:
-            builder.setKind(OrcProto.Type.Kind.DATETIME);
+            type.setKind(OrcProto.Type.Kind.DATETIME);
             break;
           default:
             throw new IllegalArgumentException("Unknown primitive category: " +
-              ((PrimitiveTypeInfo) type).getPrimitiveCategory());
+              ((PrimitiveTypeInfo) treeWriter.type).getPrimitiveCategory());
         }
         break;
       case LIST:
-        builder.setKind(OrcProto.Type.Kind.ARRAY);
-        builder.addSubtypes(ids.get(((ListTypeInfo) type).
-          getListElementTypeInfo()));
+        type.setKind(OrcProto.Type.Kind.ARRAY);
+        type.addSubtypes(treeWriter.childrenWriters[0].id);
         break;
       case MAP:
-        builder.setKind(OrcProto.Type.Kind.MAP);
-        MapTypeInfo mapType = (MapTypeInfo) type;
-        builder.addSubtypes(ids.get(mapType.getMapKeyTypeInfo()));
-        builder.addSubtypes(ids.get(mapType.getMapValueTypeInfo()));
+        type.setKind(OrcProto.Type.Kind.MAP);
+        type.addSubtypes(treeWriter.childrenWriters[0].id);
+        type.addSubtypes(treeWriter.childrenWriters[1].id);
         break;
       case STRUCT:
-        builder.setKind(OrcProto.Type.Kind.STRUCT);
-        StructTypeInfo structType = (StructTypeInfo) type;
-        for(TypeInfo child: structType.getAllStructFieldTypeInfos()) {
-          builder.addSubtypes(ids.get(child));
+        type.setKind(OrcProto.Type.Kind.STRUCT);
+        for(TreeWriter child: treeWriter.childrenWriters) {
+          type.addSubtypes(child.id);
         }
-        for(String child: structType.getAllStructFieldNames()) {
-          builder.addFieldNames(child);
+        for(StructField field: ((StructTreeWriter) treeWriter).fields) {
+          type.addFieldNames(field.getFieldName());
         }
         break;
       case UNION:
-        builder.setKind(OrcProto.Type.Kind.UNION);
-        UnionTypeInfo unionType = (UnionTypeInfo) type;
-        for(TypeInfo child: unionType.getAllUnionObjectTypeInfos()) {
-          builder.addSubtypes(ids.get(child));
-        }
+        type.setKind(OrcProto.Type.Kind.UNION);
         break;
       default:
         throw new IllegalArgumentException("Unknown category: " +
-          type.getCategory());
+          treeWriter.type.getCategory());
     }
-    return builder.build();
+    builder.addTypes(type);
+    for(TreeWriter child: treeWriter.childrenWriters) {
+      makeFlat(builder, child);
+    }
   }
 
-  private OrcProto.Type[] flattenTypes(TypeInfo info) {
-    OrcProto.Type[] result = new OrcProto.Type[typeIds.size()];
-    for(Map.Entry<TypeInfo, Integer> type: typeIds.entrySet()) {
-      result[typeIds.get(type)] = makeFlat(typeIds, type.getKey());
-    }
-    return result;
+  private void writeTypes(OrcProto.Footer.Builder builder) {
+    makeFlat(builder, treeWriter);
   }
 
   private FSDataOutputStream getWriter() throws IOException {
-    if (writer == null) {
-      FileSystem fs =  path.getFileSystem(conf);
-      writer = fs.create(path);
-      writer.writeBytes(OrcFile.MAGIC);
-      stripeOffset = writer.getPos();
+    if (rawWriter == null) {
+      rawWriter = fs.create(path);
+      rawWriter.writeBytes(OrcFile.MAGIC);
+      headerLength = rawWriter.getPos();
+      writer = new OutStream("metadata", bufferSize, codec,
+        new DirectStream(rawWriter));
+      protobufWriter = CodedOutputStream.newInstance(writer);
     }
-    return writer;
+    return rawWriter;
   }
 
-  private CodedOutputStream getProtobufWriter() throws IOException {
-    if (protobufWriter == null) {
-      protobufWriter = CodedOutputStream.newInstance(getWriter());
+  private void createRowIndexEntry() throws IOException {
+    OrcProto.RowIndexEntry.Builder entry = OrcProto.RowIndexEntry.newBuilder();
+    entry.setRowCount(rowsInIndex);
+    rowsInStripe += rowsInIndex;
+    rowCount += rowsInIndex;
+    rowsInIndex = 0;
+    // get the column positions and stats for this index entry
+    treeWriter.getPosition(entry);
+    rowIndex.addEntry(entry);
+  }
+
+  private void writeRowIndex() throws IOException {
+    PositionedOutputStream out =
+      sectionWriter.createSection(0, OrcProto.StripeSection.Kind.ROW_INDEX);
+    rowIndex.build().writeTo(out);
+    if (PRINT_DEBUG) {
+      System.out.println("Row Index:");
+      System.out.println(rowIndex.build());
     }
-    return protobufWriter;
+    rowIndex.clear();
   }
 
   private void flushStripe() throws IOException {
-
+    getWriter();
+    writeRowIndex();
+    OrcProto.StripeFooter.Builder builder = OrcProto.StripeFooter.newBuilder();
+    treeWriter.writeStripe(builder);
+    long start = rawWriter.getPos();
+    long section = start;
+    for(Map.Entry<StreamName,BufferedStream> pair: streams.entrySet()) {
+      BufferedStream stream = pair.getValue();
+      stream.flush();
+      stream.spillTo(rawWriter);
+      stream.clear();
+      long end = rawWriter.getPos();
+      StreamName name = pair.getKey();
+      builder.addSections(OrcProto.StripeSection.newBuilder()
+        .setColumn(name.column)
+        .setKind(name.kind)
+        .setLength(end-section));
+      section = end;
+    }
+    builder.build().writeTo(protobufWriter);
+    protobufWriter.flush();
+    writer.flush();
+    if (PRINT_DEBUG) {
+      System.out.println(builder.build());
+    }
+    long end = rawWriter.getPos();
+    OrcProto.StripeInformation dirEntry =
+      OrcProto.StripeInformation.newBuilder()
+        .setOffset(start)
+        .setLength(end - start)
+        .setNumberOfRows(rowsInStripe)
+        .setTailLength(end - section).build();
+    stripes.add(dirEntry);
+    rowsInStripe = 0;
   }
 
   private OrcProto.CompressionKind writeCompressionKind(CompressionKind kind) {
@@ -643,41 +626,22 @@ class WriterImpl implements Writer {
     }
   }
 
-  private long writeMessage(Message msg) throws IOException {
-    FSDataOutputStream out = getWriter();
-    CodedOutputStream proto = getProtobufWriter();
-    long start = out.getPos();
-    msg.writeTo(proto);
-    proto.flush();
-    return out.getPos() - start;
-  }
-
   private void writeFileStatistics(OrcProto.Footer.Builder builder,
                                    TreeWriter writer) throws IOException {
-    OrcProto.ColumnStatistics.Builder statsBuilder =
-      OrcProto.ColumnStatistics.newBuilder();
-    ColumnStatistics stats = writer.getFileStatistics();
-    statsBuilder.setColumn(writer.id);
-    statsBuilder.setNumberOfValues(stats.getCount());
-    ByteString bs = stats.getSerializedMinimum();
-    if (bs != null) {
-      statsBuilder.setMinimum(bs);
-    }
-    bs = stats.getSerializedMaximum();
-    if (bs != null) {
-      statsBuilder.setMaximum(bs);
-    }
-    builder.addStatistics(statsBuilder);
+    builder.addStatistics(writer.fileStatistics.serialize());
     for(TreeWriter child: writer.getChildrenWriters()) {
       writeFileStatistics(builder, child);
     }
   }
 
   private int writeFooter(long bodyLength) throws IOException {
+    getWriter();
     OrcProto.Footer.Builder builder = OrcProto.Footer.newBuilder();
     builder.setBodyLength(bodyLength);
-    builder.setStripeOffset(stripeOffset);
+    builder.setHeaderLength(headerLength);
     builder.setNumberOfRows(rowCount);
+    // serialize the types
+    writeTypes(builder);
     // add the stripe information
     for(OrcProto.StripeInformation stripe: stripes) {
       builder.addStripes(stripe);
@@ -689,7 +653,14 @@ class WriterImpl implements Writer {
       builder.addMetadata(OrcProto.UserMetadataItem.newBuilder()
         .setName(entry.getKey()).setValue(entry.getValue()));
     }
-    return (int) writeMessage(builder.build());
+    if (PRINT_DEBUG) {
+      System.out.println(builder.build());
+    }
+    long startPosn = rawWriter.getPos();
+    builder.build().writeTo(protobufWriter);
+    protobufWriter.flush();
+    writer.flush();
+    return (int) (rawWriter.getPos() - startPosn);
   }
 
   private int writePostScript(int footerLength) throws IOException {
@@ -700,7 +671,14 @@ class WriterImpl implements Writer {
     if (compress != CompressionKind.NONE) {
       builder.setCompressionBlockSize(bufferSize);
     }
-    long length = writeMessage(builder.build());
+    OrcProto.PostScript ps = builder.build();
+    // need to write this uncompressed
+    long startPosn = rawWriter.getPos();
+    ps.writeTo(rawWriter);
+    if (PRINT_DEBUG) {
+      System.out.println(ps);
+    }
+    long length = rawWriter.getPos() - startPosn;
     if (length > 255) {
       throw new IllegalArgumentException("PostScript too large at " + length);
     }
@@ -715,14 +693,22 @@ class WriterImpl implements Writer {
   @Override
   public void addRow(Object row) throws IOException {
     treeWriter.write(row);
-    rowCount += 1;
+    rowsInIndex += 1;
+    boolean shouldFlushStripe = bytesInStripe >= STRIPE_SIZE;
+    if (rowsInIndex >= ROW_INDEX_FREQUENCY || shouldFlushStripe) {
+      createRowIndexEntry();
+    }
+    if (shouldFlushStripe) {
+      flushStripe();
+    }
   }
 
   @Override
   public void close() throws IOException {
+    createRowIndexEntry();
     flushStripe();
-    int footerLength = writeFooter(writer.getPos());
     FSDataOutputStream file = getWriter();
+    int footerLength = writeFooter(file.getPos());
     file.writeByte(writePostScript(footerLength));
     file.close();
   }

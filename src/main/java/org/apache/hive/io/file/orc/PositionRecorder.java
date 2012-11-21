@@ -17,27 +17,6 @@
  */
 package org.apache.hive.io.file.orc;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-class NullCompression implements CompressionCodec {
-  @Override
-  public long maximumExpansion(long inputSize) {
-    return inputSize;
-  }
-
-  @Override
-  public boolean canWorkInPlace() {
-    return true;
-  }
-
-  @Override
-  public void compress(ByteBuffer in, ByteBuffer out) throws IOException {
-    // PASS
-  }
-
-  @Override
-  public void decompress(ByteBuffer in, ByteBuffer out) throws IOException {
-    // PASS
-  }
+interface PositionRecorder {
+  void addPosition(long offset);
 }

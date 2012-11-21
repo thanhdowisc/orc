@@ -23,14 +23,94 @@ message Type {
 }
 
 message StripeInformation {
-  optional uint64 length = 1;
-  optional uint64 tailLength = 2;
-  optional uint64 numberOfRows = 3;
+  optional uint64 offset = 1;
+  optional uint64 length = 2;
+  optional uint64 tailLength = 3;
+  optional uint64 numberOfRows = 4;
 }
 
 message UserMetadataItem {
   required string name = 1;
   required bytes value = 2;
+}
+
+message IntegerStatistics  {
+  optional sint64 minimum = 1;
+  optional sint64 maximum = 2;
+  optional sint64 sum = 3;
+}
+
+message DoubleStatistics {
+  optional double minimum = 1;
+  optional double maximum = 2;
+  optional double sum = 3;
+}
+
+message StringStatistics {
+  optional string minimum = 1;
+  optional string maximum = 2;
+}
+
+message BucketStatistics {
+  repeated uint64 count = 1 [packed=true];
+}
+
+message ColumnStatistics {
+  required uint32 column = 1;
+  optional uint64 numberOfValues = 2;
+  optional IntegerStatistics intStatistics = 3;
+  optional DoubleStatistics doubleStatistics = 4;
+  optional StringStatistics stringStatistics = 5;
+  optional BucketStatistics bucketStatistics = 6;
+}
+
+message ColumnPosition {
+  required uint32 column = 1;
+  repeated uint64 offsets = 2 [packed = true];
+}
+
+message RowIndexEntry {
+  optional uint32 rowCount = 1;
+  repeated ColumnPosition positions = 2;
+  repeated ColumnStatistics statistics = 3;
+}
+
+message RowIndex {
+  repeated RowIndexEntry entry = 1;
+}
+
+message StripeSection {
+  enum Kind {
+    PRESENT = 0;
+    REPETITION = 1;
+    BINARY_DATA = 2;
+    BINARY_LENGTH = 3;
+    INT_ROW_DATA = 4;
+    FLOAT_ROW_DATA = 5;
+    DOUBLE_ROW_DATA = 6;
+    DICTIONARY_DATA = 7;
+    DICTIONARY_LENGTH = 8;
+    DICTIONARY_ROWS = 9;
+    DICTIONARY_COUNT = 10;
+    ROW_INDEX = 11;
+  }
+  required Kind kind = 1;
+  optional uint32 column = 2;
+  optional uint64 length = 3;
+}
+
+message StripeFooter {
+  repeated StripeSection sections = 1;
+}
+
+message Footer {
+  optional uint64 bodyLength = 1;
+  optional uint64 headerLength = 2;
+  repeated StripeInformation stripes = 3;
+  repeated Type types = 4;
+  repeated UserMetadataItem metadata = 5;
+  optional uint64 numberOfRows = 6;
+  repeated ColumnStatistics statistics = 7;
 }
 
 enum CompressionKind {
@@ -40,49 +120,9 @@ enum CompressionKind {
   LZO = 3;
 }
 
-message Footer {
-  optional uint64 bodyLength = 1;
-  optional uint64 stripeOffset = 2;
-  repeated StripeInformation stripes = 3;
-  repeated Type types = 4;
-  repeated UserMetadataItem metadata = 5;
-  optional uint64 numberOfRows = 6;
-  repeated ColumnStatistics statistics = 7;
-}
-
 // Serialized length must be less that 255 bytes
 message PostScript {
   optional uint64 footerLength = 1;
   optional CompressionKind compression = 2;
   optional uint64 compressionBlockSize = 3;
-}
-
-message StripeSection {
-  enum Kind {
-    BINARY_DATA = 0;
-    BINARY_LENGTH = 1;
-    INT_ROW_DATA = 2;
-    FLOAT_ROW_DATA = 3;
-    DOUBLE_ROW_DATA = 4;
-    PRESENT = 5;
-    REPETITION = 6;
-    DICTIONARY_DATA = 7;
-    DICTIONARY_LENGTH = 8;
-    DICTIONARY_ROWS = 9;
-    DICTIONARY_COUNT = 10;
-  }
-  required Kind kind = 1;
-  optional uint32 column = 2;
-}
-
-message ColumnStatistics {
-  required uint32 column = 1;
-  optional uint64 numberOfValues = 2;
-  optional bytes minimum = 3;
-  optional bytes maximum = 4;
-}
-
-message StripeFooter {
-  repeated StripeSection sections = 1;
-  repeated ColumnStatistics statistics = 2;
 }

@@ -21,13 +21,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 class BitFieldWriter {
-  private OutputStream output;
+  private RunLengthByteWriter output;
   private final int bitSize;
   private byte current = 0;
   private int bitsLeft = 8;
 
-  BitFieldWriter(OutputStream output, int bitSize) {
-    this.output = output;
+  BitFieldWriter(PositionedOutputStream output,
+                 int bitSize) throws IOException {
+    this.output = new RunLengthByteWriter(output);
     this.bitSize = bitSize;
   }
 
@@ -65,34 +66,8 @@ class BitFieldWriter {
     }
   }
 
-  /*
-  int get(int location) {
-    int bitLocation = location * bitSize;
-    int byteOffset = bitLocation / 8;
-    int bitOffset = bitLocation % 8;
-    // get the low bits of the first byte
-    int b = buffer.get(byteOffset) & ((1 << (8-bitOffset)) - 1);
-    if (bitOffset + bitSize > 8) {
-      int remaining = bitSize - (8 - bitOffset);
-      int result = b;
-      byteOffset += 1;
-      while (remaining > 0) {
-        b = buffer.get(byteOffset++) & 0xff;
-        if (remaining >= 8) {
-          result = (result << 8) | b;
-          remaining -= 8;
-        } else {
-          // shift the new part to the bottom
-          b >>= (8-remaining);
-          // shift the old part up and add the new part
-          result = (result << remaining) | b;
-          remaining = 0;
-        }
-      }
-      return result;
-    } else {
-      return b >> (8 - bitOffset - bitSize);
-    }
+  void getPosition(PositionRecorder recorder) throws IOException {
+    output.getPosition(recorder);
+    recorder.addPosition(8-bitsLeft);
   }
-*/
 }

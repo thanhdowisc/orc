@@ -27,113 +27,308 @@ import java.io.IOException;
 
 class ColumnStatistics {
   private final int columnId;
-  private final TypeInfo type;
-  private final boolean keepMinMax;
-  private Comparable<Object> minimum;
-  private Comparable<Object> maximum;
-  private long count;
+  protected long count;
 
-  ColumnStatistics(int columnId, TypeInfo type) {
-    this.columnId = columnId;
-    this.type = type;
-    if (type.getCategory() == ObjectInspector.Category.PRIMITIVE) {
-      PrimitiveObjectInspector.PrimitiveCategory kind= getPrimitiveCategory();
-      keepMinMax =
-        (kind != PrimitiveObjectInspector.PrimitiveCategory.BINARY);
-    } else {
-      keepMinMax = false;
+  private static class BucketStatistics extends ColumnStatistics {
+    private final long[] counts;
+    BucketStatistics(int columnId, int maxValues) {
+      super(columnId);
+      counts = new long[maxValues];
     }
-    reset();
+
+    @Override
+    void reset() {
+      super.reset();
+      for(int i=0; i < counts.length; ++i) {
+        counts[i] = 0;
+      }
+    }
+
+    @Override
+    void updateBoolean(boolean value) {
+      counts[value ? 1 : 0] += 1;
+    }
+
+    @Override
+    void merge(ColumnStatistics other) {
+      super.merge(other);
+      BucketStatistics bkt = (BucketStatistics) other;
+      if (counts.length != bkt.counts.length) {
+        throw new IllegalArgumentException("Merging different sized buckets " +
+          "is not supported " + counts.length + " vs " + bkt.counts.length);
+      }
+      for(int i=0; i < counts.length; ++i) {
+        counts[i] += bkt.counts[i];
+      }
+    }
+
+    @Override
+    OrcProto.ColumnStatistics.Builder serialize() {
+      OrcProto.ColumnStatistics.Builder builder = super.serialize();
+      OrcProto.BucketStatistics.Builder bucket =
+        OrcProto.BucketStatistics.newBuilder();
+      for(int i=0; i < counts.length; ++i) {
+        bucket.addCount(counts[i]);
+      }
+      builder.setBucketStatistics(bucket);
+      return builder;
+    }
   }
 
-  long getCount() {
-    return count;
+  private static class IntegerStatistics extends ColumnStatistics {
+    IntegerStatistics(int columnId) {
+      super(columnId);
+    }
+    long minimum;
+    long maximum;
+    long sum;
+    boolean overflow;
+
+    @Override
+    void reset() {
+      super.reset();
+      minimum = Long.MAX_VALUE;
+      maximum = Long.MIN_VALUE;
+      sum = 0;
+      overflow = false;
+    }
+
+    @Override
+    void updateInteger(long value) {
+      if (count == 0) {
+        minimum = value;
+        maximum = value;
+      } else if (value < minimum) {
+        minimum = value;
+      } else if (value > maximum) {
+        maximum = value;
+      }
+      if (!overflow) {
+        boolean wasPositive = sum >= 0;
+        sum += value;
+        if ((value >= 0) == wasPositive) {
+          overflow = (sum >= 0) != wasPositive;
+        }
+      }
+    }
+
+    @Override
+    void merge(ColumnStatistics other) {
+      IntegerStatistics otherInt = (IntegerStatistics) other;
+      if (count == 0) {
+        minimum = otherInt.minimum;
+        maximum = otherInt.maximum;
+      } else if (otherInt.minimum < minimum) {
+        minimum = otherInt.minimum;
+      } else if (otherInt.maximum > maximum) {
+        maximum = otherInt.maximum;
+      }
+      super.merge(other);
+      overflow |= otherInt.overflow;
+      if (!overflow) {
+        boolean wasPositive = sum >= 0;
+        sum += otherInt.sum;
+        if ((otherInt.sum >= 0) == wasPositive) {
+          overflow = (sum >= 0) != wasPositive;
+        }
+      }
+    }
+
+    @Override
+    OrcProto.ColumnStatistics.Builder serialize() {
+      OrcProto.ColumnStatistics.Builder builder = super.serialize();
+      OrcProto.IntegerStatistics.Builder intb =
+        OrcProto.IntegerStatistics.newBuilder();
+      if (count != 0) {
+        intb.setMinimum(minimum);
+        intb.setMaximum(maximum);
+        if (!overflow) {
+          intb.setSum(sum);
+        }
+      }
+      builder.setIntStatistics(intb);
+      return builder;
+    }
+  }
+
+  private static class DoubleStatistics extends ColumnStatistics {
+    double minimum;
+    double maximum;
+    double sum;
+    DoubleStatistics(int columnId) {
+      super(columnId);
+    }
+
+    @Override
+    void reset() {
+      super.reset();
+      minimum = Double.MAX_VALUE;
+      maximum = Double.MIN_VALUE;
+      sum = 0;
+    }
+
+    @Override
+    void updateDouble(double value) {
+      if (count == 0) {
+        minimum = value;
+        maximum = value;
+      } else if (value < minimum) {
+        minimum = value;
+      } else if (value > maximum) {
+        maximum = value;
+      }
+      sum += value;
+    }
+
+    @Override
+    void merge(ColumnStatistics other) {
+      DoubleStatistics dbl = (DoubleStatistics) other;
+      if (count == 0) {
+        minimum = dbl.minimum;
+        maximum = dbl.maximum;
+      } else if (dbl.minimum < minimum) {
+        minimum = dbl.minimum;
+      } else if (dbl.maximum > maximum) {
+        maximum = dbl.maximum;
+      }
+      super.merge(other);
+      sum += dbl.sum;
+    }
+
+    @Override
+    OrcProto.ColumnStatistics.Builder serialize() {
+      OrcProto.ColumnStatistics.Builder builder = super.serialize();
+      OrcProto.DoubleStatistics.Builder dbl =
+        OrcProto.DoubleStatistics.newBuilder();
+      if (count != 0) {
+        dbl.setMinimum(minimum);
+        dbl.setMaximum(maximum);
+      }
+      dbl.setSum(sum);
+      builder.setDoubleStatistics(dbl);
+      return builder;
+    }
+  }
+
+  private static class StringStatistics extends ColumnStatistics {
+    String minimum;
+    String maximum;
+    StringStatistics(int columnId) {
+      super(columnId);
+    }
+
+    @Override
+    void reset() {
+      super.reset();
+      minimum = null;
+      maximum = null;
+    }
+
+    @Override
+    void updateString(String value) {
+      if (count == 0) {
+        minimum = value;
+        maximum = value;
+      } else if (minimum.compareTo(value) > 0) {
+        minimum = value;
+      } else if (maximum.compareTo(value) < 0) {
+        maximum = value;
+      }
+    }
+
+    @Override
+    void merge(ColumnStatistics other) {
+      StringStatistics str = (StringStatistics) other;
+      if (count == 0) {
+        minimum = str.minimum;
+        maximum = str.maximum;
+      } else if (minimum.compareTo(str.minimum) > 0) {
+        minimum = str.minimum;
+      } else if (maximum.compareTo(str.maximum) < 0) {
+        maximum = str.maximum;
+      }
+      super.merge(other);
+    }
+
+    @Override
+    OrcProto.ColumnStatistics.Builder serialize() {
+      OrcProto.ColumnStatistics.Builder result = super.serialize();
+      OrcProto.StringStatistics.Builder str =
+        OrcProto.StringStatistics.newBuilder();
+      if (count != 0) {
+        str.setMinimum(minimum);
+        str.setMaximum(maximum);
+      }
+      result.setStringStatistics(str);
+      return result;
+    }
+  }
+
+  ColumnStatistics(int columnId) {
+    this.columnId = columnId;
+    reset();
   }
 
   void increment() {
     count += 1;
   }
 
-  private PrimitiveObjectInspector.PrimitiveCategory getPrimitiveCategory() {
-    return ((PrimitiveTypeInfo) type).getPrimitiveCategory();
+  void updateBoolean(boolean value) {
+    throw new UnsupportedOperationException("Can't update boolean");
   }
 
-  @SuppressWarnings("unchecked")
-  void update(Object obj) {
-    if (keepMinMax) {
-      if (minimum == null || minimum.compareTo(obj) > 0) {
-        minimum = (Comparable) obj;
-      }
-      if (maximum == null || maximum.compareTo(obj) < 0) {
-        maximum = (Comparable) obj;
-      }
+  void updateInteger(long value) {
+    throw new UnsupportedOperationException("Can't update integer");
+  }
+
+  void updateDouble(double value) {
+    throw new UnsupportedOperationException("Can't update double");
+  }
+
+  void updateString(String value) {
+    throw new UnsupportedOperationException("Can't update string");
+  }
+
+  void merge(ColumnStatistics stats) {
+    if (columnId != stats.columnId) {
+      throw new IllegalArgumentException("Unmergeable column statistics");
     }
+    count += stats.count;
   }
 
-  private ByteString serialize(Comparable obj) throws IOException {
+  void reset() {
+    count = 0;
+  }
+
+  OrcProto.ColumnStatistics.Builder serialize() {
+    OrcProto.ColumnStatistics.Builder builder =
+      OrcProto.ColumnStatistics.newBuilder();
+    builder.setColumn(columnId);
+    builder.setNumberOfValues(count);
+    return builder;
+  }
+
+  public static ColumnStatistics create(int columnId, TypeInfo type) {
     switch (type.getCategory()) {
       case PRIMITIVE:
-        switch (getPrimitiveCategory()) {
+        switch (((PrimitiveTypeInfo) type).getPrimitiveCategory()) {
           case BOOLEAN:
+            return new BucketStatistics(columnId, 2);
           case BYTE:
           case SHORT:
           case INT:
           case LONG:
-            ByteString.Output out = ByteString.newOutput();
-            SerializationUtils.writeVslong(out,
-              ((Number) obj).longValue());
-            return out.toByteString();
+            return new IntegerStatistics(columnId);
           case FLOAT:
-            out = ByteString.newOutput();
-            SerializationUtils.writeFloat(out, (Float) obj);
-            return out.toByteString();
           case DOUBLE:
-            out = ByteString.newOutput();
-            SerializationUtils.writeDouble(out, (Double) obj);
-            return out.toByteString();
+            return new DoubleStatistics(columnId);
           case STRING:
-            return ByteString.copyFromUtf8((String) obj);
+            return new StringStatistics(columnId);
           default:
-            throw new IllegalArgumentException("Can't serialize primitive "
-              + getPrimitiveCategory());
+            return new ColumnStatistics(columnId);
         }
       default:
-        throw new IllegalArgumentException("Can't serialize non-primitive " +
-          type.getCategory());
+        return new ColumnStatistics(columnId);
     }
-  }
-
-  ByteString getSerializedMinimum() throws IOException {
-    return minimum == null ? null : serialize(minimum);
-  }
-
-  ByteString getSerializedMaximum() throws IOException {
-    return maximum == null ? null : serialize(maximum);
-  }
-
-  void merge(ColumnStatistics stats) {
-    if (columnId != stats.columnId ||
-      type != stats.type) {
-      throw new IllegalArgumentException("Unmergeable column statistics");
-    }
-    count += stats.count;
-    if (keepMinMax) {
-      if (stats.minimum != null) {
-        if (minimum == null || minimum.compareTo(stats.minimum) > 0) {
-          minimum = stats.minimum;
-        }
-      }
-      if (stats.maximum != null) {
-        if (maximum == null || maximum.compareTo(stats.maximum) < 0) {
-          maximum = stats.maximum;
-        }
-      }
-    }
-  }
-
-  void reset() {
-    minimum = null;
-    maximum = null;
-    count = 0;
   }
 }

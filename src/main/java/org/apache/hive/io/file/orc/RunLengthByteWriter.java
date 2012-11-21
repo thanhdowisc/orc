@@ -21,44 +21,30 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * A writer that writes a sequence of integers. A control byte is written before
+ * A writer that writes a sequence of bytes. A control byte is written before
  * each run with positive values 0 to 127 meaning 2 to 129 repetitions. If the
- * bytes is -1 to -128, 1 to 128 literal vint values follow.
+ * bytes is -1 to -128, 1 to 128 literal byte values follow.
  */
-class RunLengthIntegerWriter {
+class RunLengthByteWriter {
   private static final int MAX_LITERAL_SIZE=128;
   private static final int MAX_REPEAT_SIZE=129;
   private final PositionedOutputStream output;
-  private final boolean signed;
-  private final int[] literals = new int[MAX_LITERAL_SIZE];
+  private final byte[] literals = new byte[MAX_LITERAL_SIZE];
   private int numLiterals = 0;
-  private int delta = 0;
   private boolean repeat = false;
 
-  RunLengthIntegerWriter(PositionedOutputStream output,
-                         boolean signed) throws IOException {
+  RunLengthByteWriter(PositionedOutputStream output) throws IOException {
     this.output = output;
-    this.signed = signed;
   }
 
   private void writeValues() throws IOException {
     if (numLiterals != 0) {
       if (repeat) {
         output.write(numLiterals - 2);
-        if (signed) {
-          SerializationUtils.writeVsint(output, literals[0]);
-        } else {
-          SerializationUtils.writeVuint(output, literals[0]);
-        }
-      } else {
+        output.write(literals, 0, 1);
+     } else {
         output.write(-numLiterals);
-        for(int i=0; i < numLiterals; ++i) {
-          if (signed) {
-            SerializationUtils.writeVsint(output, literals[i]);
-          } else {
-            SerializationUtils.writeVuint(output, literals[i]);
-          }
-        }
+        output.write(literals, 0, numLiterals);
       }
       repeat = false;
       numLiterals = 0;
@@ -70,7 +56,7 @@ class RunLengthIntegerWriter {
     output.flush();
   }
 
-  void write(int value) throws IOException {
+  void write(byte value) throws IOException {
     if (numLiterals == 0) {
       literals[numLiterals++] = value;
       repeat = true;
@@ -97,6 +83,6 @@ class RunLengthIntegerWriter {
 
   void getPosition(PositionRecorder recorder) throws IOException {
     output.getPosition(recorder);
-    recorder.addPosition(2 * numLiterals + (repeat ? 1 : 0));
+    recorder.addPosition(numLiterals * 2 + (repeat ? 1 : 0));
   }
 }
