@@ -56,22 +56,18 @@ public class InStream {
 
   private static class CompressedStream extends InputStream {
     private final byte[] array;
-    private final ByteBuffer compressed;
     private final int bufferSize;
-    private ByteBuffer uncompressed;
+    private ByteBuffer uncompressed = null;
     private final CompressionCodec codec;
     private int offset;
     private int limit;
-    private int chunkLength;
     private boolean isUncompressedOriginal;
 
     public CompressedStream(ByteBuffer input, CompressionCodec codec,
                             int bufferSize) throws IOException {
       this.array = input.array();
-      this.compressed = input;
       this.codec = codec;
       this.bufferSize = bufferSize;
-      uncompressed = ByteBuffer.allocate(bufferSize);
       offset = input.arrayOffset() + input.position();
       limit = input.arrayOffset() + input.limit();
       if (limit != offset) {
@@ -81,7 +77,7 @@ public class InStream {
 
     private void readHeader() throws IOException {
       if (limit - offset > OutStream.HEADER_SIZE) {
-        chunkLength = ((0xff & array[offset+2]) << 15) |
+        int chunkLength = ((0xff & array[offset+2]) << 15) |
           ((0xff & array[offset+1]) << 7) | (0xff & (array[offset] >> 1));
         boolean isOriginal = (array[offset] & 0x01) == 1;
         offset += OutStream.HEADER_SIZE;
@@ -92,10 +88,13 @@ public class InStream {
           if (isUncompressedOriginal) {
             uncompressed = ByteBuffer.allocate(bufferSize);
             isUncompressedOriginal = false;
+          } else if (uncompressed == null) {
+            uncompressed = ByteBuffer.allocate(bufferSize);
           } else {
             uncompressed.clear();
           }
-          codec.decompress(compressed, uncompressed);
+          codec.decompress(ByteBuffer.wrap(array, offset, chunkLength),
+            uncompressed);
         }
         offset += chunkLength;
       } else {
@@ -117,7 +116,7 @@ public class InStream {
     @Override
     public int read(byte[] data, int offset, int length) throws IOException {
       if (uncompressed.remaining() == 0) {
-        if (offset == limit) {
+        if (this.offset == this.limit) {
           return -1;
         }
         readHeader();

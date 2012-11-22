@@ -50,6 +50,7 @@ class RunLengthIntegerWriter {
         } else {
           SerializationUtils.writeVuint(output, literals[0]);
         }
+        SerializationUtils.writeVsint(output, delta);
       } else {
         output.write(-numLiterals);
         for(int i=0; i < numLiterals; ++i) {
@@ -73,24 +74,29 @@ class RunLengthIntegerWriter {
   void write(int value) throws IOException {
     if (numLiterals == 0) {
       literals[numLiterals++] = value;
+    } else if (numLiterals == 1) {
+      literals[numLiterals++] = value;
+      delta = literals[1] - literals[0];
       repeat = true;
-    } else if (repeat) {
-      if (literals[0] == value) {
-        numLiterals += 1;
-        if (numLiterals == MAX_REPEAT_SIZE) {
+    } else {
+      if (repeat) {
+        if (value == literals[0] + numLiterals*delta) {
+          numLiterals += 1;
+          if (numLiterals == MAX_REPEAT_SIZE) {
+            writeValues();
+          }
+        } else if (numLiterals == 2) {
+          literals[numLiterals++] = value;
+          repeat = false;
+        } else {
+          writeValues();
+          literals[numLiterals++] = value;
+        }
+      } else {
+        literals[numLiterals++] = value;
+        if (numLiterals == MAX_LITERAL_SIZE) {
           writeValues();
         }
-      } else if (numLiterals == 1) {
-        literals[numLiterals++] = value;
-        repeat = false;
-      } else {
-        writeValues();
-        literals[numLiterals++] = value;
-      }
-    } else {
-      literals[numLiterals++] = value;
-      if (numLiterals == MAX_LITERAL_SIZE) {
-        writeValues();
       }
     }
   }

@@ -197,7 +197,7 @@ public class OrcFile {
     // orc file writer
     start = System.currentTimeMillis();
     Writer writer = getWriter(local, new Path("file:///tmp/owen.orc"), type,
-      inspect, CompressionKind.NONE, 256 * 1024, conf);
+      inspect, CompressionKind.ZLIB, 256 * 1024, conf);
     for(MyRecord record: fileReader("customer_demographics.dat")) {
       writer.addRow(record);
     }

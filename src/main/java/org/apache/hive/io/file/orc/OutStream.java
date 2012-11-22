@@ -176,6 +176,7 @@ class OutStream extends PositionedOutputStream {
       if (codec.compress(current, compressed, overflow)) {
         // move position back to after the header
         current.position(HEADER_SIZE);
+        current.limit(current.capacity());
         // find the total bytes in the chunk
         int totalBytes = compressed.position() - sizePosn - HEADER_SIZE;
         if (overflow != null) {

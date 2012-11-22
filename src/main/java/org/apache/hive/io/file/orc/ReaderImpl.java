@@ -31,6 +31,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectIn
 import org.apache.hadoop.mapred.RecordReader;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -425,30 +426,30 @@ public class ReaderImpl implements Reader {
     int psOffset = readSize - 1 - psLen;
     CodedInputStream in = CodedInputStream.newInstance(buffer.array(),
       buffer.arrayOffset() + psOffset, psLen);
-    buffer.limit(psOffset);
     OrcProto.PostScript ps = OrcProto.PostScript.parseFrom(in);
     System.out.println("postscript:");
     System.out.println(ps);
-    long footerSize = ps.getFooterLength();
-    long bufferSize = ps.getCompressionBlockSize();
+    int footerSize = (int) ps.getFooterLength();
+    int bufferSize = (int) ps.getCompressionBlockSize();
     CompressionKind kind;
+    CompressionCodec codec;
     switch (ps.getCompression()) {
       case NONE:
         kind = CompressionKind.NONE;
+        codec = null;
         break;
       case ZLIB:
         kind = CompressionKind.ZLIB;
-        break;
-      case LZO:
-        kind = CompressionKind.LZO;
+        codec = new ZlibCodec();
         break;
       case SNAPPY:
         kind = CompressionKind.SNAPPY;
+        codec = new SnappyCodec();
         break;
       default:
         throw new IllegalArgumentException("Unknown compression");
     }
-    int extra = (int) Math.max(0, psLen + 1 + footerSize - readSize);
+    int extra = Math.max(0, psLen + 1 + footerSize - readSize);
     if (extra > 0) {
       input.seek(size - readSize - extra);
       ByteBuffer extraBuf = ByteBuffer.allocate((int) extra + readSize);
@@ -457,12 +458,14 @@ public class ReaderImpl implements Reader {
       extraBuf.position(extra);
       extraBuf.put(buffer);
       buffer = extraBuf;
+      buffer.position(0);
+      buffer.limit(footerSize);
     } else {
-      buffer.position((int) (psOffset - footerSize));
+      buffer.position(psOffset - footerSize);
+      buffer.limit(psOffset);
     }
-    CodedInputStream stm = CodedInputStream.newInstance(buffer.array(),
-      buffer.arrayOffset() + buffer.position(), buffer.remaining());
-    OrcProto.Footer footer = OrcProto.Footer.parseFrom(stm);
+    InputStream instream = InStream.create(buffer, codec, bufferSize);
+    OrcProto.Footer footer = OrcProto.Footer.parseFrom(instream);
     System.out.println("footer:");
     System.out.println(footer);
     fileInformation = new FileInformationImpl(kind, (int) bufferSize, footer);

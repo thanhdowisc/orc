@@ -24,6 +24,34 @@
     <disable_hints />
   </component>
   <component name="DebuggerManager">
+    <line_breakpoints>
+      <breakpoint url="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/WriterImpl.java" line="712" class="org.apache.hive.io.file.orc.WriterImpl" package="org.apache.hive.io.file.orc">
+        <option name="ENABLED" value="true" />
+        <option name="LOG_ENABLED" value="false" />
+        <option name="LOG_EXPRESSION_ENABLED" value="false" />
+        <option name="SUSPEND_POLICY" value="SuspendAll" />
+        <option name="COUNT_FILTER_ENABLED" value="false" />
+        <option name="COUNT_FILTER" value="0" />
+        <option name="CONDITION_ENABLED" value="false" />
+        <option name="CLASS_FILTERS_ENABLED" value="false" />
+        <option name="INSTANCE_FILTERS_ENABLED" value="false" />
+        <option name="CONDITION" value="" />
+        <option name="LOG_MESSAGE" value="" />
+      </breakpoint>
+      <breakpoint url="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/WriterImpl.java" line="660" class="org.apache.hive.io.file.orc.WriterImpl" package="org.apache.hive.io.file.orc">
+        <option name="ENABLED" value="true" />
+        <option name="LOG_ENABLED" value="false" />
+        <option name="LOG_EXPRESSION_ENABLED" value="false" />
+        <option name="SUSPEND_POLICY" value="SuspendAll" />
+        <option name="COUNT_FILTER_ENABLED" value="false" />
+        <option name="COUNT_FILTER" value="0" />
+        <option name="CONDITION_ENABLED" value="false" />
+        <option name="CLASS_FILTERS_ENABLED" value="false" />
+        <option name="INSTANCE_FILTERS_ENABLED" value="false" />
+        <option name="CONDITION" value="" />
+        <option name="LOG_MESSAGE" value="" />
+      </breakpoint>
+    </line_breakpoints>
     <breakpoint_any>
       <breakpoint>
         <option name="NOTIFY_CAUGHT" value="true" />
@@ -64,73 +92,26 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="OutStream.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/OutStream.java">
+      <file leaf-file-name="ReaderImpl.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/ReaderImpl.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="235" column="0" selection-start="7622" selection-end="7622" vertical-scroll-proportion="-7.269231">
+            <state line="469" column="0" selection-start="14073" selection-end="14073" vertical-scroll-proportion="0.0">
               <folding>
                 <element signature="n#!!doc" expanded="true" />
                 <element signature="imports" expanded="true" />
+                <element signature="e#5390#5407#0" expanded="true" />
+                <element signature="e#6546#6554#0" expanded="true" />
+                <element signature="e#7230#7937#0" expanded="true" />
+                <element signature="e#7928#7929#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="RunLengthByteWriter.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/RunLengthByteWriter.java">
+      <file leaf-file-name="CodedInputStream.class" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar://$MAVEN_REPOSITORY$/com/google/protobuf/protobuf-java/2.4.1/protobuf-java-2.4.1.jar!/com/google/protobuf/CodedInputStream.class">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="55" column="0" selection-start="1926" selection-end="1926" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="BitFieldWriter.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/BitFieldWriter.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="44" column="0" selection-start="1434" selection-end="1434" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="OrcFile.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/OrcFile.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="199" column="35" selection-start="7412" selection-end="7412" vertical-scroll-proportion="0.0">
-              <folding>
-                <element signature="n#!!doc" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="WriterImpl.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/WriterImpl.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="613" column="0" selection-start="20329" selection-end="20329" vertical-scroll-proportion="-43.846153">
-              <folding>
-                <element signature="n#!!doc" expanded="true" />
-                <element signature="e#2876#2896#0" expanded="true" />
-                <element signature="e#4132#4144#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="RunLengthIntegerWriter.java" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/RunLengthIntegerWriter.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="34" column="24" selection-start="1454" selection-end="1454" vertical-scroll-proportion="-0.15734266">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="CodedOutputStream.class" pinned="false" current="false" current-in-tab="false">
-        <entry file="jar://$MAVEN_REPOSITORY$/com/google/protobuf/protobuf-java/2.4.1/protobuf-java-2.4.1.jar!/com/google/protobuf/CodedOutputStream.class">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="210" column="14" selection-start="10015" selection-end="10015" vertical-scroll-proportion="-6.12">
+            <state line="98" column="0" selection-start="4299" selection-end="4299" vertical-scroll-proportion="-5.72">
               <folding />
             </state>
           </provider>
@@ -139,33 +120,74 @@
       <file leaf-file-name="OrcProto.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/target/generated-sources/protoc/org/apache/hive/io/file/orc/OrcProto.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="7780" column="0" selection-start="288505" selection-end="288505" vertical-scroll-proportion="0.0">
+            <state line="7876" column="0" selection-start="292290" selection-end="292290" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="FSDataOutputStream.class" pinned="false" current="false" current-in-tab="false">
-        <entry file="jar://$MAVEN_REPOSITORY$/org/apache/hadoop/hadoop-core/0.20.2/hadoop-core-0.20.2.jar!/org/apache/hadoop/fs/FSDataOutputStream.class">
+      <file leaf-file-name="AbstractMessage.class" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar://$MAVEN_REPOSITORY$/com/google/protobuf/protobuf-java/2.4.1/protobuf-java-2.4.1.jar!/com/google/protobuf/AbstractMessage.class">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="18" column="14" selection-start="812" selection-end="812" vertical-scroll-proportion="-5.96">
+            <state line="42" column="23" selection-start="1818" selection-end="1818" vertical-scroll-proportion="-5.72">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ReaderImpl.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/ReaderImpl.java">
+      <file leaf-file-name="ExtensionRegistry.class" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar://$MAVEN_REPOSITORY$/com/google/protobuf/protobuf-java/2.4.1/protobuf-java-2.4.1.jar!/com/google/protobuf/ExtensionRegistry.class">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="486" column="23" selection-start="14604" selection-end="14604" vertical-scroll-proportion="0.0">
+            <state line="14" column="47" selection-start="823" selection-end="823" vertical-scroll-proportion="-6.08">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="AbstractMessageLite.class" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar://$MAVEN_REPOSITORY$/com/google/protobuf/protobuf-java/2.4.1/protobuf-java-2.4.1.jar!/com/google/protobuf/AbstractMessageLite.class">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="39" column="23" selection-start="2329" selection-end="2329" vertical-scroll-proportion="-5.72">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="InStream.java" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/InStream.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="22" column="41" selection-start="929" selection-end="929" vertical-scroll-proportion="-3.0298507">
               <folding>
                 <element signature="n#!!doc" expanded="true" />
                 <element signature="imports" expanded="true" />
-                <element signature="e#5362#5379#0" expanded="true" />
-                <element signature="e#6518#6526#0" expanded="true" />
-                <element signature="e#7202#7909#0" expanded="true" />
-                <element signature="e#7900#7901#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="InputStream.class" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar:///System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar!/java/io/InputStream.class">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="27" column="0" selection-start="1001" selection-end="1001" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="ZlibCodec.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/ZlibCodec.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="40" column="0" selection-start="1317" selection-end="1317" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Inflater.class" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar:///System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar!/java/util/zip/Inflater.class">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="14" column="9" selection-start="373" selection-end="373" vertical-scroll-proportion="0.0">
+              <folding />
             </state>
           </provider>
         </entry>
@@ -189,13 +211,13 @@
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/Stream.java" />
         <option value="$PROJECT_DIR$/src/main/protobuf/org/apache/hive/io/file/orc/orc_proto.proto" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/Reader.java" />
-        <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/ZlibCodec.java" />
-        <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/InStream.java" />
-        <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/ReaderImpl.java" />
-        <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/OutStream.java" />
+        <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/RunLengthIntegerWriter.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/WriterImpl.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/OrcFile.java" />
-        <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/RunLengthIntegerWriter.java" />
+        <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/ReaderImpl.java" />
+        <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/OutStream.java" />
+        <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/ZlibCodec.java" />
+        <option value="$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/InStream.java" />
       </list>
     </option>
   </component>
@@ -402,7 +424,7 @@
       <recent name="org.apache.hive.file" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.OrcFile">
+  <component name="RunManager" selected="Application.ReaderImpl">
     <configuration default="false" name="ZlibCodec" type="Application" factoryName="Application" temporary="true">
       <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea">
         <pattern>
@@ -429,28 +451,6 @@
       </RunnerSettings>
       <ConfigurationWrapper RunnerId="Cover" />
       <ConfigurationWrapper RunnerId="Debug" />
-      <method />
-    </configuration>
-    <configuration default="false" name="ReaderImpl" type="Application" factoryName="Application" temporary="true">
-      <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea">
-        <pattern>
-          <option name="PATTERN" value="org.apache.hive.io.file.orc.*" />
-          <option name="ENABLED" value="true" />
-        </pattern>
-      </extension>
-      <option name="MAIN_CLASS_NAME" value="org.apache.hive.io.file.orc.ReaderImpl" />
-      <option name="VM_PARAMETERS" />
-      <option name="PROGRAM_PARAMETERS" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" />
-      <option name="ENABLE_SWING_INSPECTOR" value="false" />
-      <option name="ENV_VARIABLES" />
-      <option name="PASS_PARENT_ENVS" value="true" />
-      <module name="orc" />
-      <envs />
-      <RunnerSettings RunnerId="Run" />
-      <ConfigurationWrapper RunnerId="Run" />
       <method />
     </configuration>
     <configuration default="true" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType" factoryName="Plugin">
@@ -602,6 +602,34 @@
       <ConfigurationWrapper RunnerId="Run" />
       <method />
     </configuration>
+    <configuration default="false" name="ReaderImpl" type="Application" factoryName="Application">
+      <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea">
+        <pattern>
+          <option name="PATTERN" value="org.apache.hive.io.file.orc.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="MAIN_CLASS_NAME" value="org.apache.hive.io.file.orc.ReaderImpl" />
+      <option name="VM_PARAMETERS" />
+      <option name="PROGRAM_PARAMETERS" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
+      <option name="ALTERNATIVE_JRE_PATH" />
+      <option name="ENABLE_SWING_INSPECTOR" value="false" />
+      <option name="ENV_VARIABLES" />
+      <option name="PASS_PARENT_ENVS" value="true" />
+      <module name="orc" />
+      <envs />
+      <RunnerSettings RunnerId="Debug">
+        <option name="DEBUG_PORT" value="" />
+        <option name="TRANSPORT" value="0" />
+        <option name="LOCAL" value="true" />
+      </RunnerSettings>
+      <RunnerSettings RunnerId="Run" />
+      <ConfigurationWrapper RunnerId="Debug" />
+      <ConfigurationWrapper RunnerId="Run" />
+      <method />
+    </configuration>
     <list size="3">
       <item index="0" class="java.lang.String" itemvalue="Application.OrcFile" />
       <item index="1" class="java.lang.String" itemvalue="Application.ZlibCodec" />
@@ -644,17 +672,17 @@
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32745314" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.41124585" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.42888644" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32745314" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Coverage" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32954547" sideWeight="0.60088205" order="-1" side_tool="true" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24873738" sideWeight="0.53914005" order="1" side_tool="true" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24873738" sideWeight="0.30650496" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24873738" sideWeight="0.45314223" order="0" side_tool="false" content_ui="combo" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.48511577" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24873738" sideWeight="0.25689086" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33737597" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
@@ -721,125 +749,9 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="jar://$MAVEN_REPOSITORY$/org/apache/hive/hive-serde/0.9.0/hive-serde-0.9.0.jar!/org/apache/hadoop/hive/serde2/objectinspector/StructField.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="5" column="17" selection-start="187" selection-end="187" vertical-scroll-proportion="-2.4">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar:///System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar!/java/io/DataInputStream.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="15" column="19" selection-start="534" selection-end="534" vertical-scroll-proportion="0.33226323">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/PositionedOutputStream.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="17" column="0" selection-start="0" selection-end="807" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="n#!!doc" expanded="true" />
-            <element signature="imports" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar:///System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar!/java/io/InputStream.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="5" column="22" selection-start="154" selection-end="154" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/ZlibCodec.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="54" column="28" selection-start="1903" selection-end="1903" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/InStream.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="135" column="70" selection-start="4481" selection-end="4481" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="n#!!doc" expanded="true" />
-            <element signature="imports" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/ReaderImpl.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="486" column="23" selection-start="14604" selection-end="14604" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="n#!!doc" expanded="true" />
-            <element signature="imports" expanded="true" />
-            <element signature="e#5362#5379#0" expanded="true" />
-            <element signature="e#6518#6526#0" expanded="true" />
-            <element signature="e#7202#7909#0" expanded="true" />
-            <element signature="e#7900#7901#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/target/generated-sources/protoc/org/apache/hive/io/file/orc/OrcProto.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="7780" column="0" selection-start="288505" selection-end="288505" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar://$MAVEN_REPOSITORY$/com/google/protobuf/protobuf-java/2.4.1/protobuf-java-2.4.1.jar!/com/google/protobuf/CodedOutputStream.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="210" column="14" selection-start="10015" selection-end="10015" vertical-scroll-proportion="-6.12">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar://$MAVEN_REPOSITORY$/org/apache/hadoop/hadoop-core/0.20.2/hadoop-core-0.20.2.jar!/org/apache/hadoop/fs/FSDataOutputStream.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="18" column="14" selection-start="812" selection-end="812" vertical-scroll-proportion="-5.96">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/RunLengthByteWriter.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="55" column="0" selection-start="1926" selection-end="1926" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/BitFieldWriter.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="44" column="0" selection-start="1434" selection-end="1434" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/OutStream.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="235" column="0" selection-start="7622" selection-end="7622" vertical-scroll-proportion="-7.269231">
-          <folding>
-            <element signature="n#!!doc" expanded="true" />
-            <element signature="imports" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/OrcFile.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="199" column="35" selection-start="7412" selection-end="7412" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="n#!!doc" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/WriterImpl.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="613" column="0" selection-start="20329" selection-end="20329" vertical-scroll-proportion="-43.846153">
+        <state line="663" column="0" selection-start="22162" selection-end="22162" vertical-scroll-proportion="-5.6538463">
           <folding>
             <element signature="n#!!doc" expanded="true" />
             <element signature="e#2876#2896#0" expanded="true" />
@@ -848,10 +760,121 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/RunLengthIntegerWriter.java">
+    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/OutStream.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="34" column="24" selection-start="1454" selection-end="1454" vertical-scroll-proportion="-0.15734266">
+        <state line="175" column="0" selection-start="5619" selection-end="5619" vertical-scroll-proportion="-5.6538463">
+          <folding>
+            <element signature="n#!!doc" expanded="true" />
+            <element signature="imports" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$MAVEN_REPOSITORY$/com/google/protobuf/protobuf-java/2.4.1/protobuf-java-2.4.1.jar!/com/google/protobuf/GeneratedMessage.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="439" column="25" selection-start="28036" selection-end="28036" vertical-scroll-proportion="-5.72">
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar:///System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar!/java/nio/Buffer.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="60" column="12" selection-start="1677" selection-end="1677" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar:///System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar!/java/nio/ByteBuffer.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="44" column="29" selection-start="1498" selection-end="1498" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar:///System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar!/java/lang/ClassLoader.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="61" column="15" selection-start="3079" selection-end="3079" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar:///System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar!/java/util/zip/Inflater.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="14" column="9" selection-start="373" selection-end="373" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/target/generated-sources/protoc/org/apache/hive/io/file/orc/OrcProto.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="7876" column="0" selection-start="292290" selection-end="292290" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$MAVEN_REPOSITORY$/com/google/protobuf/protobuf-java/2.4.1/protobuf-java-2.4.1.jar!/com/google/protobuf/AbstractMessageLite.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="39" column="23" selection-start="2329" selection-end="2329" vertical-scroll-proportion="-5.72">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$MAVEN_REPOSITORY$/com/google/protobuf/protobuf-java/2.4.1/protobuf-java-2.4.1.jar!/com/google/protobuf/ExtensionRegistry.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="14" column="47" selection-start="823" selection-end="823" vertical-scroll-proportion="-6.08">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$MAVEN_REPOSITORY$/com/google/protobuf/protobuf-java/2.4.1/protobuf-java-2.4.1.jar!/com/google/protobuf/AbstractMessage.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="42" column="23" selection-start="1818" selection-end="1818" vertical-scroll-proportion="-5.72">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/ReaderImpl.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="469" column="0" selection-start="14073" selection-end="14073" vertical-scroll-proportion="0.0">
+          <folding>
+            <element signature="n#!!doc" expanded="true" />
+            <element signature="imports" expanded="true" />
+            <element signature="e#5390#5407#0" expanded="true" />
+            <element signature="e#6546#6554#0" expanded="true" />
+            <element signature="e#7230#7937#0" expanded="true" />
+            <element signature="e#7928#7929#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$MAVEN_REPOSITORY$/com/google/protobuf/protobuf-java/2.4.1/protobuf-java-2.4.1.jar!/com/google/protobuf/CodedInputStream.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="98" column="0" selection-start="4299" selection-end="4299" vertical-scroll-proportion="-5.72">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar:///System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar!/java/io/InputStream.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="27" column="0" selection-start="1001" selection-end="1001" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/ZlibCodec.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="40" column="0" selection-start="1317" selection-end="1317" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hive/io/file/orc/InStream.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="22" column="41" selection-start="929" selection-end="929" vertical-scroll-proportion="-3.0298507">
+          <folding>
+            <element signature="n#!!doc" expanded="true" />
+            <element signature="imports" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

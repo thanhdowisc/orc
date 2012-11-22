@@ -565,6 +565,8 @@ class WriterImpl implements Writer {
     // get the column positions and stats for this index entry
     treeWriter.getPosition(entry);
     rowIndex.addEntry(entry);
+    // record the current positions for next time.
+    treeWriter.recordPosition();
   }
 
   private void writeRowIndex() throws IOException {

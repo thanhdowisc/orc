@@ -41,7 +41,8 @@ public class ZlibCodec implements CompressionCodec {
     Inflater inflater = new Inflater(true);
     inflater.setInput(in.array(), in.arrayOffset() + in.position(),
                       in.remaining());
-    while (!inflater.finished()) {
+    while (!(inflater.finished() || inflater.needsDictionary() ||
+             inflater.needsInput())) {
       try {
         int count = inflater.inflate(out.array(),
                                      out.arrayOffset() + out.position(),
@@ -51,6 +52,7 @@ public class ZlibCodec implements CompressionCodec {
         throw new IOException("Bad compression data", dfe);
       }
     }
+    out.flip();
     inflater.end();
     in.position(in.limit());
   }
