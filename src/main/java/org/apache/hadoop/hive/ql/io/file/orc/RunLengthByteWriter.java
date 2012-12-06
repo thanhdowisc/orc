@@ -25,13 +25,14 @@ import java.io.IOException;
  * bytes is -1 to -128, 1 to 128 literal byte values follow.
  */
 class RunLengthByteWriter {
-  static final int MAX_LITERAL_SIZE=128;
-  static final int MAX_REPEAT_SIZE=130;
+  static final int MIN_REPEAT_SIZE = 3;
+  static final int MAX_LITERAL_SIZE = 128;
+  static final int MAX_REPEAT_SIZE= 127 + MIN_REPEAT_SIZE;
   private final PositionedOutputStream output;
   private final byte[] literals = new byte[MAX_LITERAL_SIZE];
   private int numLiterals = 0;
   private boolean repeat = false;
-  private boolean lastTwoSame = false;
+  private int tailRunLength = 0;
 
   RunLengthByteWriter(PositionedOutputStream output) throws IOException {
     this.output = output;
@@ -40,14 +41,14 @@ class RunLengthByteWriter {
   private void writeValues() throws IOException {
     if (numLiterals != 0) {
       if (repeat) {
-        output.write(numLiterals - 3);
+        output.write(numLiterals - MIN_REPEAT_SIZE);
         output.write(literals, 0, 1);
      } else {
         output.write(-numLiterals);
         output.write(literals, 0, numLiterals);
       }
       repeat = false;
-      lastTwoSame = false;
+      tailRunLength = 0;
       numLiterals = 0;
     }
   }
@@ -60,47 +61,39 @@ class RunLengthByteWriter {
   void write(byte value) throws IOException {
     if (numLiterals == 0) {
       literals[numLiterals++] = value;
-    } else if (numLiterals == 1) {
-      lastTwoSame = value == literals[numLiterals - 1];
-      literals[numLiterals++] = value;
-    } else if (numLiterals == 2) {
-      if (value == literals[1] && lastTwoSame) {
-        repeat = true;
-      } else {
-        lastTwoSame = value == literals[numLiterals - 1];
-        literals[numLiterals] = value;
-      }
-      numLiterals += 1;
-    } else {
-      if (repeat) {
-        if (value == literals[0]) {
-          numLiterals += 1;
-          if (numLiterals == MAX_REPEAT_SIZE) {
-            writeValues();
-          }
-        } else {
+      tailRunLength = 1;
+    } else if (repeat) {
+      if (value == literals[0]) {
+        numLiterals += 1;
+        if (numLiterals == MAX_REPEAT_SIZE) {
           writeValues();
-          literals[numLiterals++] = value;
         }
       } else {
-        // if the current number and the previous two form a repetition
-        boolean currentSame = value == literals[numLiterals - 1];
-        if (currentSame && lastTwoSame) {
-          // record the base of the repetition
-          byte base = literals[numLiterals - 2];
-          // remove the last two values and flush
-          numLiterals -= 2;
-          writeValues();
-          // set up the new repetition at size 3
-          literals[0] = base;
+        writeValues();
+        literals[numLiterals++] = value;
+        tailRunLength = 1;
+      }
+    } else {
+      if (value == literals[numLiterals - 1]) {
+        tailRunLength += 1;
+      } else {
+        tailRunLength = 1;
+      }
+      if (tailRunLength == MIN_REPEAT_SIZE) {
+        if (numLiterals + 1 == MIN_REPEAT_SIZE) {
           repeat = true;
-          numLiterals = 3;
+          numLiterals += 1;
         } else {
-          lastTwoSame = currentSame;
-          literals[numLiterals++] = value;
-          if (numLiterals == MAX_LITERAL_SIZE) {
-            writeValues();
-          }
+          numLiterals -= MIN_REPEAT_SIZE - 1;
+          writeValues();
+          literals[0] = value;
+          repeat = true;
+          numLiterals = MIN_REPEAT_SIZE;
+        }
+      } else {
+        literals[numLiterals++] = value;
+        if (numLiterals == MAX_LITERAL_SIZE) {
+          writeValues();
         }
       }
     }
