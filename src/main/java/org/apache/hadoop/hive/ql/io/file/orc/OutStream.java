@@ -214,6 +214,8 @@ class OutStream extends PositionedOutputStream {
 
         // now add the current buffer into the done list and get a new one.
         current.position(0);
+        // update the header with the current length
+        writeHeader(current, 0, current.limit() - HEADER_SIZE, true);
         receiver.output(current);
         getNewInputBuffer();
       }

@@ -6,7 +6,7 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
-public class ZlibCodec implements CompressionCodec {
+class ZlibCodec implements CompressionCodec {
 
   @Override
   public boolean compress(ByteBuffer in, ByteBuffer out,

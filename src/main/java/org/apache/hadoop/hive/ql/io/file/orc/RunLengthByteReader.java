@@ -44,13 +44,15 @@ class RunLengthByteReader {
     if (control == -1) {
       done = true;
     } else if (control < 0x80) {
-      numLiterals = control + 2;
+      repeat = true;
+      numLiterals = control + 3;
       int val = input.read();
       if (val == -1) {
         throw new EOFException("Reading RLE byte got EOF");
       }
       literals[0] = (byte) val;
     } else {
+      repeat = false;
       numLiterals = 0x100 - control;
       int bytes = 0;
       while (bytes < numLiterals) {

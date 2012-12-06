@@ -21,6 +21,9 @@ package org.apache.hadoop.hive.ql.io.file.orc;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.ql.io.RCFile;
+import org.apache.hadoop.hive.serde2.SerDe;
+import org.apache.hadoop.hive.serde2.columnar.LazyBinaryColumnarSerDe;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.io.Text;
@@ -35,6 +38,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Properties;
 
 public class OrcFile {
 
@@ -305,7 +309,7 @@ public class OrcFile {
     long end;
     Configuration conf = new Configuration();
     FileSystem local = FileSystem.getLocal(conf);
-    org.apache.hadoop.io.compress.CompressionCodec codec = new DefaultCodec();
+    org.apache.hadoop.io.compress.CompressionCodec codec =new DefaultCodec();
     /*
     // seq file writer
     start = System.currentTimeMillis();
@@ -319,6 +323,7 @@ public class OrcFile {
     seq.close();
     end = System.currentTimeMillis();
     System.out.println("seq took " + (end - start));
+    */
 
     // rcfile writer
     start = System.currentTimeMillis();
@@ -350,7 +355,6 @@ public class OrcFile {
     rcf.close();
     end = System.currentTimeMillis();
     System.out.println("rcf took " + (end - start));
-    */
 
     // orc file writer
     start = System.currentTimeMillis();
@@ -373,6 +377,5 @@ public class OrcFile {
     writer.close();
     end = System.currentTimeMillis();
     System.out.println("orc took " + (end - start));
-
   }
 }

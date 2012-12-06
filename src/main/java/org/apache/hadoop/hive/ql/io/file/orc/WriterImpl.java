@@ -42,7 +42,7 @@ import java.util.TreeMap;
 class WriterImpl implements Writer {
 
   private static final long STRIPE_SIZE = 256*1024*1024;
-  private static final boolean PRINT_DEBUG = true;
+  private static final boolean PRINT_DEBUG = false;
   private static final int ROW_INDEX_FREQUENCY = 10000;
 
   private final FileSystem fs;

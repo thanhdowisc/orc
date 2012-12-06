@@ -22,7 +22,7 @@ import java.io.IOException;
 class BitFieldReader {
   private RunLengthByteReader input;
   private final int bitSize;
-  private byte current = 0;
+  private int current = 0;
   private int bitsLeft = 0;
 
   BitFieldReader(InStream input,
@@ -33,7 +33,7 @@ class BitFieldReader {
 
   private void readByte() throws IOException {
     if (input.hasNext()) {
-      current = input.next();
+      current = 0xff & input.next();
       bitsLeft = 8;
     }
   }
@@ -56,8 +56,8 @@ class BitFieldReader {
     }
     if (bitsLeftToRead > 0) {
       result <<= bitsLeftToRead;
-      bitsLeft = 8 - bitsLeftToRead;
-      result |= current >> bitsLeft;
+      bitsLeft -= bitsLeftToRead;
+      result |= current >>> bitsLeft;
       current &= (1 << bitsLeft) - 1;
     }
     return result;

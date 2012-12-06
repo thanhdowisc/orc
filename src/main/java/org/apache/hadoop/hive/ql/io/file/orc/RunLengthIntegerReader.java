@@ -44,8 +44,8 @@ class RunLengthIntegerReader {
     if (control == -1) {
       done = true;
       return;
-    } else if (control < 0x7f) {
-      numLiterals = control + 2;
+    } else if (control < 0x80) {
+      numLiterals = control + 3;
       used = 0;
       repeat = true;
       if (signed) {
@@ -77,7 +77,7 @@ class RunLengthIntegerReader {
 
   int next() throws IOException {
     if (repeat) {
-      return literals[0] + (++used) * delta;
+      return literals[0] + (used++) * delta;
     } else {
       return literals[used++];
     }

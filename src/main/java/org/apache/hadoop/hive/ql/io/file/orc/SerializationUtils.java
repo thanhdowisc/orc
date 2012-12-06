@@ -26,29 +26,13 @@ import java.nio.ByteBuffer;
 
 class SerializationUtils {
 
-  static int getSerializedSize(int value, boolean signed) {
-    if (signed) {
-      value = (value << 1) ^ (value >> 31);
-    }
-    int size = 0;
-    while (value != 0) {
-      if ((value & ~0x7f) == 0) {
-        return 1 + size;
-      } else {
-        size += 1;
-        value >>>= 7;
-      }
-    }
-    return 5;
-  }
-
   static void writeVuint(OutputStream output, int value) throws IOException {
     while (true) {
       if ((value & ~0x7f) == 0) {
         output.write((byte) value);
         return;
       } else {
-        output.write((byte) (value & 0x7f));
+        output.write((byte) (value | 0x80));
         value >>>= 7;
       }
     }

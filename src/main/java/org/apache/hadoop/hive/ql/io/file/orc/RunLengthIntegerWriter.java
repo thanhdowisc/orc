@@ -21,12 +21,13 @@ import java.io.IOException;
 
 /**
  * A writer that writes a sequence of integers. A control byte is written before
- * each run with positive values 0 to 127 meaning 2 to 129 repetitions. If the
- * bytes is -1 to -128, 1 to 128 literal vint values follow.
+ * each run with positive values 0 to 127 meaning 3 to 130 repetitions, each
+ * repetition is offset by a delta. If the control byte is -1 to -128, 1 to 128
+ * literal vint values follow.
  */
 class RunLengthIntegerWriter {
   static final int MAX_LITERAL_SIZE=128;
-  private static final int MAX_REPEAT_SIZE=129;
+  private static final int MAX_REPEAT_SIZE=130;
   private final PositionedOutputStream output;
   private final boolean signed;
   private final int[] literals = new int[MAX_LITERAL_SIZE];
@@ -43,7 +44,7 @@ class RunLengthIntegerWriter {
   private void writeValues() throws IOException {
     if (numLiterals != 0) {
       if (repeat) {
-        output.write(numLiterals - 2);
+        output.write(numLiterals - 3);
         if (signed) {
           SerializationUtils.writeVsint(output, literals[0]);
         } else {
@@ -76,7 +77,14 @@ class RunLengthIntegerWriter {
     } else if (numLiterals == 1) {
       literals[numLiterals++] = value;
       delta = literals[1] - literals[0];
-      repeat = true;
+    } else if (numLiterals == 2) {
+      if (value == literals[1] + delta) {
+        repeat = true;
+      } else {
+        literals[numLiterals] = value;
+        delta = value - literals[numLiterals-1];
+      }
+      numLiterals += 1;
     } else {
       if (repeat) {
         if (value == literals[0] + numLiterals*delta) {
@@ -84,17 +92,28 @@ class RunLengthIntegerWriter {
           if (numLiterals == MAX_REPEAT_SIZE) {
             writeValues();
           }
-        } else if (numLiterals == 2) {
-          literals[numLiterals++] = value;
-          repeat = false;
         } else {
           writeValues();
           literals[numLiterals++] = value;
         }
       } else {
-        literals[numLiterals++] = value;
-        if (numLiterals == MAX_LITERAL_SIZE) {
+        // if the current number and the previous two form a repetition
+        if (delta == value - literals[numLiterals - 1]) {
+          // record the base of the repetition
+          int base = literals[numLiterals - 2];
+          // remove the last two values and flush
+          numLiterals -= 2;
           writeValues();
+          // set up the new repetition at size 3
+          literals[0] = base;
+          repeat = true;
+          numLiterals = 3;
+        } else {
+          delta = value - literals[numLiterals - 1];
+          literals[numLiterals++] = value;
+          if (numLiterals == MAX_LITERAL_SIZE) {
+            writeValues();
+          }
         }
       }
     }
@@ -102,6 +121,6 @@ class RunLengthIntegerWriter {
 
   void getPosition(PositionRecorder recorder) throws IOException {
     output.getPosition(recorder);
-    recorder.addPosition(2 * numLiterals + (repeat ? 1 : 0));
+    recorder.addPosition(numLiterals);
   }
 }

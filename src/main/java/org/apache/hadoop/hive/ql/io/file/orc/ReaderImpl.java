@@ -31,6 +31,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.mapred.RecordReader;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -39,7 +40,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-public class ReaderImpl implements Reader {
+class ReaderImpl implements Reader {
 
   private static final int DIRECTORY_SIZE_GUESS = 32*1024;
 
@@ -115,94 +116,7 @@ public class ReaderImpl implements Reader {
     }
   }
 
-  private static class StructObjectInspectorImpl extends StructObjectInspector {
-    private final List<StructFieldImpl> fields;
-
-    StructObjectInspectorImpl(List<StructFieldImpl> fields) {
-      this.fields = fields;
-    }
-
-    @Override
-    public List<StructFieldImpl> getAllStructFieldRefs() {
-      return fields;
-    }
-
-    @Override
-    public StructField getStructFieldRef(String s) {
-      for(StructField f: fields) {
-        if (s.equals(f.getFieldName())) {
-          return f;
-        }
-      }
-      return null;
-    }
-
-    @Override
-    public Object getStructFieldData(Object o, StructField structField) {
-      return ((StructObject) o).fields[((StructFieldImpl) structField).offset];
-    }
-
-    @Override
-    public List<Object> getStructFieldsDataAsList(Object o) {
-      return Arrays.asList(((StructObject) o).fields);
-    }
-
-    @Override
-    public String getTypeName() {
-      StringBuilder buf = new StringBuilder();
-      buf.append("struct{");
-      boolean first = true;
-      for(StructFieldImpl field: fields) {
-        if (first) {
-          first = false;
-        } else {
-          buf.append(", ");
-        }
-        buf.append(field.getFieldName());
-        buf.append(": ");
-        buf.append(field.getFieldObjectInspector().getTypeName());
-      }
-      buf.append("}");
-      return buf.toString();
-    }
-
-    @Override
-    public Category getCategory() {
-      return Category.STRUCT;
-    }
-  }
-
-  private static ObjectInspector buildInspector(OrcProto.Footer footer,
-                                                int columnId) {
-    OrcProto.Type type = footer.getTypes(columnId);
-    ObjectInspector result;
-    switch (type.getKind()) {
-      case INT:
-        result = PrimitiveObjectInspectorFactory.
-          getPrimitiveWritableObjectInspector(PrimitiveObjectInspector.
-            PrimitiveCategory.INT);
-        break;
-      case STRING:
-        result = PrimitiveObjectInspectorFactory.
-          getPrimitiveWritableObjectInspector(PrimitiveObjectInspector.
-            PrimitiveCategory.STRING);
-        break;
-      case STRUCT:
-        int fieldCnt = type.getSubtypesCount();
-        List<StructFieldImpl> fields = new ArrayList<StructFieldImpl>(fieldCnt);
-        for(int i=0; i<fieldCnt; ++i) {
-          StructFieldImpl field = new StructFieldImpl(type.getFieldNames(i),
-            buildInspector(footer, type.getSubtypes(i)), i);
-        }
-        result = new StructObjectInspectorImpl(fields);
-        break;
-      default:
-        throw new IllegalArgumentException("Don't know kind " + type.getKind());
-    }
-    return result;
-  }
-
-  static class FileInformationImpl implements FileInformation {
+  private static class FileInformationImpl implements FileInformation {
     private final CompressionKind compression;
     private final int bufferSize;
     private final OrcProto.Footer footer;
@@ -214,7 +128,8 @@ public class ReaderImpl implements Reader {
       this.compression = compression;
       this.bufferSize = bufferSize;
       this.footer = footer;
-      this.inspector = buildInspector(footer, 0);
+      this.inspector = ORCStruct.createObjectInspector(0,
+        footer.getTypesList());
     }
 
     @Override
@@ -526,7 +441,7 @@ public class ReaderImpl implements Reader {
       buffer.position(psOffset - footerSize);
       buffer.limit(psOffset);
     }
-    InputStream instream = InStream.create(buffer, codec, bufferSize);
+    InputStream instream = InStream.create("footer", buffer, codec, bufferSize);
     OrcProto.Footer footer = OrcProto.Footer.parseFrom(instream);
     fileInformation = new FileInformationImpl(kind, (int) bufferSize, footer);
     file.close();
@@ -549,9 +464,69 @@ public class ReaderImpl implements Reader {
       length, codec, bufferSize, included);
   }
 
-  public static void main(String[] args) throws Exception {
+  private static void readDemographics() throws Exception {
     Configuration conf = new Configuration();
-    Path path = new Path("/tmp/owen.orc");
-    ReaderImpl reader = new ReaderImpl(FileSystem.getLocal(conf), path, conf);
+    Path path = new Path("/tmp/demographics.orc");
+    Reader file = new ReaderImpl(FileSystem.getLocal(conf), path, conf);
+    Reader.RecordReader reader = file.rows();
+    FileWriter writer = new FileWriter("/tmp/demographics.txt");
+    ORCStruct row = null;
+    while (reader.hasNext()) {
+      row = (ORCStruct) reader.next(row);
+      for(int i=0; i < 9; ++i) {
+        writer.append(row.getFieldValue(i).toString());
+        writer.append("|");
+      }
+      writer.append("\n");
+    }
+    writer.close();
+  }
+
+  private static void readSales() throws Exception {
+    Configuration conf = new Configuration();
+    long start = System.currentTimeMillis();
+    Path path = new Path("/tmp/store_sales.orc");
+    Reader file = new ReaderImpl(FileSystem.getLocal(conf), path, conf);
+    Reader.RecordReader reader = file.rows();
+    FileWriter writer = new FileWriter("/tmp/store_sales.txt");
+    ORCStruct row = null;
+    long r = 0;
+    while (reader.hasNext()) {
+      row = (ORCStruct) reader.next(row);
+      for(int i=0; i < 23; ++i) {
+        Object field = row.getFieldValue(i);
+        if (field != null) {
+          String val = field.toString();
+          if (i > 10) {
+            boolean negative = false;
+            if (val.charAt(0) == '-') {
+              negative = true;
+              val = val.substring(1);
+            }
+            int len = val.length();
+            if (len == 1 || len == 2) {
+              val = "0.0".substring(0, 4-len) + val;
+            } else {
+              val = val.substring(0, len - 2) + "." +
+                val.substring(len - 2, len);
+            }
+            if (negative) {
+              val = "-" + val;
+            }
+          }
+          writer.append(val);
+        }
+        writer.append("|");
+      }
+      writer.append("\n");
+    }
+    writer.close();
+    long time = System.currentTimeMillis() - start;
+    System.out.println("time = " + time);
+  }
+
+  public static void main(String[] args) throws Exception {
+    readDemographics();
+    readSales();
   }
 }

@@ -5,7 +5,7 @@ import org.xerial.snappy.Snappy;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class SnappyCodec implements CompressionCodec {
+class SnappyCodec implements CompressionCodec {
   @Override
   public boolean compress(ByteBuffer in, ByteBuffer out,
                           ByteBuffer overflow) throws IOException {

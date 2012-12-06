@@ -19,7 +19,6 @@
 package org.apache.hadoop.hive.ql.io.file.orc;
 
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.mapred.RecordReader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -157,6 +156,14 @@ public interface Reader {
   }
 
   public FileInformation getFileInformation() throws IOException;
+
+  public interface RecordReader {
+    boolean hasNext() throws IOException;
+    Object next(Object previous) throws IOException;
+    long getRowNumber() throws IOException;
+    float getProgress() throws IOException;
+    void close() throws IOException;
+  }
 
   public RecordReader rows() throws IOException;
 
