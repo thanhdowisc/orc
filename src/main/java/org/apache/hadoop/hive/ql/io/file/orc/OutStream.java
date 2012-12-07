@@ -246,5 +246,10 @@ class OutStream extends PositionedOutputStream {
       overflow = null;
     }
   }
+
+  @Override
+  public String toString() {
+    return name;
+  }
 }
 

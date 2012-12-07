@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hive.ql.io.file.orc;
 
+import java.io.FileWriter;
 import java.io.IOException;
 
 /**
@@ -26,15 +27,33 @@ import java.io.IOException;
  * literal vint values follow.
  */
 class RunLengthIntegerWriter {
-  static final int MAX_LITERAL_SIZE=128;
-  private static final int MAX_REPEAT_SIZE=130;
+  static final int MIN_REPEAT_SIZE = 3;
+  static final int MAX_DELTA = 127;
+  static final int MIN_DELTA = -128;
+  static final int MAX_LITERAL_SIZE = 128;
+  private static final int MAX_REPEAT_SIZE = 127 + MIN_REPEAT_SIZE;
   private final PositionedOutputStream output;
   private final boolean signed;
   private final int[] literals = new int[MAX_LITERAL_SIZE];
   private int numLiterals = 0;
   private int delta = 0;
   private boolean repeat = false;
+  private int tailRunLength = 0;
 
+  static FileWriter log;
+  static int i = 0;
+  static {
+    try {
+      log = new FileWriter("/tmp/int.log-" + (++i));
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  static void closeLog() throws IOException {
+    log.close();
+    log = new FileWriter("/tmp/int.log-" + (++i));
+  }
   RunLengthIntegerWriter(PositionedOutputStream output,
                          boolean signed) throws IOException {
     this.output = output;
@@ -43,14 +62,16 @@ class RunLengthIntegerWriter {
 
   private void writeValues() throws IOException {
     if (numLiterals != 0) {
+      log.write(output.toString() + " wrote " + (repeat ? "repeat" : "literal") +
+                " len " + numLiterals +"\n");
       if (repeat) {
-        output.write(numLiterals - 3);
+        output.write(numLiterals - MIN_REPEAT_SIZE);
+        output.write(delta);
         if (signed) {
           SerializationUtils.writeVsint(output, literals[0]);
         } else {
           SerializationUtils.writeVuint(output, literals[0]);
         }
-        SerializationUtils.writeVsint(output, delta);
       } else {
         output.write(-numLiterals);
         for(int i=0; i < numLiterals; ++i) {
@@ -63,6 +84,7 @@ class RunLengthIntegerWriter {
       }
       repeat = false;
       numLiterals = 0;
+      tailRunLength = 0;
     }
   }
 
@@ -74,46 +96,52 @@ class RunLengthIntegerWriter {
   void write(int value) throws IOException {
     if (numLiterals == 0) {
       literals[numLiterals++] = value;
-    } else if (numLiterals == 1) {
-      literals[numLiterals++] = value;
-      delta = literals[1] - literals[0];
-    } else if (numLiterals == 2) {
-      if (value == literals[1] + delta) {
-        repeat = true;
-      } else {
-        literals[numLiterals] = value;
-        delta = value - literals[numLiterals-1];
-      }
-      numLiterals += 1;
-    } else {
-      if (repeat) {
-        if (value == literals[0] + numLiterals*delta) {
-          numLiterals += 1;
-          if (numLiterals == MAX_REPEAT_SIZE) {
-            writeValues();
-          }
-        } else {
+      tailRunLength = 1;
+    } else if (repeat) {
+      if (value == literals[0] + delta*numLiterals) {
+        numLiterals += 1;
+        if (numLiterals == MAX_REPEAT_SIZE) {
           writeValues();
-          literals[numLiterals++] = value;
         }
       } else {
-        // if the current number and the previous two form a repetition
-        if (delta == value - literals[numLiterals - 1]) {
-          // record the base of the repetition
-          int base = literals[numLiterals - 2];
-          // remove the last two values and flush
-          numLiterals -= 2;
+        writeValues();
+        literals[numLiterals++] = value;
+        tailRunLength = 1;
+      }
+    } else {
+      if (tailRunLength == 1) {
+        delta = value - literals[numLiterals - 1];
+        if (delta < MIN_DELTA || delta > MAX_DELTA) {
+          tailRunLength = 1;
+        } else {
+          tailRunLength = 2;
+        }
+      } else if (value == literals[numLiterals - 1] + delta) {
+        tailRunLength += 1;
+      } else {
+        delta = value - literals[numLiterals - 1];
+        if (delta < MIN_DELTA || delta > MAX_DELTA) {
+          tailRunLength = 1;
+        } else {
+          tailRunLength = 2;
+        }
+      }
+      if (tailRunLength == MIN_REPEAT_SIZE) {
+        if (numLiterals + 1 == MIN_REPEAT_SIZE) {
+          repeat = true;
+          numLiterals += 1;
+        } else {
+          numLiterals -= MIN_REPEAT_SIZE - 1;
+          int base = literals[numLiterals];
           writeValues();
-          // set up the new repetition at size 3
           literals[0] = base;
           repeat = true;
-          numLiterals = 3;
-        } else {
-          delta = value - literals[numLiterals - 1];
-          literals[numLiterals++] = value;
-          if (numLiterals == MAX_LITERAL_SIZE) {
-            writeValues();
-          }
+          numLiterals = MIN_REPEAT_SIZE;
+        }
+      } else {
+        literals[numLiterals++] = value;
+        if (numLiterals == MAX_LITERAL_SIZE) {
+          writeValues();
         }
       }
     }

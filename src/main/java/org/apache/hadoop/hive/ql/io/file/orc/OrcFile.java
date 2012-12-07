@@ -364,6 +364,7 @@ public class OrcFile {
       writer.addRow(record);
     }
     writer.close();
+    RunLengthIntegerWriter.closeLog();
     end = System.currentTimeMillis();
     System.out.println("orc took " + (end - start));
 
@@ -371,10 +372,15 @@ public class OrcFile {
     writer = getWriter(local,
       new Path("file:///tmp/store_sales.orc"),
       salesInspector, CompressionKind.ZLIB, 256 * 1024, conf);
+    long r = 0;
     for(StoreSales record: readStoreSales("store_sales.dat")) {
+      if (++r == 127) {
+        System.out.println("stop here");
+      }
       writer.addRow(record);
     }
     writer.close();
+    RunLengthIntegerWriter.closeLog();
     end = System.currentTimeMillis();
     System.out.println("orc took " + (end - start));
   }

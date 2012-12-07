@@ -22,7 +22,7 @@ import java.io.IOException;
 
 /**
  * A reader that reads a sequence of bytes. A control byte is read before
- * each run with positive values 0 to 127 meaning 2 to 129 repetitions. If the
+ * each run with positive values 0 to 127 meaning 3 to 130 repetitions. If the
  * byte is -1 to -128, 1 to 128 literal byte values follow.
  */
 class RunLengthByteReader {
@@ -45,7 +45,7 @@ class RunLengthByteReader {
       done = true;
     } else if (control < 0x80) {
       repeat = true;
-      numLiterals = control + 3;
+      numLiterals = control + RunLengthByteWriter.MIN_REPEAT_SIZE;
       int val = input.read();
       if (val == -1) {
         throw new EOFException("Reading RLE byte got EOF");

@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hive.ql.io.file.orc;
 
+import java.io.EOFException;
 import java.io.IOException;
 
 /**
@@ -45,15 +46,20 @@ class RunLengthIntegerReader {
       done = true;
       return;
     } else if (control < 0x80) {
-      numLiterals = control + 3;
+      numLiterals = control + RunLengthIntegerWriter.MIN_REPEAT_SIZE;
       used = 0;
       repeat = true;
+      delta = input.read();
+      if (delta == -1) {
+        throw new EOFException("End of stream in RLE Integer");
+      }
+      // switch to a signed int
+      delta = (byte) (0+delta);
       if (signed) {
         literals[0] = SerializationUtils.readVsint(input);
       } else {
         literals[0] = SerializationUtils.readVuint(input);
       }
-      delta = SerializationUtils.readVsint(input);
     } else {
       repeat = false;
       numLiterals = 0x100 - control;
