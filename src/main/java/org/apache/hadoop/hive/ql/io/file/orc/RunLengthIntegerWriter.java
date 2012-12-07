@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hive.ql.io.file.orc;
 
-import java.io.FileWriter;
 import java.io.IOException;
 
 /**
@@ -40,20 +39,6 @@ class RunLengthIntegerWriter {
   private boolean repeat = false;
   private int tailRunLength = 0;
 
-  static FileWriter log;
-  static int i = 0;
-  static {
-    try {
-      log = new FileWriter("/tmp/int.log-" + (++i));
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-
-  static void closeLog() throws IOException {
-    log.close();
-    log = new FileWriter("/tmp/int.log-" + (++i));
-  }
   RunLengthIntegerWriter(PositionedOutputStream output,
                          boolean signed) throws IOException {
     this.output = output;
@@ -62,8 +47,6 @@ class RunLengthIntegerWriter {
 
   private void writeValues() throws IOException {
     if (numLiterals != 0) {
-      log.write(output.toString() + " wrote " + (repeat ? "repeat" : "literal") +
-                " len " + numLiterals +"\n");
       if (repeat) {
         output.write(numLiterals - MIN_REPEAT_SIZE);
         output.write(delta);

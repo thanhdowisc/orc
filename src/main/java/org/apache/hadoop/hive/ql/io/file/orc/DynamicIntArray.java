@@ -32,7 +32,7 @@ package org.apache.hadoop.hive.ql.io.file.orc;
  * NOTE: like standard Collection implementations/arrays, this class is not
  * synchronized
  */
-public class DynamicIntArray {
+class DynamicIntArray {
   final static int DEFAULT_CHUNKSIZE = 8 * 1024;
   final static int INIT_CHUNKS = 128;
 

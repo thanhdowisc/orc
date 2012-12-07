@@ -379,7 +379,6 @@ class RecordReaderImpl implements Reader.RecordReader {
     // if we aren't projecting columns, just read the whole stripe
     if (included == null) {
       byte[] buffer = new byte[length - tailLength];
-      System.out.println("Reading from " + offset + " for " + buffer.length);
       file.seek(offset);
       file.readFully(buffer, 0, buffer.length);
       int sectionOffset = 0;
@@ -389,7 +388,6 @@ class RecordReaderImpl implements Reader.RecordReader {
           sectionLength);
         WriterImpl.StreamName name =
           new WriterImpl.StreamName(section.getColumn(), section.getKind());
-        System.out.println(name + " off " + sectionOffset + " len " + sectionLength);
         streams.put(name,
           InStream.create(name.toString(), sectionBuffer, codec, bufferSize));
         sectionOffset += sectionLength;
