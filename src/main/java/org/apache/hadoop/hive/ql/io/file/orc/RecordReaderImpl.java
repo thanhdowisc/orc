@@ -20,13 +20,9 @@ package org.apache.hadoop.hive.ql.io.file.orc;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.StructField;
-import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.hive.ql.io.file.orc.Reader.StripeInformation;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -34,10 +30,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-class RecordReaderImpl implements Reader.RecordReader {
+class RecordReaderImpl implements RecordReader {
   private final FSDataInputStream file;
   private final long firstRow;
-  private final List<Reader.StripeInformation> stripes =
+  private final List<StripeInformation> stripes =
     new ArrayList<StripeInformation>();
   private final long totalRowCount;
   private final CompressionCodec codec;
@@ -49,10 +45,11 @@ class RecordReaderImpl implements Reader.RecordReader {
     new HashMap<WriterImpl.StreamName, InStream>();
   private final TreeReader reader;
 
-  RecordReaderImpl(Reader.FileInformation fileInfo,
+  RecordReaderImpl(Iterable<StripeInformation> stripes,
                    FileSystem fileSystem,
                    Path path,
                    long offset, long length,
+                   List<OrcProto.Type> types,
                    CompressionCodec codec,
                    int bufferSize,
                    boolean[] included
@@ -62,21 +59,19 @@ class RecordReaderImpl implements Reader.RecordReader {
     this.bufferSize = bufferSize;
     this.included = included;
     long rows = 0;
-    long bytes = 0;
     long skippedRows = 0;
-    for(StripeInformation stripe: fileInfo.getStripes()) {
+    for(StripeInformation stripe: stripes) {
       long stripeStart = stripe.getOffset();
       if (offset > stripeStart) {
         skippedRows += stripe.getNumberOfRows();
       } else if (stripeStart < offset+length) {
-        stripes.add(stripe);
+        this.stripes.add(stripe);
         rows += stripe.getNumberOfRows();
-        bytes += stripe.getLength();
       }
     }
     firstRow = skippedRows;
     totalRowCount = rows;
-    reader = createTreeReader(0, fileInfo.getObjectInspector());
+    reader = createTreeReader(0, types, included);
   }
 
   private abstract static class TreeReader {
@@ -191,7 +186,10 @@ class RecordReaderImpl implements Reader.RecordReader {
       List<byte[]> work = new ArrayList<byte[]>();
       while (avail > 0) {
         byte[] part = new byte[avail];
-        in.read(part, 0, avail);
+        int offset = 0;
+        while (offset < avail) {
+          offset += in.read(part, offset, avail - offset);
+        }
         work.add(part);
         avail = in.available();
       }
@@ -263,23 +261,22 @@ class RecordReaderImpl implements Reader.RecordReader {
   private static class StructTreeReader extends TreeReader {
     private final TreeReader[] fields;
     private final String[] fieldNames;
-    private final StructObjectInspector inspector;
 
     StructTreeReader(int columnId,
-                     ObjectInspector inspector) throws IOException {
+                     List<OrcProto.Type> types,
+                     boolean[] included) throws IOException {
       super(columnId);
-      StructObjectInspector struct = (StructObjectInspector) inspector;
-      List<? extends StructField> fields = struct.getAllStructFieldRefs();
-      int fieldCount = fields.size();
+      OrcProto.Type type = types.get(columnId);
+      int fieldCount = type.getFieldNamesCount();
       this.fields = new TreeReader[fieldCount];
       this.fieldNames = new String[fieldCount];
       for(int i=0; i < fieldCount; ++i) {
-        ORCStruct.Field field = (ORCStruct.Field) fields.get(i);
-        this.fields[i] = createTreeReader(field.getColumnId(),
-          field.getFieldObjectInspector());
-        this.fieldNames[i] = field.getFieldName();
+        int subtype = type.getSubtypes(i);
+        if (included[subtype]) {
+          this.fields[i] = createTreeReader(subtype, types, included);
+        }
+        this.fieldNames[i] = type.getFieldNames(i);
       }
-      this.inspector = (StructObjectInspector) inspector;
     }
 
     /**
@@ -292,11 +289,18 @@ class RecordReaderImpl implements Reader.RecordReader {
       if (fields.length == 0) {
         return true;
       }
-      boolean result = fields[0].hasNext();
-      for(int i=1; i < fields.length; ++i) {
-        if (fields[i].hasNext() != result) {
-          throw new IOException("Inconsistent struct length field 0 = " +
-                                result + " differs from field " + i);
+      int field = 0;
+      while (field < fields.length && fields[field] == null) {
+        field += 1;
+      }
+      if (field == fields.length) {
+        return false;
+      }
+      boolean result = fields[field].hasNext();
+      for(int i=field+1; i < fields.length; ++i) {
+        if (fields[i] != null && fields[i].hasNext() != result) {
+          throw new IOException("Inconsistent struct length field " + field +
+            " = " + result + " differs from field " + i);
         }
       }
       return result;
@@ -314,15 +318,17 @@ class RecordReaderImpl implements Reader.RecordReader {
 
     @Override
     Object next(Object previous) throws IOException {
-      ORCStruct result = null;
+      OrcStruct result = null;
       if (valuePresent) {
         if (previous == null) {
-          result = new ORCStruct(inspector);
+          result = new OrcStruct(fields.length);
         } else {
-          result = (ORCStruct) previous;
+          result = (OrcStruct) previous;
         }
         for(int i=0; i < fields.length; ++i) {
-          result.setFieldValue(i, fields[i].next(result.getFieldValue(i)));
+          if (fields[i] != null) {
+            result.setFieldValue(i, fields[i].next(result.getFieldValue(i)));
+          }
         }
       }
       return super.next(result);
@@ -333,40 +339,36 @@ class RecordReaderImpl implements Reader.RecordReader {
                     ) throws IOException {
       super.startStripe(streams);
       for(int i=0; i < fields.length; ++i) {
-        fields[i].startStripe(streams);
+        if (fields[i] != null) {
+          fields[i].startStripe(streams);
+        }
       }
     }
   }
 
   private static TreeReader createTreeReader(int columnId,
-                                             ObjectInspector inspector
+                                             List<OrcProto.Type> types,
+                                             boolean[] included
                                             ) throws IOException {
-    switch (inspector.getCategory()) {
-      case PRIMITIVE:
-        switch (((PrimitiveObjectInspector) inspector).getPrimitiveCategory()) {
-          case INT:
-            return new IntTreeReader(columnId);
-          case STRING:
-            return new StringTreeReader(columnId);
-          default:
-            throw new IllegalArgumentException("Unsupported primitive kind " +
-              ((PrimitiveObjectInspector) inspector).getPrimitiveCategory());
-        }
+    OrcProto.Type type = types.get(columnId);
+    switch (type.getKind()) {
+      case INT:
+        return new IntTreeReader(columnId);
+      case STRING:
+        return new StringTreeReader(columnId);
       case STRUCT:
-        return new StructTreeReader(columnId, inspector);
+        return new StructTreeReader(columnId, types, included);
       default:
         throw new IllegalArgumentException("Unsupported type " +
-          inspector.getCategory());
+          type.getKind());
     }
   }
 
-  private void readNextStripeFooter() throws IOException {
-    currentStripe += 1;
-    StripeInformation info = stripes.get(currentStripe);
+  private void readStripeFooter(StripeInformation stripe) throws IOException {
     OrcProto.StripeFooter footer;
-    long offset = info.getOffset();
-    int length = (int) info.getLength();
-    int tailLength = (int) info.getTailLength();
+    long offset = stripe.getOffset();
+    int length = (int) stripe.getLength();
+    int tailLength = (int) stripe.getTailLength();
     streams.clear();
 
     // read the footer
@@ -394,44 +396,48 @@ class RecordReaderImpl implements Reader.RecordReader {
       }
     } else {
       List<OrcProto.StripeSection> sections = footer.getSectionsList();
-      int sectionOffset = 0;
-      int nextSection = 0;
-      while (nextSection < sections.size()) {
+      // the index of the current section
+      int currentSection = 0;
+      // byte position of the current section relative to the stripe start
+      long sectionOffset = 0;
+      while (currentSection < sections.size()) {
         int bytes = 0;
 
         // find the first section that shouldn't be read
-        int excluded=nextSection;
-        while (!included[sections.get(excluded).getColumn()] &&
-               excluded < sections.size()) {
+        int excluded=currentSection;
+        while (excluded < sections.size() &&
+               included[sections.get(excluded).getColumn()]) {
           excluded += 1;
           bytes += sections.get(excluded).getLength();
         }
 
         // actually read the bytes as a big chunk
-        byte[] buffer = new byte[bytes];
-        file.seek(offset + sectionOffset);
-        file.readFully(buffer, 0, bytes);
-        sectionOffset += bytes;
+        if (bytes != 0) {
+          byte[] buffer = new byte[bytes];
+          file.seek(offset + sectionOffset);
+          file.readFully(buffer, 0, bytes);
+          sectionOffset += bytes;
 
-        // create the streams for the sections we just read
-        bytes = 0;
-        while (nextSection < excluded) {
-          OrcProto.StripeSection section = sections.get(nextSection);
-          WriterImpl.StreamName name =
-            new WriterImpl.StreamName(section.getColumn(), section.getKind());
-          streams.put(name,
-                      InStream.create(name.toString(),
-                        ByteBuffer.wrap(buffer, bytes,
-                          (int) section.getLength()), codec, bufferSize));
-          nextSection += 1;
-          bytes += section.getLength();
+          // create the streams for the sections we just read
+          bytes = 0;
+          while (currentSection < excluded) {
+            OrcProto.StripeSection section = sections.get(currentSection);
+            WriterImpl.StreamName name =
+              new WriterImpl.StreamName(section.getColumn(), section.getKind());
+            streams.put(name,
+              InStream.create(name.toString(),
+                ByteBuffer.wrap(buffer, bytes,
+                  (int) section.getLength()), codec, bufferSize));
+            currentSection += 1;
+            bytes += section.getLength();
+          }
         }
 
         // skip forward until we get back to a section that we need
-        while (nextSection < sections.size() &&
-               !included[sections.get(nextSection).getColumn()]) {
-          sectionOffset += sections.get(nextSection).getLength();
-          nextSection += 1;
+        while (currentSection < sections.size() &&
+               !included[sections.get(currentSection).getColumn()]) {
+          sectionOffset += sections.get(currentSection).getLength();
+          currentSection += 1;
         }
       }
     }
@@ -442,7 +448,8 @@ class RecordReaderImpl implements Reader.RecordReader {
   public boolean hasNext() throws IOException {
     while (!reader.hasNext()) {
       if (currentStripe + 1 < stripes.size()) {
-        readNextStripeFooter();
+        currentStripe += 1;
+        readStripeFooter(stripes.get(currentStripe));
       } else {
         return false;
       }

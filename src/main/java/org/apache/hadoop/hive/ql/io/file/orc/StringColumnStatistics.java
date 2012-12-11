@@ -17,11 +17,8 @@
  */
 package org.apache.hadoop.hive.ql.io.file.orc;
 
-public interface ColumnStatistics {
-  /**
-   * Get the number of values in this column. It will differ from the number
-   * of rows because of NULL values and repeated values.
-   * @return the number of values
-   */
-  long getNumberOfValues();
+public interface StringColumnStatistics extends ColumnStatistics {
+  String getMinimum();
+
+  String getMaximum();
 }

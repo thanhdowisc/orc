@@ -17,11 +17,25 @@
  */
 package org.apache.hadoop.hive.ql.io.file.orc;
 
-public interface ColumnStatistics {
+public interface DoubleColumnStatistics extends ColumnStatistics {
+
   /**
-   * Get the number of values in this column. It will differ from the number
-   * of rows because of NULL values and repeated values.
-   * @return the number of values
+   * Get the smallest value in the column. Only defined if getNumberOfValues
+   * is non-zero.
+   * @return the minimum
    */
-  long getNumberOfValues();
+  public double getMinimum();
+
+  /**
+   * Get the largest value in the column. Only defined if getNumberOfValues
+   * is non-zero.
+   * @return the maximum
+   */
+  public double getMaximum();
+
+  /**
+   * Get the sum of the values in the column.
+   * @return the sum
+   */
+  public double getSum();
 }

@@ -1,9 +1,29 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.hadoop.hive.ql.io.file.orc;
 
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
+import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
+import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
+import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.io.Writable;
 
 import java.io.DataInput;
@@ -12,14 +32,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-class ORCStruct implements Writable {
+class OrcStruct implements Writable {
 
   private final Object[] fields;
-  private final StructObjectInspector inspector;
 
-  ORCStruct(StructObjectInspector inspector) {
-    fields = new Object[inspector.getAllStructFieldRefs().size()];
-    this.inspector = inspector;
+  OrcStruct(int children) {
+    fields = new Object[children];
   }
 
   Object getFieldValue(int fieldIndex) {
@@ -30,11 +48,7 @@ class ORCStruct implements Writable {
     fields[fieldIndex] = value;
   }
 
-  StructObjectInspector getObjectInspector() {
-    return inspector;
-  }
-
-  @Override
+   @Override
   public void write(DataOutput dataOutput) throws IOException {
     throw new UnsupportedOperationException("write unsupported");
   }
@@ -51,8 +65,6 @@ class ORCStruct implements Writable {
       if (i != 0) {
         buffer.append(", ");
       }
-      buffer.append(inspector.getAllStructFieldRefs().get(i).getFieldName());
-      buffer.append(": ");
       buffer.append(fields[i]);
     }
     buffer.append("}");
@@ -63,14 +75,11 @@ class ORCStruct implements Writable {
     private final String name;
     private final ObjectInspector inspector;
     private final int offset;
-    private final int columnId;
 
-    Field(String name, ObjectInspector inspector, int columnId,
-                   int offset) {
+    Field(String name, ObjectInspector inspector, int offset) {
       this.name = name;
       this.inspector = inspector;
       this.offset = offset;
-      this.columnId = columnId;
     }
 
     @Override
@@ -87,14 +96,20 @@ class ORCStruct implements Writable {
     public String getFieldComment() {
       return null;
     }
-
-    public int getColumnId() {
-      return columnId;
-    }
   }
 
   static class ORCStructInspector extends StructObjectInspector {
     private final List<StructField> fields;
+
+    ORCStructInspector(StructTypeInfo info) {
+      ArrayList<String> fieldNames = info.getAllStructFieldNames();
+      ArrayList<TypeInfo> fieldTypes = info.getAllStructFieldTypeInfos();
+      fields = new ArrayList<StructField>(fieldNames.size());
+      for(int i=0; i < fieldNames.size(); ++i) {
+        fields.add(new Field(fieldNames.get(i),
+          createObjectInspector(fieldTypes.get(i)), i));
+      }
+    }
 
     ORCStructInspector(int columnId, List<OrcProto.Type> types) {
       OrcProto.Type type = types.get(columnId);
@@ -103,7 +118,7 @@ class ORCStruct implements Writable {
       for(int i=0; i < fieldCount; ++i) {
         int fieldType = type.getSubtypes(i);
         fields.add(new Field(type.getFieldNames(i),
-          createObjectInspector(fieldType, types), fieldType, i));
+          createObjectInspector(fieldType, types), i));
       }
     }
 
@@ -124,12 +139,12 @@ class ORCStruct implements Writable {
 
     @Override
     public Object getStructFieldData(Object object, StructField field) {
-      return ((ORCStruct) object).fields[((Field) field).offset];
+      return ((OrcStruct) object).fields[((Field) field).offset];
     }
 
     @Override
     public List<Object> getStructFieldsDataAsList(Object object) {
-      ORCStruct struct = (ORCStruct) object;
+      OrcStruct struct = (OrcStruct) object;
       List<Object> result = new ArrayList<Object>(struct.fields.length);
       for(Object child: struct.fields) {
         result.add(child);
@@ -157,6 +172,26 @@ class ORCStruct implements Writable {
     @Override
     public Category getCategory() {
       return Category.STRUCT;
+    }
+  }
+
+  static ObjectInspector createObjectInspector(TypeInfo info) {
+    switch (info.getCategory()) {
+      case PRIMITIVE:
+        switch (((PrimitiveTypeInfo) info).getPrimitiveCategory()) {
+          case INT:
+            return PrimitiveObjectInspectorFactory.writableIntObjectInspector;
+          case STRING:
+            return PrimitiveObjectInspectorFactory.writableStringObjectInspector;
+          default:
+            throw new IllegalArgumentException("Unknown primitive type " +
+              ((PrimitiveTypeInfo) info).getPrimitiveCategory());
+        }
+      case STRUCT:
+        return new ORCStructInspector((StructTypeInfo) info);
+      default:
+        throw new IllegalArgumentException("Unknown type " +
+          info.getCategory());
     }
   }
 

@@ -24,149 +24,79 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public interface Reader {
-  public interface FileInformation {
-    /**
-     * Get the number of rows in the file
-     * @return the number of rows
-     */
-    long getNumberOfRows();
 
-    /**
-     * Get the user metadata keys
-     * @return the set of metadata keys
-     */
-    Iterable<String> getMetadataKeys();
+  /**
+   * Get the number of rows in the file
+   * @return the number of rows
+   */
+  public long getNumberOfRows();
 
-    /**
-     * Get a user metadata value
-     * @param key a key given by the user
-     * @return the bytes associated with the given key
-     */
-    ByteBuffer getMetadataValue(String key);
+  /**
+   * Get the user metadata keys
+   * @return the set of metadata keys
+   */
+  public Iterable<String> getMetadataKeys();
 
-    /**
-     * Get the compression kind.
-     * @return the kind of compression in the file
-     */
-    CompressionKind getCompression();
+  /**
+   * Get a user metadata value
+   * @param key a key given by the user
+   * @return the bytes associated with the given key
+   */
+  public ByteBuffer getMetadataValue(String key);
 
-    /**
-     * Get the list of stripes.
-     * @return the information about the stripes in order
-     */
-    Iterable<StripeInformation> getStripes();
+  /**
+   * Get the compression kind.
+   * @return the kind of compression in the file
+   */
+  public CompressionKind getCompression();
 
-    /**
-     * Get the object inspector for looking at the objects.
-     * @return an object inspector for each row returned
-     */
-    ObjectInspector getObjectInspector();
+  /**
+   * Get the buffer size for the compression.
+   * @return number of bytes to buffer for the compression codec.
+   */
+  public int getCompressionSize();
 
-    /**
-     * Get the length of the file.
-     * @return the number of bytes in the file
-     */
-    long getLength();
+  /**
+   * Get the list of stripes.
+   * @return the information about the stripes in order
+   */
+  public Iterable<StripeInformation> getStripes();
 
-    /**
-     * Get the statistics about the columns in the file
-     * @return the information about the column
-     */
-    ColumnStatistics[] getStatistics();
-  }
+  /**
+   * Get the object inspector for looking at the objects.
+   * @return an object inspector for each row returned
+   */
+  public ObjectInspector getObjectInspector();
 
-  public interface StripeInformation {
-    /**
-     * Get the byte offset of the start of the stripe.
-     * @return the bytes from the start of the file
-     */
-    long getOffset();
+  /**
+   * Get the length of the file.
+   * @return the number of bytes in the file
+   */
+  public long getLength();
 
-    /**
-     * Get the length of the stripe
-     * @return the number of bytes in the stripe
-     */
-    long getLength();
+  /**
+   * Get the statistics about the columns in the file
+   * @return the information about the column
+   */
+  public ColumnStatistics[] getStatistics();
 
-    /**
-     * Get the length of the stripe's tail section, which contains its index.
-     * @return the number of bytes in the tail
-     */
-    long getTailLength();
-
-    /**
-     * Get the number of rows in the stripe.
-     * @return a count of the number of rows
-     */
-    long getNumberOfRows();
-  }
-
-  public interface ColumnStatistics {
-    /**
-     * Get the number of values in this column. It will differ from the number
-     * of rows because of NULL values and repeated values.
-     * @return the number of values
-     */
-    long getNumberOfValues();
-  }
-
-  public interface BooleanColumnStatistics extends ColumnStatistics {
-    long getFalseCount();
-    long getTrueCount();
-  }
-
-  public interface IntegerColumnStatistics extends ColumnStatistics {
-    /**
-     * Get the smallest value in the column. Only defined if getNumberOfValues
-     * is non-zero.
-     * @return the minimum
-     */
-    long getMinimum();
-
-    /**
-     * Get the largest value in the column. Only defined if getNumberOfValues
-     * is non-zero.
-     * @return the maximum
-     */
-    long getMaximum();
-
-    /**
-     * Is the sum defined? If the sum overflowed the counter or there are
-     * 0 values this will be false.
-     * @return is the sum available
-     */
-    boolean isSumDefined();
-
-    /**
-     * Get the sum of the column. Only valid if isSumDefined returns true.
-     * @return the sum of the column
-     */
-    long getSum();
-  }
-
-  public interface DoubleColumnStatistics extends ColumnStatistics {
-    double getMinimum();
-    double getMaximum();
-    double getSum();
-  }
-
-  public interface StringColumnStatistics extends ColumnStatistics {
-    String getMinimum();
-    String getMaximum();
-  }
-
-  public FileInformation getFileInformation() throws IOException;
-
-  public interface RecordReader {
-    boolean hasNext() throws IOException;
-    Object next(Object previous) throws IOException;
-    long getRowNumber() throws IOException;
-    float getProgress() throws IOException;
-    void close() throws IOException;
-  }
-
+  /**
+   * Create a RecordReader that will scan the entire file.
+   * @return A new RecordReader
+   * @throws IOException
+   */
   public RecordReader rows() throws IOException;
 
+  /**
+   * Create a RecordReader that will start reading at the first stripe after
+   * offset up to the stripe that starts at offset+length. This is intended
+   * to work with MapReduce's FileInputFormat where divisions are picked
+   * blindly, but they must cover all of the rows.
+   * @param offset a byte offset in the file
+   * @param length a number of bytes in the file
+   * @return a new RecordReader that will read the specified rows.
+   * @throws IOException
+   */
   public RecordReader rows(long offset, long length) throws IOException;
 
 }

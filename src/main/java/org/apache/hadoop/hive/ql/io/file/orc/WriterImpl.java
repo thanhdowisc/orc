@@ -41,13 +41,12 @@ import java.util.TreeMap;
 
 class WriterImpl implements Writer {
 
-  private static final long STRIPE_SIZE = 256*1024*1024;
-  private static final boolean PRINT_DEBUG = false;
   private static final int ROW_INDEX_FREQUENCY = 10000;
 
   private final FileSystem fs;
   private final Path path;
   private final Configuration conf;
+  private final long stripeSize;
   private final CompressionKind compress;
   private final CompressionCodec codec;
   private final int bufferSize;
@@ -78,12 +77,14 @@ class WriterImpl implements Writer {
   WriterImpl(FileSystem fs,
              Path path,
              ObjectInspector inspector,
+             long stripeSize,
              CompressionKind compress,
              int bufferSize,
              Configuration conf) throws IOException {
     this.fs = fs;
     this.path = path;
     this.conf = conf;
+    this.stripeSize = stripeSize;
     this.compress = compress;
     switch (compress) {
       case NONE:
@@ -261,8 +262,8 @@ class WriterImpl implements Writer {
     protected final ObjectInspector inspector;
     protected final SectionWriter writer;
     private final BitFieldWriter isPresent;
-    protected final ColumnStatistics stripeStatistics;
-    private final ColumnStatistics fileStatistics;
+    protected final ColumnStatisticsImpl stripeStatistics;
+    private final ColumnStatisticsImpl fileStatistics;
     protected TreeWriter[] childrenWriters;
     protected final RowIndexPositionRecorder rowIndexPosition;
 
@@ -277,8 +278,8 @@ class WriterImpl implements Writer {
       } else {
         isPresent = null;
       }
-      stripeStatistics = ColumnStatistics.create(id, inspector);
-      fileStatistics = ColumnStatistics.create(id, inspector);
+      stripeStatistics = ColumnStatisticsImpl.create(id, inspector);
+      fileStatistics = ColumnStatisticsImpl.create(id, inspector);
       childrenWriters = new TreeWriter[0];
       rowIndexPosition = new RowIndexPositionRecorder(id);
     }
@@ -574,10 +575,6 @@ class WriterImpl implements Writer {
       sectionWriter.createSection(columnCount,
         OrcProto.StripeSection.Kind.ROW_INDEX);
     rowIndex.build().writeTo(out);
-    if (PRINT_DEBUG) {
-      System.out.println("Row Index:");
-      System.out.println(rowIndex.build());
-    }
     rowIndex.clear();
   }
 
@@ -604,9 +601,6 @@ class WriterImpl implements Writer {
     builder.build().writeTo(protobufWriter);
     protobufWriter.flush();
     writer.flush();
-    if (PRINT_DEBUG) {
-      System.out.println(builder.build());
-    }
     long end = rawWriter.getPos();
     OrcProto.StripeInformation dirEntry =
       OrcProto.StripeInformation.newBuilder()
@@ -656,9 +650,6 @@ class WriterImpl implements Writer {
       builder.addMetadata(OrcProto.UserMetadataItem.newBuilder()
         .setName(entry.getKey()).setValue(entry.getValue()));
     }
-    if (PRINT_DEBUG) {
-      System.out.println(builder.build());
-    }
     long startPosn = rawWriter.getPos();
     builder.build().writeTo(protobufWriter);
     protobufWriter.flush();
@@ -678,9 +669,6 @@ class WriterImpl implements Writer {
     // need to write this uncompressed
     long startPosn = rawWriter.getPos();
     ps.writeTo(rawWriter);
-    if (PRINT_DEBUG) {
-      System.out.println(ps);
-    }
     long length = rawWriter.getPos() - startPosn;
     if (length > 255) {
       throw new IllegalArgumentException("PostScript too large at " + length);
@@ -697,7 +685,7 @@ class WriterImpl implements Writer {
   public void addRow(Object row) throws IOException {
     treeWriter.write(row);
     rowsInIndex += 1;
-    boolean shouldFlushStripe = bytesInStripe >= STRIPE_SIZE;
+    boolean shouldFlushStripe = bytesInStripe >= stripeSize;
     if (rowsInIndex >= ROW_INDEX_FREQUENCY || shouldFlushStripe) {
       createRowIndexEntry();
     }

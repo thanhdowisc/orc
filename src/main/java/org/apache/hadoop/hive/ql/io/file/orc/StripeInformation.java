@@ -17,11 +17,28 @@
  */
 package org.apache.hadoop.hive.ql.io.file.orc;
 
-public interface ColumnStatistics {
+public interface StripeInformation {
   /**
-   * Get the number of values in this column. It will differ from the number
-   * of rows because of NULL values and repeated values.
-   * @return the number of values
+   * Get the byte offset of the start of the stripe.
+   * @return the bytes from the start of the file
    */
-  long getNumberOfValues();
+  long getOffset();
+
+  /**
+   * Get the length of the stripe
+   * @return the number of bytes in the stripe
+   */
+  long getLength();
+
+  /**
+   * Get the length of the stripe's tail section, which contains its index.
+   * @return the number of bytes in the tail
+   */
+  long getTailLength();
+
+  /**
+   * Get the number of rows in the stripe.
+   * @return a count of the number of rows
+   */
+  long getNumberOfRows();
 }

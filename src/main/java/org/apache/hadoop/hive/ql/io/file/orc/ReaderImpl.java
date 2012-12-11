@@ -25,34 +25,29 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.StructField;
-import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
-import org.apache.hadoop.mapred.RecordReader;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
 class ReaderImpl implements Reader {
 
-  private static final int DIRECTORY_SIZE_GUESS = 32*1024;
+  private static final int DIRECTORY_SIZE_GUESS = 16*1024;
 
-  private final FileInformationImpl fileInformation;
   private final FileSystem fileSystem;
   private final Path path;
+  private final CompressionKind compressionKind;
   private final CompressionCodec codec;
   private final int bufferSize;
   private final boolean[] included;
+  private final OrcProto.Footer footer;
+  private final ObjectInspector inspector;
 
   private static class StripeInformationImpl
-      implements Reader.StripeInformation {
+    implements StripeInformation {
     private final OrcProto.StripeInformation stripe;
 
     StripeInformationImpl(OrcProto.StripeInformation stripe) {
@@ -79,261 +74,93 @@ class ReaderImpl implements Reader {
       return stripe.getNumberOfRows();
     }
 
-  }
-
-  private static class StructObject {
-    final Object[] fields;
-
-    StructObject(int fields) {
-      this.fields = new Object[fields];
-    }
-  }
-
-  private static class StructFieldImpl implements StructField {
-    private final String fieldName;
-    private final ObjectInspector inspector;
-    private final int offset;
-
-    StructFieldImpl(String fieldName, ObjectInspector inspector, int offset) {
-      this.fieldName = fieldName;
-      this.inspector = inspector;
-      this.offset = offset;
-    }
-
     @Override
-    public String getFieldName() {
-      return fieldName;
-    }
-
-    @Override
-    public ObjectInspector getFieldObjectInspector() {
-      return inspector;
-    }
-
-    @Override
-    public String getFieldComment() {
-      return null;
-    }
-  }
-
-  private static class FileInformationImpl implements FileInformation {
-    private final CompressionKind compression;
-    private final int bufferSize;
-    private final OrcProto.Footer footer;
-    private final ObjectInspector inspector;
-
-    FileInformationImpl(CompressionKind compression,
-                        int bufferSize,
-                        OrcProto.Footer footer) {
-      this.compression = compression;
-      this.bufferSize = bufferSize;
-      this.footer = footer;
-      this.inspector = ORCStruct.createObjectInspector(0,
-        footer.getTypesList());
-    }
-
-    @Override
-    public long getNumberOfRows() {
-      return footer.getNumberOfRows();
-    }
-
-    @Override
-    public Iterable<String> getMetadataKeys() {
-      List<String> result = new ArrayList<String>();
-      for(OrcProto.UserMetadataItem item: footer.getMetadataList()) {
-        result.add(item.getName());
-      }
-      return result;
-    }
-
-    @Override
-    public ByteBuffer getMetadataValue(String key) {
-      for(OrcProto.UserMetadataItem item: footer.getMetadataList()) {
-        if (item.hasName() && item.getName().equals(key)) {
-          return item.getValue().asReadOnlyByteBuffer();
-        }
-      }
-      throw new IllegalArgumentException("Can't find user metadata " + key);
-    }
-
-    @Override
-    public CompressionKind getCompression() {
-      return compression;
-    }
-
-    @Override
-    public Iterable<StripeInformation> getStripes() {
-      return new Iterable<StripeInformation>(){
-
-        @Override
-        public Iterator<StripeInformation> iterator() {
-          return new Iterator<StripeInformation>(){
-            Iterator<OrcProto.StripeInformation> inner =
-              footer.getStripesList().iterator();
-
-            @Override
-            public boolean hasNext() {
-              return inner.hasNext();
-            }
-
-            @Override
-            public StripeInformation next() {
-              return new StripeInformationImpl(inner.next());
-            }
-
-            @Override
-            public void remove() {
-              throw new UnsupportedOperationException("remove unsupported");
-            }
-          };
-        }
-      };
-    }
-
-    @Override
-    public ObjectInspector getObjectInspector() {
-      return inspector;
-    }
-
-    @Override
-    public long getLength() {
-      return footer.getBodyLength() + footer.getHeaderLength();
-    }
-
-    @Override
-    public ColumnStatistics[] getStatistics() {
-      ColumnStatistics[] result = new ColumnStatistics[footer.getTypesCount()];
-      for(OrcProto.ColumnStatistics stats: footer.getStatisticsList()) {
-        result[stats.getColumn()] = createColumnStatistics(stats);
-      }
-      return result;
-    }
-
     public String toString() {
-      return footer.toString();
+      return "offset: " + getOffset() + " length: " + getLength() +
+        " rows: " + getNumberOfRows() + " tail: " + getTailLength();
     }
   }
 
-  private static class ColumnStatisticsImpl implements ColumnStatistics {
-    protected final OrcProto.ColumnStatistics stats;
-
-    ColumnStatisticsImpl(OrcProto.ColumnStatistics stats) {
-      this.stats = stats;
-    }
-
-    @Override
-    public long getNumberOfValues() {
-      return stats.getNumberOfValues();
-    }
+  @Override
+  public long getNumberOfRows() {
+    return footer.getNumberOfRows();
   }
 
-  private static class BooleanColumnStatisticsImpl extends ColumnStatisticsImpl
-      implements BooleanColumnStatistics {
-
-    BooleanColumnStatisticsImpl(OrcProto.ColumnStatistics stats) {
-      super(stats);
+  @Override
+  public Iterable<String> getMetadataKeys() {
+    List<String> result = new ArrayList<String>();
+    for(OrcProto.UserMetadataItem item: footer.getMetadataList()) {
+      result.add(item.getName());
     }
-
-    @Override
-    public long getFalseCount() {
-      return stats.getBucketStatistics().getCount(0);
-    }
-
-    @Override
-    public long getTrueCount() {
-      return stats.getBucketStatistics().getCount(1);
-    }
+    return result;
   }
 
-  private static class IntegerColumnStatisticsImpl extends ColumnStatisticsImpl
-      implements IntegerColumnStatistics {
-
-    IntegerColumnStatisticsImpl(OrcProto.ColumnStatistics stats) {
-      super(stats);
+  @Override
+  public ByteBuffer getMetadataValue(String key) {
+    for(OrcProto.UserMetadataItem item: footer.getMetadataList()) {
+      if (item.hasName() && item.getName().equals(key)) {
+        return item.getValue().asReadOnlyByteBuffer();
+      }
     }
-
-    @Override
-    public long getMinimum() {
-      OrcProto.IntegerStatistics intStats = stats.getIntStatistics();
-      return intStats.hasMinimum() ? intStats.getMinimum() : Long.MAX_VALUE;
-    }
-
-    @Override
-    public long getMaximum() {
-      OrcProto.IntegerStatistics intStats = stats.getIntStatistics();
-      return intStats.hasMaximum() ? intStats.getMaximum() : Long.MIN_VALUE;
-    }
-
-    @Override
-    public boolean isSumDefined() {
-      return stats.getIntStatistics().hasSum();
-    }
-
-    @Override
-    public long getSum() {
-      return stats.getIntStatistics().hasSum() ?
-        stats.getIntStatistics().getSum() : 0;
-    }
+    throw new IllegalArgumentException("Can't find user metadata " + key);
   }
 
-  private static class DoubleColumnStatisticsImpl extends ColumnStatisticsImpl
-    implements DoubleColumnStatistics {
-
-    DoubleColumnStatisticsImpl(OrcProto.ColumnStatistics stats) {
-      super(stats);
-    }
-
-    @Override
-    public double getMinimum() {
-      OrcProto.DoubleStatistics dbl = stats.getDoubleStatistics();
-      return dbl.hasMinimum() ? dbl.getMinimum() : Double.MAX_VALUE;
-    }
-
-    @Override
-    public double getMaximum() {
-      OrcProto.DoubleStatistics dbl = stats.getDoubleStatistics();
-      return dbl.hasMaximum() ? dbl.getMaximum() : Double.MIN_VALUE;
-    }
-
-    @Override
-    public double getSum() {
-      OrcProto.DoubleStatistics dbl = stats.getDoubleStatistics();
-      return dbl.hasSum() ? dbl.getSum() : 0;
-    }
+  @Override
+  public CompressionKind getCompression() {
+    return compressionKind;
   }
 
-  private static class StringColumnStatisticsImpl extends ColumnStatisticsImpl
-      implements StringColumnStatistics {
-
-    StringColumnStatisticsImpl(OrcProto.ColumnStatistics stats) {
-      super(stats);
-    }
-
-    @Override
-    public String getMinimum() {
-      return stats.getStringStatistics().hasMinimum() ?
-        stats.getStringStatistics().getMinimum() : null;
-    }
-
-    @Override
-    public String getMaximum() {
-      return stats.getStringStatistics().hasMaximum() ?
-        stats.getStringStatistics().getMaximum() : null;
-    }
+  @Override
+  public int getCompressionSize() {
+    return bufferSize;
   }
 
-  private static ColumnStatisticsImpl
-      createColumnStatistics(OrcProto.ColumnStatistics stats) {
-    if (stats.hasBucketStatistics()) {
-      return new BooleanColumnStatisticsImpl(stats);
-    } else if (stats.hasIntStatistics()) {
-      return new IntegerColumnStatisticsImpl(stats);
-    } else if (stats.hasDoubleStatistics()) {
-      return new DoubleColumnStatisticsImpl(stats);
-    } else if (stats.hasStringStatistics()) {
-      return new StringColumnStatisticsImpl(stats);
+  @Override
+  public Iterable<StripeInformation> getStripes() {
+    return new Iterable<org.apache.hadoop.hive.ql.io.file.orc.StripeInformation>(){
+
+      @Override
+      public Iterator<org.apache.hadoop.hive.ql.io.file.orc.StripeInformation> iterator() {
+        return new Iterator<org.apache.hadoop.hive.ql.io.file.orc.StripeInformation>(){
+          Iterator<OrcProto.StripeInformation> inner =
+            footer.getStripesList().iterator();
+
+          @Override
+          public boolean hasNext() {
+            return inner.hasNext();
+          }
+
+          @Override
+          public org.apache.hadoop.hive.ql.io.file.orc.StripeInformation next() {
+            return new StripeInformationImpl(inner.next());
+          }
+
+          @Override
+          public void remove() {
+            throw new UnsupportedOperationException("remove unsupported");
+          }
+        };
+      }
+    };
+  }
+
+  @Override
+  public ObjectInspector getObjectInspector() {
+    return inspector;
+  }
+
+  @Override
+  public long getLength() {
+    return footer.getBodyLength() + footer.getHeaderLength();
+  }
+
+  @Override
+  public org.apache.hadoop.hive.ql.io.file.orc.ColumnStatistics[] getStatistics() {
+    org.apache.hadoop.hive.ql.io.file.orc.ColumnStatistics[] result = new org.apache.hadoop.hive.ql.io.file.orc.ColumnStatistics[footer.getTypesCount()];
+    for(OrcProto.ColumnStatistics stats: footer.getStatisticsList()) {
+      result[stats.getColumn()] = ColumnStatisticsImpl.deserialize(stats);
     }
-    return new ColumnStatisticsImpl(stats);
+    return result;
   }
 
   /**
@@ -369,11 +196,9 @@ class ReaderImpl implements Reader {
       int numColumns = footer.getTypesCount();
       boolean[] result = new boolean[numColumns+1];
       result[0] = true;
-      // currently don't do row filtering
-      result[numColumns] = false;
       OrcProto.Type root = footer.getTypes(0);
       List<Integer> included = ColumnProjectionUtils.getReadColumnIDs(conf);
-      for(int i=0; i < result.length; ++i) {
+      for(int i=1; i < result.length; ++i) {
         result[i] = false;
       }
       for(int i=0; i < root.getSubtypesCount(); ++i) {
@@ -382,8 +207,8 @@ class ReaderImpl implements Reader {
         }
       }
       // if we are filtering at least one column, return the boolean array
-      for(int i=0; i < result.length; ++i) {
-        if (!result[i]) {
+      for(boolean include: result) {
+        if (!include) {
           return result;
         }
       }
@@ -409,18 +234,17 @@ class ReaderImpl implements Reader {
     OrcProto.PostScript ps = OrcProto.PostScript.parseFrom(in);
     int footerSize = (int) ps.getFooterLength();
     bufferSize = (int) ps.getCompressionBlockSize();
-    CompressionKind kind;
     switch (ps.getCompression()) {
       case NONE:
-        kind = CompressionKind.NONE;
+        compressionKind = CompressionKind.NONE;
         codec = null;
         break;
       case ZLIB:
-        kind = CompressionKind.ZLIB;
+        compressionKind = CompressionKind.ZLIB;
         codec = new ZlibCodec();
         break;
       case SNAPPY:
-        kind = CompressionKind.SNAPPY;
+        compressionKind = CompressionKind.SNAPPY;
         codec = new SnappyCodec();
         break;
       default:
@@ -429,7 +253,7 @@ class ReaderImpl implements Reader {
     int extra = Math.max(0, psLen + 1 + footerSize - readSize);
     if (extra > 0) {
       file.seek(size - readSize - extra);
-      ByteBuffer extraBuf = ByteBuffer.allocate((int) extra + readSize);
+      ByteBuffer extraBuf = ByteBuffer.allocate(extra + readSize);
       file.readFully(extraBuf.array(),
         extraBuf.arrayOffset() + extraBuf.position(), extra);
       extraBuf.position(extra);
@@ -442,15 +266,10 @@ class ReaderImpl implements Reader {
       buffer.limit(psOffset);
     }
     InputStream instream = InStream.create("footer", buffer, codec, bufferSize);
-    OrcProto.Footer footer = OrcProto.Footer.parseFrom(instream);
-    fileInformation = new FileInformationImpl(kind, (int) bufferSize, footer);
+    footer = OrcProto.Footer.parseFrom(instream);
+    inspector = OrcStruct.createObjectInspector(0, footer.getTypesList());
     file.close();
     this.included = findIncludedColumns(footer, conf);
-  }
-
-  @Override
-  public FileInformation getFileInformation() throws IOException {
-    return fileInformation;
   }
 
   @Override
@@ -460,8 +279,9 @@ class ReaderImpl implements Reader {
 
   @Override
   public RecordReader rows(long offset, long length) throws IOException {
-    return new RecordReaderImpl(fileInformation, fileSystem,  path, offset,
-      length, codec, bufferSize, included);
+    return new RecordReaderImpl(this.getStripes(), fileSystem,  path, offset,
+      length, footer.getTypesList(), codec, bufferSize,
+      included);
   }
 
 }

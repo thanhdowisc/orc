@@ -4,18 +4,16 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
-import java.io.*;
-
 public class FileReader {
   private static void readDemographics() throws Exception {
     Configuration conf = new Configuration();
     Path path = new Path("/tmp/demographics.orc");
     Reader file = OrcFile.getReader(FileSystem.getLocal(conf), path, conf);
-    Reader.RecordReader reader = file.rows();
+    RecordReader reader = file.rows();
     java.io.FileWriter writer = new java.io.FileWriter("/tmp/demographics.txt");
-    ORCStruct row = null;
+    OrcStruct row = null;
     while (reader.hasNext()) {
-      row = (ORCStruct) reader.next(row);
+      row = (OrcStruct) reader.next(row);
       for(int i=0; i < 9; ++i) {
         writer.append(row.getFieldValue(i).toString());
         writer.append("|");
@@ -30,12 +28,12 @@ public class FileReader {
     long start = System.currentTimeMillis();
     Path path = new Path("/tmp/store_sales.orc");
     Reader file = OrcFile.getReader(FileSystem.getLocal(conf), path, conf);
-    Reader.RecordReader reader = file.rows();
+    RecordReader reader = file.rows();
     java.io.FileWriter writer = new java.io.FileWriter("/tmp/store_sales.txt");
-    ORCStruct row = null;
+    OrcStruct row = null;
     long r = 0;
     while (reader.hasNext()) {
-      row = (ORCStruct) reader.next(row);
+      row = (OrcStruct) reader.next(row);
       for(int i=0; i < 23; ++i) {
         Object field = row.getFieldValue(i);
         if (field != null) {
