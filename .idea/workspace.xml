@@ -124,10 +124,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="FileWriter.java" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="FileWriter.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/FileWriter.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="349" column="44" selection-start="12915" selection-end="12915" vertical-scroll-proportion="0.2609489">
+            <state line="349" column="44" selection-start="12915" selection-end="12915" vertical-scroll-proportion="0.0">
               <folding>
                 <element signature="n#!!doc" expanded="true" />
                 <element signature="imports" expanded="true" />
@@ -148,10 +148,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="WriterImpl.java" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="WriterImpl.java" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/WriterImpl.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="86" column="33" selection-start="3437" selection-end="3437" vertical-scroll-proportion="0.0">
+            <state line="49" column="55" selection-start="2029" selection-end="2029" vertical-scroll-proportion="-16.727272">
               <folding>
                 <element signature="n#!!doc" expanded="true" />
               </folding>
@@ -211,7 +211,6 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/file/orc/RecordReader.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/file/orc/StringColumnStatistics.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/file/orc/StripeInformation.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/file/orc/ZlibCodec.java" />
@@ -227,6 +226,7 @@
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/file/orc/OrcFile.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/IntegerColumnStatistics.java" />
         <option value="$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/FileWriter.java" />
+        <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/WriterImpl.java" />
       </list>
     </option>
   </component>
@@ -865,15 +865,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/WriterImpl.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="86" column="33" selection-start="3437" selection-end="3437" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="n#!!doc" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/OrcOutputFormat.java">
       <provider selected="true" editor-type-id="text-editor">
         <state line="121" column="18" selection-start="4609" selection-end="4609" vertical-scroll-proportion="0.0">
@@ -911,10 +902,19 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/FileWriter.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="349" column="44" selection-start="12915" selection-end="12915" vertical-scroll-proportion="0.2609489">
+        <state line="349" column="44" selection-start="12915" selection-end="12915" vertical-scroll-proportion="0.0">
           <folding>
             <element signature="n#!!doc" expanded="true" />
             <element signature="imports" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/WriterImpl.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="49" column="55" selection-start="2029" selection-end="2029" vertical-scroll-proportion="-16.727272">
+          <folding>
+            <element signature="n#!!doc" expanded="true" />
           </folding>
         </state>
       </provider>

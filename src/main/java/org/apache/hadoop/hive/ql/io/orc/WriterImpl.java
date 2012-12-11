@@ -42,10 +42,10 @@ import java.util.TreeMap;
 class WriterImpl implements Writer {
 
   private static final int ROW_INDEX_FREQUENCY = 10000;
+  private static final int BUFFER_SIZE = 256 * 1024;
 
   private final FileSystem fs;
   private final Path path;
-  private final Configuration conf;
   private final long stripeSize;
   private final CompressionKind compress;
   private final CompressionCodec codec;
@@ -83,7 +83,6 @@ class WriterImpl implements Writer {
              Configuration conf) throws IOException {
     this.fs = fs;
     this.path = path;
-    this.conf = conf;
     this.stripeSize = stripeSize;
     this.compress = compress;
     switch (compress) {
@@ -547,7 +546,8 @@ class WriterImpl implements Writer {
 
   private FSDataOutputStream getWriter() throws IOException {
     if (rawWriter == null) {
-      rawWriter = fs.create(path);
+      rawWriter = fs.create(path, false, BUFFER_SIZE,
+        fs.getDefaultReplication(), Math.min(stripeSize * 2L, Integer.MAX_VALUE));
       rawWriter.writeBytes(OrcFile.MAGIC);
       headerLength = rawWriter.getPos();
       writer = new OutStream("metadata", bufferSize, codec,
