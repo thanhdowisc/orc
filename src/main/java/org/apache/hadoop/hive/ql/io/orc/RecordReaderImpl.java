@@ -20,6 +20,7 @@ package org.apache.hadoop.hive.ql.io.orc;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 
@@ -162,6 +163,48 @@ class RecordReaderImpl implements RecordReader {
     }
   }
 
+  private static class FloatTreeReader extends TreeReader{
+    private InStream reader = null;
+
+    FloatTreeReader(int columnId) {
+      super(columnId);
+    }
+
+    @Override
+    void startStripe(Map<WriterImpl.StreamName, InStream> streams
+                    ) throws IOException {
+      super.startStripe(streams);
+      WriterImpl.StreamName name =
+        new WriterImpl.StreamName(columnId,
+          OrcProto.StripeSection.Kind.FLOAT_ROW_DATA);
+      reader = streams.get(name);
+    }
+
+    @Override
+    boolean hasNext() throws IOException {
+      return super.hasNext() && (!valuePresent || reader.available() > 0);
+    }
+
+    @Override
+    void seekToRow(long row) throws IOException {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    Object next(Object previous) throws IOException {
+      FloatWritable result = null;
+      if (valuePresent) {
+        if (previous == null) {
+          result = new FloatWritable();
+        } else {
+          result = (FloatWritable) previous;
+        }
+        result.set(SerializationUtils.readFloat(reader));
+      }
+      return super.next(result);
+    }
+  }
+
   private static class StringTreeReader extends TreeReader {
     private byte[][] dictionaryBuffer;
     private DynamicIntArray dictionaryOffsets;
@@ -272,7 +315,7 @@ class RecordReaderImpl implements RecordReader {
       this.fieldNames = new String[fieldCount];
       for(int i=0; i < fieldCount; ++i) {
         int subtype = type.getSubtypes(i);
-        if (included[subtype]) {
+        if (included == null || included[subtype]) {
           this.fields[i] = createTreeReader(subtype, types, included);
         }
         this.fieldNames[i] = type.getFieldNames(i);
@@ -352,6 +395,8 @@ class RecordReaderImpl implements RecordReader {
                                             ) throws IOException {
     OrcProto.Type type = types.get(columnId);
     switch (type.getKind()) {
+      case FLOAT:
+        return new FloatTreeReader(columnId);
       case INT:
         return new IntTreeReader(columnId);
       case STRING:
@@ -364,23 +409,29 @@ class RecordReaderImpl implements RecordReader {
     }
   }
 
-  private void readStripeFooter(StripeInformation stripe) throws IOException {
-    OrcProto.StripeFooter footer;
+  OrcProto.StripeFooter readerStripeFooter(StripeInformation stripe
+                                           ) throws IOException {
     long offset = stripe.getOffset();
     int length = (int) stripe.getLength();
     int tailLength = (int) stripe.getTailLength();
-    streams.clear();
 
     // read the footer
     ByteBuffer tailBuf = ByteBuffer.allocate(tailLength);
     file.seek(offset + length - tailLength);
     file.readFully(tailBuf.array(), tailBuf.arrayOffset(), tailLength);
-    footer = OrcProto.StripeFooter.parseFrom(InStream.create("footer", tailBuf,
+    return OrcProto.StripeFooter.parseFrom(InStream.create("footer", tailBuf,
       codec, bufferSize));
+  }
+
+  private void readStreams(StripeInformation stripe) throws IOException {
+    OrcProto.StripeFooter footer = readerStripeFooter(stripe);
+    long offset = stripe.getOffset();
+    streams.clear();
 
     // if we aren't projecting columns, just read the whole stripe
     if (included == null) {
-      byte[] buffer = new byte[length - tailLength];
+      byte[] buffer =
+        new byte[(int) (stripe.getLength() - stripe.getTailLength())];
       file.seek(offset);
       file.readFully(buffer, 0, buffer.length);
       int sectionOffset = 0;
@@ -407,8 +458,8 @@ class RecordReaderImpl implements RecordReader {
         int excluded=currentSection;
         while (excluded < sections.size() &&
                included[sections.get(excluded).getColumn()]) {
-          excluded += 1;
           bytes += sections.get(excluded).getLength();
+          excluded += 1;
         }
 
         // actually read the bytes as a big chunk
@@ -449,7 +500,7 @@ class RecordReaderImpl implements RecordReader {
     while (!reader.hasNext()) {
       if (currentStripe + 1 < stripes.size()) {
         currentStripe += 1;
-        readStripeFooter(stripes.get(currentStripe));
+        readStreams(stripes.get(currentStripe));
       } else {
         return false;
       }

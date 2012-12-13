@@ -179,6 +179,8 @@ class OrcStruct implements Writable {
     switch (info.getCategory()) {
       case PRIMITIVE:
         switch (((PrimitiveTypeInfo) info).getPrimitiveCategory()) {
+          case FLOAT:
+            return PrimitiveObjectInspectorFactory.writableFloatObjectInspector;
           case INT:
             return PrimitiveObjectInspectorFactory.writableIntObjectInspector;
           case STRING:
@@ -199,6 +201,8 @@ class OrcStruct implements Writable {
                                                List<OrcProto.Type> types){
     OrcProto.Type type = types.get(columnId);
     switch (type.getKind()) {
+      case FLOAT:
+        return PrimitiveObjectInspectorFactory.writableFloatObjectInspector;
       case INT:
         return PrimitiveObjectInspectorFactory.writableIntObjectInspector;
       case STRING:

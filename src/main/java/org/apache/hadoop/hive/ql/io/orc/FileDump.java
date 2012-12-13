@@ -30,6 +30,7 @@ public class FileDump {
       System.out.println("Structure for " + filename);
       Path path = new Path(filename);
       Reader reader = OrcFile.getReader(path.getFileSystem(conf), path, conf);
+      RecordReaderImpl rows = (RecordReaderImpl) reader.rows();
       System.out.println("Rows: " + reader.getNumberOfRows());
       System.out.println("Compression: " + reader.getCompression());
       if (reader.getCompression() != CompressionKind.NONE) {
@@ -43,7 +44,16 @@ public class FileDump {
       }
       System.out.println("\nStripes:");
       for(StripeInformation stripe: reader.getStripes()) {
+        long stripeStart = stripe.getOffset();
         System.out.println("  Stripe: " + stripe.toString());
+        OrcProto.StripeFooter footer = rows.readerStripeFooter(stripe);
+        long sectionStart = stripeStart;
+        for(OrcProto.StripeSection section: footer.getSectionsList()) {
+          System.out.println("    Section: column " + section.getColumn() +
+            " section " + section.getKind() + " start: " + sectionStart +
+            " length " + section.getLength());
+          sectionStart += section.getLength();
+        }
       }
     }
   }

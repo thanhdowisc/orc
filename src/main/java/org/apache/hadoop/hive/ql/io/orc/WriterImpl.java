@@ -28,6 +28,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.FloatObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.IntObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
 
@@ -398,6 +399,41 @@ class WriterImpl implements Writer {
     }
   }
 
+  class FloatTreeWriter extends TreeWriter {
+    private final PositionedOutputStream writer;
+
+    FloatTreeWriter(int columnId,
+                      ObjectInspector inspector,
+                      SectionWriter writer,
+                      boolean nullable) throws IOException {
+      super(columnId, inspector, writer, nullable);
+      this.writer = writer.createSection(id,
+        OrcProto.StripeSection.Kind.FLOAT_ROW_DATA);
+    }
+
+    @Override
+    void write(Object obj) throws IOException {
+      if (obj != null) {
+        Float val = ((FloatObjectInspector) inspector).get(obj);
+        stripeStatistics.updateDouble(val);
+        SerializationUtils.writeFloat(writer, val);
+      }
+      super.write(obj);
+    }
+
+    @Override
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
+      writer.flush();
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      writer.getPosition(rowIndexPosition);
+    }
+  }
+
   class StringTreeWriter extends TreeWriter {
     private final DictionaryWriter writer;
 
@@ -449,6 +485,9 @@ class WriterImpl implements Writer {
         switch (((PrimitiveObjectInspector) inspector).getPrimitiveCategory()) {
           case INT:
             return new IntegerTreeWriter(columnCount++, inspector, writer,
+              nullable);
+          case FLOAT:
+            return new FloatTreeWriter(columnCount++, inspector, writer,
               nullable);
           case STRING:
             return new StringTreeWriter(columnCount++, inspector, writer,

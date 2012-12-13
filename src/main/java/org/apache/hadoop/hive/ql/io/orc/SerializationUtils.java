@@ -98,6 +98,12 @@ class SerializationUtils {
     return (result >>> 1) ^ -(result & 1);
   }
 
+  static float readFloat(InputStream in) throws IOException {
+    int ser = in.read() | (in.read() << 8) | (in.read() << 16) |
+      (in.read() << 24);
+    return Float.intBitsToFloat(ser);
+  }
+
   static void writeFloat(OutputStream output, float value) throws IOException {
     int ser = Float.floatToIntBits(value);
     output.write(ser & 0xff);
@@ -115,23 +121,5 @@ class SerializationUtils {
     output.write(((int) (ser >> 40)) & 0xff);
     output.write(((int) (ser >> 48)) & 0xff);
     output.write(((int) (ser >> 56)) & 0xff);
-  }
-
-  static class ByteBufferWrapper extends OutputStream {
-    private final ByteBuffer buffer;
-
-    ByteBufferWrapper(ByteBuffer buffer) {
-      this.buffer = buffer;
-    }
-
-    @Override
-    public void write(int i) throws IOException {
-      buffer.put((byte) i);
-    }
-
-    @Override
-    public void write(byte[] bytes, int offset, int length) throws IOException {
-      buffer.put(bytes, offset, length);
-    }
   }
 }
