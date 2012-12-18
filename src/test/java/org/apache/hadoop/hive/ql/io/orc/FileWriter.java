@@ -313,6 +313,7 @@ public class FileWriter {
     System.out.println("seq took " + (end - start));
     */
 
+    /*
     // rcfile writer
     start = System.currentTimeMillis();
     conf.set("hive.io.rcfile.column.number.conf", "9");
@@ -343,6 +344,7 @@ public class FileWriter {
     rcf.close();
     end = System.currentTimeMillis();
     System.out.println("rcf took " + (end - start));
+    */
 
     // orc file writer
     start = System.currentTimeMillis();

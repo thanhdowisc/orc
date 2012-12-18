@@ -51,10 +51,6 @@ class DynamicIntArray {
     data = new int[INIT_CHUNKS][];
   }
 
-  public boolean isEmpty () {
-    return (length == 0);
-  }
-
   /**
    * Ensure that the given index is valid.
    */
@@ -88,10 +84,20 @@ class DynamicIntArray {
     int i = index / chunkSize;
     int j = index % chunkSize;
     grow(i);
-    if (index > length) {
-      length = index;
+    if (index >= length) {
+      length = index+1;
     }
     data[i][j] = value;
+  }
+
+  public void increment(int index, int value) {
+    int i = index / chunkSize;
+    int j = index % chunkSize;
+    grow(i);
+    if (index >= length) {
+      length = index + 1;
+    }
+    data[i][j] += value;
   }
 
   public void add(int value) {
@@ -104,6 +110,13 @@ class DynamicIntArray {
 
   public int size() {
     return length;
+  }
+
+  public void clear() {
+    length = 0;
+    for(int i=0; i < data.length; ++i) {
+      data[i] = null;
+    }
   }
 
   public String toString() {
@@ -120,17 +133,6 @@ class DynamicIntArray {
     sb.append('}');
 
     return sb.toString();
-  }
-
-  public int[] toArray (int[] buf) {
-    if (buf.length < length) {
-      buf = new int[length];
-    }
-    for (int i=0; i<length; i++) {
-      buf[i] = get(i);
-    }
-
-    return buf;
   }
 
 }
