@@ -80,7 +80,7 @@ abstract class InStream extends InputStream {
 
     public CompressedStream(String name, ByteBuffer input,
                             CompressionCodec codec, int bufferSize
-                           ) throws IOException {
+                           ) {
       this.array = input.array();
       this.name = name;
       this.codec = codec;

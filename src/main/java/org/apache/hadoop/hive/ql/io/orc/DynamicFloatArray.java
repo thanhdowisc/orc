@@ -19,8 +19,8 @@ package org.apache.hadoop.hive.ql.io.orc;
 
 /**
  * simplistic dynamic array that differentiates from ArrayList by
- *  - copying pointers to chunks of ints instead of copying the ints
- *  - managing primitive 'int' types, i.e. not requiring box objects
+ *  - copying pointers to chunks of floats instead of copying the float
+ *  - managing primitive 'float' types, i.e. not requiring box objects
  *
  * the motivation for this class is memory optimization, i.e. space efficient
  * storage of potentially huge arrays without good a-priori size guesses
@@ -32,23 +32,23 @@ package org.apache.hadoop.hive.ql.io.orc;
  * NOTE: like standard Collection implementations/arrays, this class is not
  * synchronized
  */
-class DynamicIntArray {
+class DynamicFloatArray {
   final static int DEFAULT_CHUNKSIZE = 8 * 1024;
   final static int INIT_CHUNKS = 128;
 
   final int chunkSize;  /** our allocation sizes */
-  int[][] data;   /** the real data */
+  float[][] data;   /** the real data */
   int length;     /** max set element index +1 */
   int initializedChunks = 0;
 
-  public DynamicIntArray () {
+  public DynamicFloatArray() {
     this( DEFAULT_CHUNKSIZE);
   }
 
-  public DynamicIntArray (int chunkSize) {
+  public DynamicFloatArray(int chunkSize) {
     this.chunkSize = chunkSize;
 
-    data = new int[INIT_CHUNKS][];
+    data = new float[INIT_CHUNKS][];
   }
 
   /**
@@ -58,18 +58,18 @@ class DynamicIntArray {
     if (chunkIndex >= initializedChunks) {
       if (chunkIndex >= data.length) {
         int new_size = Math.max(chunkIndex, 2 * data.length);
-        int[][] newChunk = new int[new_size][];
+        float[][] newChunk = new float[new_size][];
         System.arraycopy(data, 0, newChunk, 0, data.length);
         data = newChunk;
       }
       for(int i=initializedChunks; i <= chunkIndex; ++i) {
-        data[i] = new int[chunkSize];
+        data[i] = new float[chunkSize];
       }
       initializedChunks = chunkIndex + 1;
     }
   }
 
-  public int get (int index) {
+  public float get (int index) {
     if (index >= length) {
       throw new IndexOutOfBoundsException("Index " + index +
                                             " is outside of 0.." +
@@ -80,7 +80,7 @@ class DynamicIntArray {
     return data[i][j];
   }
 
-  public void set (int index, int value) {
+  public void set (int index, float value) {
     int i = index / chunkSize;
     int j = index % chunkSize;
     grow(i);
@@ -90,7 +90,7 @@ class DynamicIntArray {
     data[i][j] = value;
   }
 
-  public void increment(int index, int value) {
+  public void increment(int index, float value) {
     int i = index / chunkSize;
     int j = index % chunkSize;
     grow(i);
@@ -100,7 +100,7 @@ class DynamicIntArray {
     data[i][j] += value;
   }
 
-  public void add(int value) {
+  public void add(float value) {
     int i = length / chunkSize;
     int j = length % chunkSize;
     grow(i);

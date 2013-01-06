@@ -17,13 +17,18 @@
  */
 package org.apache.hadoop.hive.ql.io.orc;
 
+import org.apache.hadoop.hive.serde2.objectinspector.ListObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.MapObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
+import org.apache.hadoop.hive.serde2.typeinfo.ListTypeInfo;
+import org.apache.hadoop.hive.serde2.typeinfo.MapTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
+import org.apache.hadoop.hive.serde2.typeinfo.UnionTypeInfo;
 import org.apache.hadoop.io.Writable;
 
 import java.io.DataInput;
@@ -31,8 +36,9 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
-class OrcStruct implements Writable {
+final class OrcStruct implements Writable {
 
   private final Object[] fields;
 
@@ -58,6 +64,42 @@ class OrcStruct implements Writable {
     throw new UnsupportedOperationException("readFields unsupported");
   }
 
+  @Override
+  public boolean equals(Object other) {
+    if (other == null || other.getClass() != OrcStruct.class) {
+      return false;
+    } else {
+      OrcStruct oth = (OrcStruct) other;
+      if (fields.length != oth.fields.length) {
+        return false;
+      }
+      for(int i=0; i < fields.length; ++i) {
+        if (fields[i] == null) {
+          if (oth.fields[i] != null) {
+            return false;
+          }
+        } else {
+          if (!fields[i].equals(oth.fields[i])) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+  }
+
+  @Override
+  public int hashCode() {
+    int result = fields.length;
+    for(Object field: fields) {
+      if (field != null) {
+        result ^= field.hashCode();
+      }
+    }
+    return result;
+  }
+
+  @Override
   public String toString() {
     StringBuilder buffer = new StringBuilder();
     buffer.append("{");
@@ -98,10 +140,10 @@ class OrcStruct implements Writable {
     }
   }
 
-  static class ORCStructInspector extends StructObjectInspector {
+  static class OrcStructInspector extends StructObjectInspector {
     private final List<StructField> fields;
 
-    ORCStructInspector(StructTypeInfo info) {
+    OrcStructInspector(StructTypeInfo info) {
       ArrayList<String> fieldNames = info.getAllStructFieldNames();
       ArrayList<TypeInfo> fieldTypes = info.getAllStructFieldTypeInfos();
       fields = new ArrayList<StructField>(fieldNames.size());
@@ -111,7 +153,7 @@ class OrcStruct implements Writable {
       }
     }
 
-    ORCStructInspector(int columnId, List<OrcProto.Type> types) {
+    OrcStructInspector(int columnId, List<OrcProto.Type> types) {
       OrcProto.Type type = types.get(columnId);
       int fieldCount = type.getSubtypesCount();
       fields = new ArrayList<StructField>(fieldCount);
@@ -175,14 +217,122 @@ class OrcStruct implements Writable {
     }
   }
 
+  static class OrcMapObjectInspector implements MapObjectInspector {
+    private final ObjectInspector key;
+    private final ObjectInspector value;
+
+    OrcMapObjectInspector(MapTypeInfo info) {
+      key = createObjectInspector(info.getMapKeyTypeInfo());
+      value = createObjectInspector(info.getMapValueTypeInfo());
+    }
+
+    OrcMapObjectInspector(int columnId, List<OrcProto.Type> types) {
+      OrcProto.Type type = types.get(columnId);
+      key = createObjectInspector(type.getSubtypes(0), types);
+      value = createObjectInspector(type.getSubtypes(1), types);
+    }
+
+    @Override
+    public ObjectInspector getMapKeyObjectInspector() {
+      return key;
+    }
+
+    @Override
+    public ObjectInspector getMapValueObjectInspector() {
+      return value;
+    }
+
+    @Override
+    public Object getMapValueElement(Object map, Object key) {
+      return ((Map) map).get(key);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Map<Object, Object> getMap(Object map) {
+      return (Map) map;
+    }
+
+    @Override
+    public int getMapSize(Object map) {
+      return ((Map) map).size();
+    }
+
+    @Override
+    public String getTypeName() {
+      return "map<" + key.getTypeName() + ", " + value.getTypeName() + ">";
+    }
+
+    @Override
+    public Category getCategory() {
+      return Category.MAP;
+    }
+  }
+
+  static class OrcListObjectInspector implements ListObjectInspector {
+    private final ObjectInspector child;
+
+    OrcListObjectInspector(ListTypeInfo info) {
+      child = createObjectInspector(info.getListElementTypeInfo());
+    }
+
+    OrcListObjectInspector(int columnId, List<OrcProto.Type> types) {
+      OrcProto.Type type = types.get(columnId);
+      child = createObjectInspector(type.getSubtypes(0), types);
+    }
+
+    @Override
+    public ObjectInspector getListElementObjectInspector() {
+      return child;
+    }
+
+    @Override
+    public Object getListElement(Object list, int i) {
+      return ((List) list).get(i);
+    }
+
+    @Override
+    public int getListLength(Object list) {
+      return ((List) list).size();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<?> getList(Object list) {
+      return (List) list;
+    }
+
+    @Override
+    public String getTypeName() {
+      return "list<" + child.getTypeName() + ">";
+    }
+
+    @Override
+    public Category getCategory() {
+      return Category.LIST;
+    }
+  }
+
   static ObjectInspector createObjectInspector(TypeInfo info) {
     switch (info.getCategory()) {
       case PRIMITIVE:
         switch (((PrimitiveTypeInfo) info).getPrimitiveCategory()) {
           case FLOAT:
             return PrimitiveObjectInspectorFactory.writableFloatObjectInspector;
+          case DOUBLE:
+            return PrimitiveObjectInspectorFactory.writableDoubleObjectInspector;
+          case BOOLEAN:
+            return PrimitiveObjectInspectorFactory.writableBooleanObjectInspector;
+          case BYTE:
+            return PrimitiveObjectInspectorFactory.writableByteObjectInspector;
+          case SHORT:
+            return PrimitiveObjectInspectorFactory.writableShortObjectInspector;
           case INT:
             return PrimitiveObjectInspectorFactory.writableIntObjectInspector;
+          case LONG:
+            return PrimitiveObjectInspectorFactory.writableLongObjectInspector;
+          case BINARY:
+            return PrimitiveObjectInspectorFactory.writableBinaryObjectInspector;
           case STRING:
             return PrimitiveObjectInspectorFactory.writableStringObjectInspector;
           default:
@@ -190,7 +340,13 @@ class OrcStruct implements Writable {
               ((PrimitiveTypeInfo) info).getPrimitiveCategory());
         }
       case STRUCT:
-        return new ORCStructInspector((StructTypeInfo) info);
+        return new OrcStructInspector((StructTypeInfo) info);
+      case UNION:
+        return new OrcUnion.OrcUnionObjectInspector((UnionTypeInfo) info);
+      case MAP:
+        return new OrcMapObjectInspector((MapTypeInfo) info);
+      case LIST:
+        return new OrcListObjectInspector((ListTypeInfo) info);
       default:
         throw new IllegalArgumentException("Unknown type " +
           info.getCategory());
@@ -203,12 +359,30 @@ class OrcStruct implements Writable {
     switch (type.getKind()) {
       case FLOAT:
         return PrimitiveObjectInspectorFactory.writableFloatObjectInspector;
+      case DOUBLE:
+        return PrimitiveObjectInspectorFactory.writableDoubleObjectInspector;
+      case BOOLEAN:
+        return PrimitiveObjectInspectorFactory.writableBooleanObjectInspector;
+      case BYTE:
+        return PrimitiveObjectInspectorFactory.writableByteObjectInspector;
+      case SHORT:
+        return PrimitiveObjectInspectorFactory.writableShortObjectInspector;
       case INT:
         return PrimitiveObjectInspectorFactory.writableIntObjectInspector;
+      case LONG:
+        return PrimitiveObjectInspectorFactory.writableLongObjectInspector;
+      case BINARY:
+        return PrimitiveObjectInspectorFactory.writableBinaryObjectInspector;
       case STRING:
         return PrimitiveObjectInspectorFactory.writableStringObjectInspector;
       case STRUCT:
-        return new ORCStructInspector(columnId, types);
+        return new OrcStructInspector(columnId, types);
+      case UNION:
+        return new OrcUnion.OrcUnionObjectInspector(columnId, types);
+      case MAP:
+        return new OrcMapObjectInspector(columnId, types);
+      case LIST:
+        return new OrcListObjectInspector(columnId, types);
       default:
         throw new UnsupportedOperationException("Unknown type " +
           type.getKind());

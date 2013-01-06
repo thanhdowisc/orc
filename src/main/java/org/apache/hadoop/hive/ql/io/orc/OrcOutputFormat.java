@@ -50,7 +50,7 @@ public class OrcOutputFormat extends FileOutputFormat<NullWritable, OrcSerdeRow>
 
     OrcRecordWriter(FileSystem fs, Path path, Configuration conf,
                     String stripeSize, String compress,
-                    String compressionSize) throws IOException {
+                    String compressionSize) {
       this.fs = fs;
       this.path = path;
       this.conf = conf;
@@ -63,8 +63,8 @@ public class OrcOutputFormat extends FileOutputFormat<NullWritable, OrcSerdeRow>
     public void write(NullWritable nullWritable,
                       OrcSerdeRow row) throws IOException {
       if (writer == null) {
-        writer = OrcFile.getWriter(fs, path, row.inspector, stripeSize,
-          compress, compressionSize, conf);
+        writer = OrcFile.createWriter(fs, path, row.inspector, stripeSize,
+          compress, compressionSize);
       }
       writer.addRow(row.realRow);
     }
@@ -73,8 +73,8 @@ public class OrcOutputFormat extends FileOutputFormat<NullWritable, OrcSerdeRow>
     public void write(Writable row) throws IOException {
       OrcSerdeRow serdeRow = (OrcSerdeRow) row;
       if (writer == null) {
-        writer = OrcFile.getWriter(fs, path, serdeRow.inspector, stripeSize,
-          compress, compressionSize, conf);
+        writer = OrcFile.createWriter(fs, path, serdeRow.inspector, stripeSize,
+          compress, compressionSize);
       }
       writer.addRow(serdeRow.realRow);
     }

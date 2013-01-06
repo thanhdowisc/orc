@@ -346,7 +346,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
 
     @Override
     void updateString(String value) {
-      if (count == 0) {
+      if (minimum == null) {
         minimum = value;
         maximum = value;
       } else if (minimum.compareTo(value) > 0) {

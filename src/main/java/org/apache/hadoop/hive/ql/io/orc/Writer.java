@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public interface Writer {
-  void addUserMetadata(String name, ByteBuffer value) throws IOException;
+  void addUserMetadata(String name, ByteBuffer value);
 
   void addRow(Object row) throws IOException;
 

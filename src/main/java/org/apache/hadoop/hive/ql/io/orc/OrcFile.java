@@ -43,8 +43,8 @@ public class OrcFile {
    * @return a new ORC file reader.
    * @throws IOException
    */
-  public static Reader getReader(FileSystem fs, Path path, Configuration conf
-                                 ) throws IOException {
+  public static Reader createReader(FileSystem fs, Path path,
+                                    Configuration conf) throws IOException {
     return new ReaderImpl(fs, path, conf);
   }
 
@@ -55,20 +55,18 @@ public class OrcFile {
    * @param inspector the ObjectInspector that inspects the rows
    * @param stripeSize the number of bytes in a stripe
    * @param compress how to compress the file
-   * @param compressSize the number of bytes to compress at once
-   * @param conf the Hadoop configuration
+   * @param bufferSize the number of bytes to compress at once
    * @return a new ORC file writer
    * @throws IOException
    */
-  public static Writer getWriter(FileSystem fs,
-                                 Path path,
-                                 ObjectInspector inspector,
-                                 long stripeSize,
-                                 CompressionKind compress,
-                                 int compressSize,
-                                 Configuration conf) throws IOException {
+  public static Writer createWriter(FileSystem fs,
+                                    Path path,
+                                    ObjectInspector inspector,
+                                    long stripeSize,
+                                    CompressionKind compress,
+                                    int bufferSize) throws IOException {
     return new WriterImpl(fs, path, inspector, stripeSize, compress,
-      compressSize, conf);
+      bufferSize);
   }
 
 }

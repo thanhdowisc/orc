@@ -20,12 +20,20 @@ package org.apache.hadoop.hive.ql.io.orc;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.serde2.io.ShortWritable;
+import org.apache.hadoop.io.BooleanWritable;
+import org.apache.hadoop.io.ByteWritable;
+import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -121,6 +129,128 @@ class RecordReaderImpl implements RecordReader {
     }
   }
 
+  private static class BooleanTreeReader extends TreeReader{
+    private BitFieldReader reader = null;
+
+    BooleanTreeReader(int columnId) {
+      super(columnId);
+    }
+
+    @Override
+    void startStripe(Map<WriterImpl.StreamName, InStream> streams
+    ) throws IOException {
+      super.startStripe(streams);
+      reader = new BitFieldReader(streams.get(new WriterImpl.StreamName
+          (columnId, OrcProto.StripeSection.Kind.DATA)), 1);
+    }
+
+    @Override
+    boolean hasNext() throws IOException {
+      return super.hasNext() && (!valuePresent || reader.hasNext());
+    }
+
+    @Override
+    void seekToRow(long row) throws IOException {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    Object next(Object previous) throws IOException {
+      BooleanWritable result = null;
+      if (valuePresent) {
+        if (previous == null) {
+          result = new BooleanWritable();
+        } else {
+          result = (BooleanWritable) previous;
+        }
+        result.set(reader.next() == 1);
+      }
+      return super.next(result);
+    }
+  }
+
+  private static class ByteTreeReader extends TreeReader{
+    private RunLengthByteReader reader = null;
+
+    ByteTreeReader(int columnId) {
+      super(columnId);
+    }
+
+    @Override
+    void startStripe(Map<WriterImpl.StreamName, InStream> streams
+    ) throws IOException {
+      super.startStripe(streams);
+      reader = new RunLengthByteReader(streams.get(new WriterImpl.StreamName
+          (columnId, OrcProto.StripeSection.Kind.DATA)));
+    }
+
+    @Override
+    boolean hasNext() throws IOException {
+      return super.hasNext() && (!valuePresent || reader.hasNext());
+    }
+
+    @Override
+    void seekToRow(long row) throws IOException {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    Object next(Object previous) throws IOException {
+      ByteWritable result = null;
+      if (valuePresent) {
+        if (previous == null) {
+          result = new ByteWritable();
+        } else {
+          result = (ByteWritable) previous;
+        }
+        result.set(reader.next());
+      }
+      return super.next(result);
+    }
+  }
+
+  private static class ShortTreeReader extends TreeReader{
+    private RunLengthIntegerReader reader = null;
+
+    ShortTreeReader(int columnId) {
+      super(columnId);
+    }
+
+    @Override
+    void startStripe(Map<WriterImpl.StreamName, InStream> streams
+    ) throws IOException {
+      super.startStripe(streams);
+      WriterImpl.StreamName name =
+          new WriterImpl.StreamName(columnId,
+              OrcProto.StripeSection.Kind.DATA);
+      reader = new RunLengthIntegerReader(streams.get(name), true);
+    }
+
+    @Override
+    boolean hasNext() throws IOException {
+      return super.hasNext() && (!valuePresent || reader.hasNext());
+    }
+
+    @Override
+    void seekToRow(long row) throws IOException {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    Object next(Object previous) throws IOException {
+      ShortWritable result = null;
+      if (valuePresent) {
+        if (previous == null) {
+          result = new ShortWritable();
+        } else {
+          result = (ShortWritable) previous;
+        }
+        result.set((short) reader.next());
+      }
+      return super.next(result);
+    }
+  }
+
   private static class IntTreeReader extends TreeReader{
     private RunLengthIntegerReader reader = null;
 
@@ -130,11 +260,11 @@ class RecordReaderImpl implements RecordReader {
 
     @Override
     void startStripe(Map<WriterImpl.StreamName, InStream> streams
-                    ) throws IOException {
+    ) throws IOException {
       super.startStripe(streams);
       WriterImpl.StreamName name =
-        new WriterImpl.StreamName(columnId,
-          OrcProto.StripeSection.Kind.INT_ROW_DATA);
+          new WriterImpl.StreamName(columnId,
+              OrcProto.StripeSection.Kind.DATA);
       reader = new RunLengthIntegerReader(streams.get(name), true);
     }
 
@@ -157,6 +287,48 @@ class RecordReaderImpl implements RecordReader {
         } else {
           result = (IntWritable) previous;
         }
+        result.set((int) reader.next());
+      }
+      return super.next(result);
+    }
+  }
+
+  private static class LongTreeReader extends TreeReader{
+    private RunLengthIntegerReader reader = null;
+
+    LongTreeReader(int columnId) {
+      super(columnId);
+    }
+
+    @Override
+    void startStripe(Map<WriterImpl.StreamName, InStream> streams
+    ) throws IOException {
+      super.startStripe(streams);
+      WriterImpl.StreamName name =
+          new WriterImpl.StreamName(columnId,
+              OrcProto.StripeSection.Kind.DATA);
+      reader = new RunLengthIntegerReader(streams.get(name), true);
+    }
+
+    @Override
+    boolean hasNext() throws IOException {
+      return super.hasNext() && (!valuePresent || reader.hasNext());
+    }
+
+    @Override
+    void seekToRow(long row) throws IOException {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    Object next(Object previous) throws IOException {
+      LongWritable result = null;
+      if (valuePresent) {
+        if (previous == null) {
+          result = new LongWritable();
+        } else {
+          result = (LongWritable) previous;
+        }
         result.set(reader.next());
       }
       return super.next(result);
@@ -164,7 +336,7 @@ class RecordReaderImpl implements RecordReader {
   }
 
   private static class FloatTreeReader extends TreeReader{
-    private InStream reader = null;
+    private InStream stream;
 
     FloatTreeReader(int columnId) {
       super(columnId);
@@ -176,13 +348,13 @@ class RecordReaderImpl implements RecordReader {
       super.startStripe(streams);
       WriterImpl.StreamName name =
         new WriterImpl.StreamName(columnId,
-          OrcProto.StripeSection.Kind.FLOAT_ROW_DATA);
-      reader = streams.get(name);
+          OrcProto.StripeSection.Kind.DATA);
+      stream = streams.get(name);
     }
 
     @Override
     boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || reader.available() > 0);
+      return super.hasNext() && (!valuePresent || stream.available() > 0);
     }
 
     @Override
@@ -199,16 +371,172 @@ class RecordReaderImpl implements RecordReader {
         } else {
           result = (FloatWritable) previous;
         }
-        result.set(SerializationUtils.readFloat(reader));
+        result.set(SerializationUtils.readFloat(stream));
       }
       return super.next(result);
     }
   }
 
+  private static class DoubleTreeReader extends TreeReader{
+    private InStream stream;
+
+    DoubleTreeReader(int columnId) {
+      super(columnId);
+    }
+
+    @Override
+    void startStripe(Map<WriterImpl.StreamName, InStream> streams
+                    ) throws IOException {
+      super.startStripe(streams);
+      WriterImpl.StreamName name =
+        new WriterImpl.StreamName(columnId,
+          OrcProto.StripeSection.Kind.DATA);
+      stream = streams.get(name);
+    }
+
+    @Override
+    boolean hasNext() throws IOException {
+      return super.hasNext() && (!valuePresent || stream.available() > 0);
+    }
+
+    @Override
+    void seekToRow(long row) throws IOException {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    Object next(Object previous) throws IOException {
+      DoubleWritable result = null;
+      if (valuePresent) {
+        if (previous == null) {
+          result = new DoubleWritable();
+        } else {
+          result = (DoubleWritable) previous;
+        }
+        result.set(SerializationUtils.readDouble(stream));
+      }
+      return super.next(result);
+    }
+  }
+
+  private static class BinaryTreeReader extends TreeReader{
+    private InStream stream;
+    private RunLengthIntegerReader lengths;
+
+    BinaryTreeReader(int columnId) {
+      super(columnId);
+    }
+
+    @Override
+    void startStripe(Map<WriterImpl.StreamName, InStream> streams
+    ) throws IOException {
+      super.startStripe(streams);
+      WriterImpl.StreamName name =
+          new WriterImpl.StreamName(columnId,
+              OrcProto.StripeSection.Kind.DATA);
+      stream = streams.get(name);
+      lengths = new RunLengthIntegerReader(streams.get(new
+          WriterImpl.StreamName(columnId, OrcProto.StripeSection.Kind.LENGTH)),
+          false);
+    }
+
+    @Override
+    boolean hasNext() throws IOException {
+      return super.hasNext() && (!valuePresent || lengths.hasNext());
+    }
+
+    @Override
+    void seekToRow(long row) throws IOException {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    Object next(Object previous) throws IOException {
+      BytesWritable result = null;
+      if (valuePresent) {
+        if (previous == null) {
+          result = new BytesWritable();
+        } else {
+          result = (BytesWritable) previous;
+        }
+        int len = (int) lengths.next();
+        result.setSize(len);
+        int offset = 0;
+        while (len > 0) {
+          int written = stream.read(result.getBytes(), offset, len);
+          if (written < 0) {
+            throw new EOFException("Can't finish byte read from " + stream);
+          }
+          len -= written;
+          offset += written;
+        }
+      }
+      return super.next(result);
+    }
+  }
+
+  private static class TimestampTreeReader extends TreeReader{
+    private RunLengthIntegerReader data;
+    private RunLengthIntegerReader nanos;
+
+    TimestampTreeReader(int columnId) {
+      super(columnId);
+    }
+
+    @Override
+    void startStripe(Map<WriterImpl.StreamName,
+        InStream> streams) throws IOException {
+      super.startStripe(streams);
+      data = new RunLengthIntegerReader(streams.get(new WriterImpl.StreamName
+          (columnId, OrcProto.StripeSection.Kind.DATA)), true);
+      nanos = new RunLengthIntegerReader(streams.get(new WriterImpl.StreamName
+          (columnId, OrcProto.StripeSection.Kind.NANO_DATA)), false);
+    }
+
+    @Override
+    boolean hasNext() throws IOException {
+      return super.hasNext() && (!valuePresent || data.hasNext());
+    }
+
+    @Override
+    void seekToRow(long row) throws IOException {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    Object next(Object previous) throws IOException {
+      Timestamp result = null;
+      if (valuePresent) {
+        if (previous == null) {
+          result = new Timestamp(0);
+        } else {
+          result = (Timestamp) previous;
+        }
+        long seconds = data.next() + WriterImpl.BASE_TIMESTAMP;
+        int nanos = parseNanos(this.nanos.next());
+        int millis = nanos / 1000*1000;
+        result.setTime(seconds * WriterImpl.MILLIS_PER_SECOND + millis);
+        result.setNanos(nanos);
+      }
+      return super.next(result);
+    }
+
+    private static int parseNanos(long serialized) {
+      int zeros = 3 & (int) serialized;
+      int result = (int) serialized >>> 3;
+      if (zeros != 0) {
+        for(int i =0; i <= zeros; ++i) {
+          result *= 10;
+        }
+      }
+      return result;
+    }
+  }
+
   private static class StringTreeReader extends TreeReader {
-    private byte[][] dictionaryBuffer;
-    private DynamicIntArray dictionaryOffsets;
-    private DynamicIntArray dictionaryLengths;
+    private DynamicByteArray dictionaryBuffer = null;
+    private final DynamicIntArray dictionaryOffsets = new DynamicIntArray();
+    private final DynamicIntArray dictionaryLengths = new DynamicIntArray();
     private RunLengthIntegerReader reader;
 
     StringTreeReader(int columnId) {
@@ -225,31 +553,21 @@ class RecordReaderImpl implements RecordReader {
         new WriterImpl.StreamName(columnId,
           OrcProto.StripeSection.Kind.DICTIONARY_DATA);
       InStream in = streams.get(name);
-      int avail = in.available();
-      List<byte[]> work = new ArrayList<byte[]>();
-      while (avail > 0) {
-        byte[] part = new byte[avail];
-        int offset = 0;
-        while (offset < avail) {
-          offset += in.read(part, offset, avail - offset);
-        }
-        work.add(part);
-        avail = in.available();
-      }
-      dictionaryBuffer = work.toArray(new byte[work.size()][]);
+      dictionaryBuffer = new DynamicByteArray(64, in.available());
+      dictionaryBuffer.readAll(in);
       in.close();
 
       // read the lengths
       name = new WriterImpl.StreamName(columnId,
-        OrcProto.StripeSection.Kind.DICTIONARY_LENGTH);
+        OrcProto.StripeSection.Kind.LENGTH);
       in = streams.get(name);
       RunLengthIntegerReader lenReader = new RunLengthIntegerReader(in, false);
       int offset = 0;
-      dictionaryOffsets = new DynamicIntArray();
-      dictionaryLengths = new DynamicIntArray();
+      dictionaryOffsets.clear();
+      dictionaryLengths.clear();
       while (lenReader.hasNext()) {
         dictionaryOffsets.add(offset);
-        int len = lenReader.next();
+        int len = (int) lenReader.next();
         dictionaryLengths.add(len);
         offset += len;
       }
@@ -257,7 +575,7 @@ class RecordReaderImpl implements RecordReader {
 
       // set up the row reader
       name = new WriterImpl.StreamName(columnId,
-        OrcProto.StripeSection.Kind.DICTIONARY_ROWS);
+        OrcProto.StripeSection.Kind.DATA);
       reader = new RunLengthIntegerReader(streams.get(name), false);
     }
 
@@ -275,7 +593,7 @@ class RecordReaderImpl implements RecordReader {
     Object next(Object previous) throws IOException {
       Text result = null;
       if (valuePresent) {
-        int entry = reader.next();
+        int entry = (int) reader.next();
         if (previous == null) {
           result = new Text();
         } else {
@@ -283,19 +601,7 @@ class RecordReaderImpl implements RecordReader {
         }
         int offset = dictionaryOffsets.get(entry);
         int length = dictionaryLengths.get(entry);
-        int chunkIndex = 0;
-        while (offset > dictionaryBuffer[chunkIndex].length) {
-          offset -= dictionaryBuffer[chunkIndex].length;
-          chunkIndex += 1;
-        }
-        // does the entry straddle the compression chunks?
-        if (dictionaryBuffer[chunkIndex].length - offset < length) {
-          int firstLength = dictionaryBuffer[chunkIndex].length - offset;
-          result.set(dictionaryBuffer[chunkIndex], offset, firstLength);
-          result.append(dictionaryBuffer[chunkIndex+1], 0, length - firstLength);
-        } else {
-          result.set(dictionaryBuffer[chunkIndex], offset, length);
-        }
+        dictionaryBuffer.setText(result, offset, length);
       }
       return super.next(result);
     }
@@ -381,10 +687,199 @@ class RecordReaderImpl implements RecordReader {
     void startStripe(Map<WriterImpl.StreamName, InStream> streams
                     ) throws IOException {
       super.startStripe(streams);
-      for(int i=0; i < fields.length; ++i) {
-        if (fields[i] != null) {
-          fields[i].startStripe(streams);
+      for(TreeReader field: fields) {
+        if (field != null) {
+          field.startStripe(streams);
         }
+      }
+    }
+  }
+
+  private static class UnionTreeReader extends TreeReader {
+    private final TreeReader[] fields;
+    private RunLengthIntegerReader tags;
+
+    UnionTreeReader(int columnId,
+                     List<OrcProto.Type> types,
+                     boolean[] included) throws IOException {
+      super(columnId);
+      OrcProto.Type type = types.get(columnId);
+      int fieldCount = type.getSubtypesCount();
+      this.fields = new TreeReader[fieldCount];
+      for(int i=0; i < fieldCount; ++i) {
+        int subtype = type.getSubtypes(i);
+        if (included == null || included[subtype]) {
+          this.fields[i] = createTreeReader(subtype, types, included);
+        }
+      }
+    }
+
+    @Override
+    boolean hasNext() throws IOException {
+      return super.hasNext() && (!valuePresent || tags.hasNext());
+    }
+
+    @Override
+    void seekToRow(long row) throws IOException {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    Object next(Object previous) throws IOException {
+      OrcUnion result = null;
+      if (valuePresent) {
+        if (previous == null) {
+          result = new OrcUnion();
+        } else {
+          result = (OrcUnion) previous;
+        }
+        byte tag = (byte) tags.next();
+        Object previousVal = result.getObject();
+        result.set(tag, fields[tag].next(tag == result.getTag() ?
+            previousVal : null));
+      }
+      return super.next(result);
+    }
+
+    @Override
+    void startStripe(Map<WriterImpl.StreamName, InStream> streams
+    ) throws IOException {
+      super.startStripe(streams);
+      tags = new RunLengthIntegerReader(streams.get(new WriterImpl.StreamName
+          (columnId, OrcProto.StripeSection.Kind.DATA)), false);
+      for(TreeReader field: fields) {
+        if (field != null) {
+          field.startStripe(streams);
+        }
+      }
+    }
+  }
+
+  private static class ListTreeReader extends TreeReader {
+    private final TreeReader elementReader;
+    private RunLengthIntegerReader lengths;
+
+    ListTreeReader(int columnId,
+                    List<OrcProto.Type> types,
+                    boolean[] included) throws IOException {
+      super(columnId);
+      OrcProto.Type type = types.get(columnId);
+      elementReader = createTreeReader(type.getSubtypes(0), types, included);
+    }
+
+    @Override
+    boolean hasNext() throws IOException {
+      return super.hasNext() && (!valuePresent || lengths.hasNext());
+    }
+
+    @Override
+    void seekToRow(long row) throws IOException {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    Object next(Object previous) throws IOException {
+      ArrayList<Object> result = null;
+      if (valuePresent) {
+        if (previous == null) {
+          result = new ArrayList<Object>();
+        } else {
+          result = (ArrayList<Object>) previous;
+        }
+        int prevLength = result.size();
+        int length = (int) lengths.next();
+        // read the new elements into the array
+        for(int i=0; i< length; i++) {
+          result.set(i, elementReader.next(i < prevLength ?
+              result.get(i) : null));
+        }
+        // remove any extra elements
+        for(int i=prevLength - 1; i >= length; --i) {
+          result.remove(i);
+        }
+      }
+      return super.next(result);
+    }
+
+    @Override
+    void startStripe(Map<WriterImpl.StreamName, InStream> streams
+    ) throws IOException {
+      super.startStripe(streams);
+      lengths = new RunLengthIntegerReader(streams.get(new WriterImpl.StreamName
+          (columnId, OrcProto.StripeSection.Kind.LENGTH)), false);
+      if (elementReader != null) {
+        elementReader.startStripe(streams);
+      }
+    }
+  }
+
+  private static class MapTreeReader extends TreeReader {
+    private final TreeReader keyReader;
+    private final TreeReader valueReader;
+    private RunLengthIntegerReader lengths;
+
+    MapTreeReader(int columnId,
+                   List<OrcProto.Type> types,
+                   boolean[] included) throws IOException {
+      super(columnId);
+      OrcProto.Type type = types.get(columnId);
+      int keyColumn = type.getSubtypes(0);
+      int valueColumn = type.getSubtypes(1);
+      if (included == null || included[keyColumn]) {
+        keyReader = createTreeReader(keyColumn, types, included);
+      } else {
+        keyReader = null;
+      }
+      if (included == null || included[valueColumn]) {
+        valueReader = createTreeReader(valueColumn, types, included);
+      } else {
+        valueReader = null;
+      }
+    }
+
+    @Override
+    boolean hasNext() throws IOException {
+      return super.hasNext() && (!valuePresent || lengths.hasNext());
+    }
+
+    @Override
+    void seekToRow(long row) throws IOException {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    Object next(Object previous) throws IOException {
+      HashMap<Object,Object> result = null;
+      if (valuePresent) {
+        if (previous == null) {
+          result = new HashMap<Object,Object>();
+        } else {
+          result = (HashMap<Object,Object>) previous;
+        }
+        // for now just clear and create new objects
+        result.clear();
+        int length = (int) lengths.next();
+        // read the new elements into the array
+        for(int i=0; i< length; i++) {
+          result.put(keyReader.next(null), valueReader.next(null));
+        }
+      }
+      return super.next(result);
+    }
+
+    @Override
+    void startStripe(Map<WriterImpl.StreamName, InStream> streams
+    ) throws IOException {
+      super.startStripe(streams);
+      lengths = new RunLengthIntegerReader(streams.get(new WriterImpl.StreamName
+          (columnId, OrcProto.StripeSection.Kind.LENGTH)), false);
+      if (keyReader != null) {
+        keyReader.startStripe(streams);
+      }
+      if (valueReader != null) {
+        valueReader.startStripe(streams);
       }
     }
   }
@@ -395,14 +890,34 @@ class RecordReaderImpl implements RecordReader {
                                             ) throws IOException {
     OrcProto.Type type = types.get(columnId);
     switch (type.getKind()) {
+      case BOOLEAN:
+        return new BooleanTreeReader(columnId);
+      case BYTE:
+        return new ByteTreeReader(columnId);
+      case DOUBLE:
+        return new DoubleTreeReader(columnId);
       case FLOAT:
         return new FloatTreeReader(columnId);
+      case SHORT:
+        return new ShortTreeReader(columnId);
       case INT:
         return new IntTreeReader(columnId);
+      case LONG:
+        return new LongTreeReader(columnId);
       case STRING:
         return new StringTreeReader(columnId);
+      case BINARY:
+        return new BinaryTreeReader(columnId);
+      case TIMESTAMP:
+        return new TimestampTreeReader(columnId);
       case STRUCT:
         return new StructTreeReader(columnId, types, included);
+      case LIST:
+        return new ListTreeReader(columnId, types, included);
+      case MAP:
+        return new MapTreeReader(columnId, types, included);
+      case UNION:
+        return new UnionTreeReader(columnId, types, included);
       default:
         throw new IllegalArgumentException("Unsupported type " +
           type.getKind());

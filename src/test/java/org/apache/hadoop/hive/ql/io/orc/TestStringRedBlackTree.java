@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.hadoop.hive.ql.io.orc;
 
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -10,6 +28,9 @@ import java.io.IOException;
 
 import static junit.framework.Assert.assertEquals;
 
+/**
+ * Test the red-black tree with string keys.
+ */
 public class TestStringRedBlackTree {
 
   /**
@@ -134,7 +155,7 @@ public class TestStringRedBlackTree {
 
   @Test
   public void test1() throws Exception {
-    StringRedBlackTree tree = new StringRedBlackTree();
+    StringRedBlackTree tree = new StringRedBlackTree(5);
     assertEquals(0, tree.getByteSize());
     checkTree(tree);
     assertEquals(0, tree.add("owen"));
@@ -174,12 +195,27 @@ public class TestStringRedBlackTree {
     assertEquals(1, tree.getCount(3));
     assertEquals(3, tree.add("greg"));
     assertEquals(2, tree.getCount(3));
+    assertEquals(41, tree.getCharacterSize());
+    // add some more strings to test the different branches of the
+    // rebalancing
+    assertEquals(10, tree.add("zak"));
+    checkTree(tree);
+    assertEquals(11, tree.add("eric1"));
+    checkTree(tree);
+    assertEquals(12, tree.add("ash"));
+    checkTree(tree);
+    assertEquals(13, tree.add("harry"));
+    checkTree(tree);
+    assertEquals(14, tree.add("john"));
+    checkTree(tree);
     tree.clear();
+    checkTree(tree);
     assertEquals(0, tree.getByteSize());
+    assertEquals(0, tree.getCharacterSize());
   }
 
   @Test
-  void test2() throws Exception {
+  public void test2() throws Exception {
     StringRedBlackTree tree =
       buildTree("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l",
         "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z");
@@ -192,7 +228,7 @@ public class TestStringRedBlackTree {
   }
 
   @Test
-  void test3() throws Exception {
+  public void test3() throws Exception {
     StringRedBlackTree tree =
       buildTree("z", "y", "x", "w", "v", "u", "t", "s", "r", "q", "p", "o", "n",
         "m", "l", "k", "j", "i", "h", "g", "f", "e", "d", "c", "b", "a");
@@ -209,5 +245,9 @@ public class TestStringRedBlackTree {
     test.test1();
     test.test2();
     test.test3();
+    TestOrcFile test1 = new TestOrcFile();
+    test1.test1();
+    test1.emptyFile();
+    test1.metaData();
   }
 }

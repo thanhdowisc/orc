@@ -35,7 +35,7 @@ abstract class RedBlackTree
   private static final int ELEMENT_SIZE = 3;
 
   protected int size = 0;
-  private DynamicIntArray data;
+  private final DynamicIntArray data;
   protected int root = NULL;
   protected int lastAdd = 0;
   private boolean wasAdd = false;
@@ -80,10 +80,8 @@ abstract class RedBlackTree
    * in the data array, we just the low bit on the left child index.
    */
   protected boolean isRed(int position) {
-    if (position == NULL) {
-      return false;
-    }
-    return (data.get(position * ELEMENT_SIZE + LEFT_OFFSET) & 1) == 1;
+    return position != NULL &&
+        (data.get(position * ELEMENT_SIZE + LEFT_OFFSET) & 1) == 1;
   }
 
   /**
@@ -233,11 +231,7 @@ abstract class RedBlackTree
             node = parent;
             parent = tmp;
             // left-rotate on node
-            if (node == getLeft(grandparent)) {
-              setLeft(grandparent, parent);
-            } else {
-              setRight(grandparent, parent);
-            }
+            setLeft(grandparent, parent);
             setRight(node, getLeft(parent));
             setLeft(parent, node);
           }
@@ -274,11 +268,7 @@ abstract class RedBlackTree
             node = parent;
             parent = tmp;
             // right-rotate on node
-            if (node == getLeft(grandparent)) {
-              setLeft(grandparent, parent);
-            } else {
-              setRight(grandparent, parent);
-            }
+            setRight(grandparent, parent);
             setLeft(node, getRight(parent));
             setRight(parent, node);
           }
@@ -328,6 +318,7 @@ abstract class RedBlackTree
    * Reset the table to empty.
    */
   public void clear() {
+    root = NULL;
     size = 0;
     data.clear();
   }

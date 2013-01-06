@@ -34,7 +34,7 @@ class RunLengthByteWriter {
   private boolean repeat = false;
   private int tailRunLength = 0;
 
-  RunLengthByteWriter(PositionedOutputStream output) throws IOException {
+  RunLengthByteWriter(PositionedOutputStream output) {
     this.output = output;
   }
 

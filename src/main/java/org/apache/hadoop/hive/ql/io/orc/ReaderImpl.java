@@ -122,7 +122,7 @@ class ReaderImpl implements Reader {
       @Override
       public Iterator<org.apache.hadoop.hive.ql.io.orc.StripeInformation> iterator() {
         return new Iterator<org.apache.hadoop.hive.ql.io.orc.StripeInformation>(){
-          Iterator<OrcProto.StripeInformation> inner =
+          final Iterator<OrcProto.StripeInformation> inner =
             footer.getStripesList().iterator();
 
           @Override
@@ -151,7 +151,7 @@ class ReaderImpl implements Reader {
 
   @Override
   public long getLength() {
-    return footer.getBodyLength() + footer.getHeaderLength();
+    return footer.getBodyLength();
   }
 
   @Override

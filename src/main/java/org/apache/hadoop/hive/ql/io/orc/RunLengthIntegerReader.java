@@ -26,25 +26,24 @@ import java.io.IOException;
 class RunLengthIntegerReader {
   private final InStream input;
   private final boolean signed;
-  private final int[] literals =
-    new int[RunLengthIntegerWriter.MAX_LITERAL_SIZE];
+  private final long[] literals =
+    new long[RunLengthIntegerWriter.MAX_LITERAL_SIZE];
   private int numLiterals = 0;
   private int delta = 0;
   private int used = 0;
   private boolean done = false;
   private boolean repeat = false;
 
-  RunLengthIntegerReader(InStream input,
-                         boolean signed) throws IOException {
+  RunLengthIntegerReader(InStream input, boolean signed) throws IOException {
     this.input = input;
     this.signed = signed;
+    readValues();
   }
 
   private void readValues() throws IOException {
     int control = input.read();
     if (control == -1) {
       done = true;
-      return;
     } else if (control < 0x80) {
       numLiterals = control + RunLengthIntegerWriter.MIN_REPEAT_SIZE;
       used = 0;
@@ -53,12 +52,12 @@ class RunLengthIntegerReader {
       if (delta == -1) {
         throw new EOFException("End of stream in RLE Integer");
       }
-      // switch to a signed int
+      // convert from 0 to 255 to -128 to 127 by converting to a signed byte
       delta = (byte) (0+delta);
       if (signed) {
-        literals[0] = SerializationUtils.readVsint(input);
+        literals[0] = SerializationUtils.readVslong(input);
       } else {
-        literals[0] = SerializationUtils.readVuint(input);
+        literals[0] = SerializationUtils.readVulong(input);
       }
     } else {
       repeat = false;
@@ -66,27 +65,29 @@ class RunLengthIntegerReader {
       used = 0;
       for(int i=0; i < numLiterals; ++i) {
         if (signed) {
-          literals[i] = SerializationUtils.readVsint(input);
+          literals[i] = SerializationUtils.readVslong(input);
         } else {
-          literals[i] = SerializationUtils.readVuint(input);
+          literals[i] = SerializationUtils.readVulong(input);
         }
       }
     }
   }
 
-  boolean hasNext() throws IOException {
-    if (used == numLiterals && !done) {
-      readValues();
-    }
+  boolean hasNext() {
     return !done && used != numLiterals;
   }
 
-  int next() throws IOException {
+  long next() throws IOException {
+    long result;
     if (repeat) {
-      return literals[0] + (used++) * delta;
+      result = literals[0] + (used++) * delta;
     } else {
-      return literals[used++];
+      result = literals[used++];
     }
+    if (used == numLiterals) {
+      readValues();
+    }
+    return result;
   }
 
 }

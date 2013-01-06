@@ -38,10 +38,6 @@ class SerializationUtils {
     }
   }
 
-  static void writeVsint(OutputStream output, int value) throws IOException {
-    writeVuint(output, (value << 1) ^ (value >> 31));
-  }
-
   static void writeVulong(OutputStream output, long value) throws IOException {
     while (true) {
       if ((value & ~0x7f) == 0) {
@@ -71,11 +67,6 @@ class SerializationUtils {
       offset += 7;
     } while (b >= 0x80);
     return result;
-  }
-
-  static int readVsint(InputStream in) throws IOException {
-    int result = readVuint(in);
-    return (result >>> 1) ^ -(result & 1);
   }
 
   static long readVulong(InputStream in) throws IOException {
@@ -112,7 +103,15 @@ class SerializationUtils {
     output.write((ser >> 24) & 0xff);
   }
 
-  static void writeDouble(OutputStream output, double value) throws IOException {
+  static double readDouble(InputStream in) throws IOException {
+    long ser = in.read() | (in.read() << 8) | (in.read() << 16) |
+      (in.read() << 24) | ((long) in.read() << 32) | ((long) in.read() << 40) |
+      ((long) in.read() << 48) | ((long) in.read() << 56);
+    return Double.longBitsToDouble(ser);
+  }
+
+  static void writeDouble(OutputStream output,
+                          double value) throws IOException {
     long ser = Double.doubleToLongBits(value);
     output.write(((int) ser) & 0xff);
     output.write(((int) (ser >> 16)) & 0xff);

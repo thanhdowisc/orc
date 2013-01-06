@@ -3,16 +3,16 @@ package org.apache.hadoop.hive.ql.io.orc;
 message Type {
   enum Kind {
     BOOLEAN = 0;
-    TINYINT = 1;
-    SMALLINT = 2;
+    BYTE = 1;
+    SHORT = 2;
     INT = 3;
-    BIGINT = 4;
+    LONG = 4;
     FLOAT = 5;
     DOUBLE = 6;
     STRING = 7;
     BINARY = 8;
-    DATETIME = 9;
-    ARRAY = 50;
+    TIMESTAMP = 9;
+    LIST = 50;
     MAP = 51;
     STRUCT = 52;
     UNION = 53;
@@ -82,17 +82,12 @@ message RowIndex {
 message StripeSection {
   enum Kind {
     PRESENT = 0;
-    REPETITION = 1;
-    BINARY_DATA = 2;
-    BINARY_LENGTH = 3;
-    INT_ROW_DATA = 4;
-    FLOAT_ROW_DATA = 5;
-    DOUBLE_ROW_DATA = 6;
-    DICTIONARY_DATA = 7;
-    DICTIONARY_LENGTH = 8;
-    DICTIONARY_ROWS = 9;
-    DICTIONARY_COUNT = 10;
-    ROW_INDEX = 11;
+    DATA = 1;
+    LENGTH = 2;
+    DICTIONARY_DATA = 3;
+    DICTIONARY_COUNT = 4;
+    ROW_INDEX = 5;
+    NANO_DATA = 6;
   }
   required Kind kind = 1;
   optional uint32 column = 2;

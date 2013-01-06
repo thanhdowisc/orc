@@ -83,7 +83,7 @@ public class FileWriter {
     }
   }
 
-  static Iterable<Demographics> readDemographics(final String name) throws IOException {
+  static Iterable<Demographics> readDemographics(final String name) {
     return new Iterable<Demographics>(){
       public Iterator<Demographics> iterator() {
         try {
@@ -213,11 +213,12 @@ public class FileWriter {
     }
   }
 
-  static Iterable<StoreSales> readStoreSales(final String name) throws IOException {
+  static Iterable<StoreSales> readStoreSales(final String name) {
     return new Iterable<StoreSales>(){
       public Iterator<StoreSales> iterator() {
         try {
-          final BufferedReader reader = new BufferedReader(new FileReader(new File(name)));
+          final BufferedReader reader =
+              new BufferedReader(new FileReader(new File(name)));
           final StoreSales item = new StoreSales();
           return new Iterator<StoreSales>(){
             String next;
@@ -348,8 +349,9 @@ public class FileWriter {
 
     // orc file writer
     start = System.currentTimeMillis();
-    Writer writer = OrcFile.getWriter(local, new Path("file:///tmp/demographics.orc"),
-      demographicsInspector, 256*1024*1024, CompressionKind.ZLIB, 256 * 1024, conf);
+    Writer writer = OrcFile.createWriter(local,
+        new Path("file:///tmp/demographics.orc"),
+      demographicsInspector, 256*1024*1024, CompressionKind.ZLIB, 256 * 1024);
     for(Demographics record: readDemographics("customer_demographics.dat")) {
       writer.addRow(record);
     }
@@ -358,10 +360,9 @@ public class FileWriter {
     System.out.println("orc took " + (end - start));
 
     start = System.currentTimeMillis();
-    writer = OrcFile.getWriter(local,
+    writer = OrcFile.createWriter(local,
       new Path("file:///tmp/store_sales.orc"),
-      salesInspector, 256*1024*1024, CompressionKind.ZLIB, 256 * 1024, conf);
-    long r = 0;
+      salesInspector, 256*1024*1024, CompressionKind.ZLIB, 256 * 1024);
     for(StoreSales record: readStoreSales("store_sales.dat")) {
       writer.addRow(record);
     }

@@ -36,6 +36,7 @@ class RunLengthByteReader {
 
   RunLengthByteReader(InStream input) throws IOException {
     this.input = input;
+    readValues();
   }
 
   private void readValues() throws IOException {
@@ -65,22 +66,22 @@ class RunLengthByteReader {
     }
   }
 
-  boolean hasNext() throws IOException {
-    if (used == numLiterals) {
-      if (!done) {
-        readValues();
-      }
-    }
+  boolean hasNext() {
     return !done && used != numLiterals;
   }
 
   byte next() throws IOException {
+    byte result;
     if (repeat) {
       used += 1;
-      return literals[0];
+      result = literals[0];
     } else {
-      return literals[used++];
+      result = literals[used++];
     }
+    if (used == numLiterals) {
+      readValues();
+    }
+    return result;
   }
 
 }

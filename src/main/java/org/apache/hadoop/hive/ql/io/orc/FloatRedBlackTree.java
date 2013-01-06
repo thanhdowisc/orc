@@ -23,37 +23,30 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * A red-black tree that stores strings. The strings are stored as UTF-8 bytes
- * and an offset/length for each entry.
+ * A red-black tree that stores floats. The floats are stored as the integer
+ * representation.
  */
-class StringRedBlackTree extends RedBlackTree {
-  private final DynamicByteArray byteArray = new DynamicByteArray();
-  private final DynamicIntArray keySizes = new DynamicIntArray();
-  private final Text newKey = new Text();
+class FloatRedBlackTree extends RedBlackTree {
+  private final DynamicFloatArray keys = new DynamicFloatArray();
+  private float newKey;
 
-  public StringRedBlackTree() {
-    // PASS
-  }
-
-  public StringRedBlackTree(int initialCapacity) {
-    super(initialCapacity);
-  }
-
-  public int add(String value) {
-    newKey.set(value);
+  public int add(float value) {
+    newKey = value;
     // if the key is new, add it to our byteArray and store the offset & length
     if (add()) {
-      int len = newKey.getLength();
-      keySizes.add(byteArray.add(newKey.getBytes(), 0, len));
-      keySizes.add(len);
+      keys.add(value);
     }
     return lastAdd;
   }
 
   @Override
   protected int compareValue(int position) {
-    return byteArray.compare(newKey.getBytes(), 0, newKey.getLength(),
-      keySizes.get(2*position), keySizes.get(2*position+1));
+    float other = keys.get(position);
+    if (newKey > other) {
+      return 1;
+    } else {
+      return newKey == other ? 0 : -1;
+    }
   }
 
   /**
@@ -67,23 +60,10 @@ class StringRedBlackTree extends RedBlackTree {
     int getOriginalPosition();
 
     /**
-     * Write the bytes for the string to the given output stream.
-     * @param out the stream to write to.
-     * @throws IOException
+     * Get the original float.
+     * @return the float
      */
-    void writeBytes(OutputStream out) throws IOException;
-
-    /**
-     * Get the original string
-     * @return the string
-     */
-    Text getText();
-
-    /**
-     * Get the number of bytes
-     * @return the string's length in bytes
-     */
-    int getLength();
+    float getFloat();
 
     /**
      * Get the count for this key.
@@ -99,7 +79,7 @@ class StringRedBlackTree extends RedBlackTree {
     /**
      * Called once for each node of the tree in sort order.
      * @param context the information about each node
-     * @throws IOException
+     * @throws java.io.IOException
      */
     void visit(VisitorContext context) throws IOException;
   }
@@ -112,21 +92,12 @@ class StringRedBlackTree extends RedBlackTree {
       return originalPosition;
     }
 
-    public Text getText() {
-      byteArray.setText(text, keySizes.get(originalPosition*2), getLength());
-      return text;
-    }
-
-    public void writeBytes(OutputStream out) throws IOException {
-      byteArray.write(out, keySizes.get(originalPosition*2), getLength());
-    }
-
-    public int getLength() {
-      return keySizes.get(originalPosition*2+1);
+    public float getFloat() {
+      return keys.get(originalPosition);
     }
 
     public int getCount() {
-      return StringRedBlackTree.this.getCount(originalPosition);
+      return FloatRedBlackTree.this.getCount(originalPosition);
     }
   }
 
@@ -143,7 +114,7 @@ class StringRedBlackTree extends RedBlackTree {
   /**
    * Visit all of the nodes in the tree in sorted order.
    * @param visitor the action to be applied to each ndoe
-   * @throws IOException
+   * @throws java.io.IOException
    */
   public void visit(Visitor visitor) throws IOException {
     recurse(root, visitor, new VisitorContextImpl());
@@ -154,16 +125,7 @@ class StringRedBlackTree extends RedBlackTree {
    */
   public void clear() {
     super.clear();
-    byteArray.clear();
-    keySizes.clear();
-  }
-
-  /**
-   * Get the size of the character data in the table.
-   * @return the bytes used by the table
-   */
-  public int getCharacterSize() {
-    return byteArray.size();
+    keys.clear();
   }
 
   /**
@@ -171,6 +133,6 @@ class StringRedBlackTree extends RedBlackTree {
    * @return the number of bytes used in storing the tree.
    */
   public long getByteSize() {
-    return byteArray.size() + 5 * 4 * size();
+    return 4 * 4 * size();
   }
 }

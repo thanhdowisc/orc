@@ -24,19 +24,30 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.serde2.objectinspector.ListObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.MapObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.UnionObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.BinaryObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.BooleanObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.ByteObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.DoubleObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.FloatObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.IntObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.LongObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.ShortObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.TimestampObjectInspector;
+import org.apache.hadoop.io.BytesWritable;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -74,15 +85,15 @@ class WriterImpl implements Writer {
     new TreeMap<String, ByteString>();
   private final SectionWriter sectionWriter = new SectionWriterImpl();
   private final TreeWriter treeWriter;
-  private OrcProto.RowIndex.Builder rowIndex = OrcProto.RowIndex.newBuilder();
+  private final OrcProto.RowIndex.Builder rowIndex =
+      OrcProto.RowIndex.newBuilder();
 
   WriterImpl(FileSystem fs,
              Path path,
              ObjectInspector inspector,
              long stripeSize,
              CompressionKind compress,
-             int bufferSize,
-             Configuration conf) throws IOException {
+             int bufferSize) throws IOException {
     this.fs = fs;
     this.path = path;
     this.stripeSize = stripeSize;
@@ -178,6 +189,12 @@ class WriterImpl implements Writer {
     PositionedOutputStream createSection(int column,
                                          OrcProto.StripeSection.Kind kind
                                          ) throws IOException;
+
+    /**
+     * Get the next column id.
+     * @return a number from 0 to the number of columns - 1
+     */
+    int getNextColumnId();
   }
 
   static class StreamName implements Comparable<StreamName> {
@@ -190,7 +207,7 @@ class WriterImpl implements Writer {
     }
 
     public boolean equals(Object obj) {
-      if (obj == null || obj instanceof  StreamName) {
+      if (obj != null && obj instanceof  StreamName) {
         StreamName other = (StreamName) obj;
         return other.column == column && other.kind == kind;
       } else {
@@ -256,9 +273,14 @@ class WriterImpl implements Writer {
       }
       return result.outStream;
     }
+
+    @Override
+    public int getNextColumnId() {
+      return columnCount++;
+    }
   }
 
-  abstract class TreeWriter {
+  private static abstract class TreeWriter {
     protected final int id;
     protected final ObjectInspector inspector;
     protected final SectionWriter writer;
@@ -325,7 +347,377 @@ class WriterImpl implements Writer {
 
   }
 
-  class StructTreeWriter extends TreeWriter {
+  private static class BooleanTreeWriter extends TreeWriter {
+    private final BitFieldWriter writer;
+
+    BooleanTreeWriter(int columnId,
+                      ObjectInspector inspector,
+                      SectionWriter writer,
+                      boolean nullable) throws IOException {
+      super(columnId, inspector, writer, nullable);
+      PositionedOutputStream out = writer.createSection(id,
+        OrcProto.StripeSection.Kind.DATA);
+      this.writer = new BitFieldWriter(out, 1);
+    }
+
+    @Override
+    void write(Object obj) throws IOException {
+      super.write(obj);
+      if (obj != null) {
+        boolean val = ((BooleanObjectInspector) inspector).get(obj);
+        stripeStatistics.updateBoolean(val);
+        writer.append(val ? 1 : 0);
+      }
+    }
+
+    @Override
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
+      writer.flush();
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      writer.getPosition(rowIndexPosition);
+    }
+  }
+
+  private static class ByteTreeWriter extends TreeWriter {
+    private final RunLengthByteWriter writer;
+
+    ByteTreeWriter(int columnId,
+                      ObjectInspector inspector,
+                      SectionWriter writer,
+                      boolean nullable) throws IOException {
+      super(columnId, inspector, writer, nullable);
+      this.writer = new RunLengthByteWriter(writer.createSection(id,
+        OrcProto.StripeSection.Kind.DATA));
+    }
+
+    @Override
+    void write(Object obj) throws IOException {
+      super.write(obj);
+      if (obj != null) {
+        byte val = ((ByteObjectInspector) inspector).get(obj);
+        stripeStatistics.updateInteger(val);
+        writer.write(val);
+      }
+    }
+
+    @Override
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
+      writer.flush();
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      writer.getPosition(rowIndexPosition);
+    }
+  }
+
+  private static class IntegerTreeWriter extends TreeWriter {
+    private final RunLengthIntegerWriter writer;
+    private final ShortObjectInspector shortInspector;
+    private final IntObjectInspector intInspector;
+    private final LongObjectInspector longInspector;
+
+    IntegerTreeWriter(int columnId,
+                      ObjectInspector inspector,
+                      SectionWriter writer,
+                      boolean nullable) throws IOException {
+      super(columnId, inspector, writer, nullable);
+      PositionedOutputStream out = writer.createSection(id,
+        OrcProto.StripeSection.Kind.DATA);
+      this.writer = new RunLengthIntegerWriter(out, true);
+      if (inspector instanceof IntObjectInspector) {
+        intInspector = (IntObjectInspector) inspector;
+        shortInspector = null;
+        longInspector = null;
+      } else {
+        intInspector = null;
+        if (inspector instanceof LongObjectInspector) {
+          longInspector = (LongObjectInspector) inspector;
+          shortInspector = null;
+        } else {
+          shortInspector = (ShortObjectInspector) inspector;
+          longInspector = null;
+        }
+      }
+    }
+
+    @Override
+    void write(Object obj) throws IOException {
+      super.write(obj);
+      if (obj != null) {
+        long val;
+        if (intInspector != null) {
+          val = intInspector.get(obj);
+        } else if (longInspector != null) {
+          val = longInspector.get(obj);
+        } else {
+          val = shortInspector.get(obj);
+        }
+        stripeStatistics.updateInteger(val);
+        writer.write(val);
+      }
+    }
+
+    @Override
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
+      writer.flush();
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      writer.getPosition(rowIndexPosition);
+    }
+  }
+
+  private static class FloatTreeWriter extends TreeWriter {
+    private final PositionedOutputStream stream;
+
+    FloatTreeWriter(int columnId,
+                      ObjectInspector inspector,
+                      SectionWriter writer,
+                      boolean nullable) throws IOException {
+      super(columnId, inspector, writer, nullable);
+      this.stream = writer.createSection(id,
+        OrcProto.StripeSection.Kind.DATA);
+    }
+
+    @Override
+    void write(Object obj) throws IOException {
+      super.write(obj);
+      if (obj != null) {
+        float val = ((FloatObjectInspector) inspector).get(obj);
+        stripeStatistics.updateDouble(val);
+        SerializationUtils.writeFloat(stream, val);
+      }
+    }
+
+    @Override
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
+      stream.flush();
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      stream.getPosition(rowIndexPosition);
+    }
+  }
+
+  private static class DoubleTreeWriter extends TreeWriter {
+    private final PositionedOutputStream stream;
+
+    DoubleTreeWriter(int columnId,
+                    ObjectInspector inspector,
+                    SectionWriter writer,
+                    boolean nullable) throws IOException {
+      super(columnId, inspector, writer, nullable);
+      this.stream = writer.createSection(id,
+        OrcProto.StripeSection.Kind.DATA);
+    }
+
+    @Override
+    void write(Object obj) throws IOException {
+      super.write(obj);
+      if (obj != null) {
+        double val = ((DoubleObjectInspector) inspector).get(obj);
+        stripeStatistics.updateDouble(val);
+        SerializationUtils.writeDouble(stream, val);
+      }
+    }
+
+    @Override
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
+      stream.flush();
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      stream.getPosition(rowIndexPosition);
+    }
+  }
+
+  private static class StringTreeWriter extends TreeWriter {
+    private final PositionedOutputStream stringOutput;
+    private final RunLengthIntegerWriter lengthOutput;
+    private final RunLengthIntegerWriter rowOutput;
+    private final RunLengthIntegerWriter countOutput;
+    private final StringRedBlackTree dictionary = new StringRedBlackTree();
+    private final DynamicIntArray rows = new DynamicIntArray();
+
+    StringTreeWriter(int columnId,
+                     ObjectInspector inspector,
+                     SectionWriter writer,
+                     boolean nullable) throws IOException {
+      super(columnId, inspector, writer, nullable);
+      stringOutput = writer.createSection(id,
+        OrcProto.StripeSection.Kind.DICTIONARY_DATA);
+      lengthOutput = new RunLengthIntegerWriter(writer.createSection(id,
+        OrcProto.StripeSection.Kind.LENGTH), false);
+      rowOutput = new RunLengthIntegerWriter(writer.createSection(id,
+        OrcProto.StripeSection.Kind.DATA), false);
+      countOutput = new RunLengthIntegerWriter(writer.createSection(id,
+        OrcProto.StripeSection.Kind.DICTIONARY_COUNT), false);
+    }
+
+    @Override
+    void write(Object obj) throws IOException {
+      super.write(obj);
+      if (obj != null) {
+        String val = ((StringObjectInspector) inspector)
+          .getPrimitiveJavaObject(obj);
+        rows.add(dictionary.add(val));
+        stripeStatistics.updateString(val);
+      }
+    }
+
+    @Override
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
+      final int[] dumpOrder = new int[dictionary.size()];
+      dictionary.visit(new StringRedBlackTree.Visitor() {
+        int currentId = 0;
+        @Override
+        public void visit(StringRedBlackTree.VisitorContext context) throws IOException {
+          context.writeBytes(stringOutput);
+          lengthOutput.write(context.getLength());
+          dumpOrder[context.getOriginalPosition()] = currentId++;
+          countOutput.write(context.getCount());
+        }
+      });
+      int length = rows.size();
+      for(int i=0; i < length; ++i) {
+        rowOutput.write(dumpOrder[rows.get(i)]);
+      }
+      stringOutput.flush();
+      lengthOutput.flush();
+      rowOutput.flush();
+      countOutput.flush();
+      dictionary.clear();
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      // TODO????
+    }
+  }
+
+  private static class BinaryTreeWriter extends TreeWriter {
+    private final PositionedOutputStream stream;
+    private final RunLengthIntegerWriter length;
+
+    BinaryTreeWriter(int columnId,
+                     ObjectInspector inspector,
+                     SectionWriter writer,
+                     boolean nullable) throws IOException {
+      super(columnId, inspector, writer, nullable);
+      this.stream = writer.createSection(id,
+          OrcProto.StripeSection.Kind.DATA);
+      this.length = new RunLengthIntegerWriter(writer.createSection(id,
+          OrcProto.StripeSection.Kind.LENGTH), false);
+    }
+
+    @Override
+    void write(Object obj) throws IOException {
+      super.write(obj);
+      if (obj != null) {
+        BytesWritable val =
+            ((BinaryObjectInspector) inspector).getPrimitiveWritableObject(obj);
+        stream.write(val.getBytes(), 0, val.getLength());
+        length.write(val.getLength());
+      }
+    }
+
+    @Override
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
+      stream.flush();
+      length.flush();
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      stream.getPosition(rowIndexPosition);
+      length.getPosition(rowIndexPosition);
+    }
+  }
+
+  static final int MILLIS_PER_SECOND = 1000;
+  static final long BASE_TIMESTAMP =
+      Timestamp.valueOf("2015-01-01 00:00:00").getTime() / MILLIS_PER_SECOND;
+
+  private static class TimestampTreeWriter extends TreeWriter {
+    private final RunLengthIntegerWriter seconds;
+    private final RunLengthIntegerWriter nanos;
+
+    TimestampTreeWriter(int columnId,
+                     ObjectInspector inspector,
+                     SectionWriter writer,
+                     boolean nullable) throws IOException {
+      super(columnId, inspector, writer, nullable);
+      this.seconds = new RunLengthIntegerWriter(writer.createSection(id,
+          OrcProto.StripeSection.Kind.DATA), true);
+      this.nanos = new RunLengthIntegerWriter(writer.createSection(id,
+          OrcProto.StripeSection.Kind.NANO_DATA), false);
+    }
+
+    @Override
+    void write(Object obj) throws IOException {
+      super.write(obj);
+      if (obj != null) {
+        Timestamp val =
+            ((TimestampObjectInspector) inspector).
+                getPrimitiveJavaObject(obj);
+        seconds.write((val.getTime() / MILLIS_PER_SECOND) - BASE_TIMESTAMP);
+        nanos.write(formatNanos(val.getNanos()));
+      }
+    }
+
+    @Override
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
+      seconds.flush();
+      nanos.flush();
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      seconds.getPosition(rowIndexPosition);
+      nanos.getPosition(rowIndexPosition);
+    }
+
+    private static long formatNanos(int nanos) {
+      if (nanos == 0) {
+        return 0;
+      } else if (nanos % 100 != 0) {
+        return ((long) nanos) << 3;
+      } else {
+        nanos /= 100;
+        int trailingZeros = 1;
+        while (nanos % 10 == 0 && trailingZeros < 7) {
+          nanos /= 10;
+          trailingZeros += 1;
+        }
+        return ((long) nanos) << 3 | trailingZeros;
+      }
+    }
+  }
+
+  private static class StructTreeWriter extends TreeWriter {
     private final List<? extends StructField> fields;
     StructTreeWriter(int columnId,
                      ObjectInspector inspector,
@@ -364,175 +756,199 @@ class WriterImpl implements Writer {
     }
   }
 
-  class IntegerTreeWriter extends TreeWriter {
-    private final RunLengthIntegerWriter writer;
+  private static class ListTreeWriter extends TreeWriter {
+    private final RunLengthIntegerWriter lengths;
 
-    IntegerTreeWriter(int columnId,
-                      ObjectInspector inspector,
-                      SectionWriter writer,
-                      boolean nullable) throws IOException {
+    ListTreeWriter(int columnId,
+                   ObjectInspector inspector,
+                   SectionWriter writer,
+                   boolean nullable) throws IOException {
       super(columnId, inspector, writer, nullable);
-      PositionedOutputStream out = writer.createSection(id,
-        OrcProto.StripeSection.Kind.INT_ROW_DATA);
-      this.writer = new RunLengthIntegerWriter(out, true);
-    }
-
-    @Override
-    void write(Object obj) throws IOException {
-      if (obj != null) {
-        Integer val = ((IntObjectInspector) inspector).get(obj);
-        stripeStatistics.updateInteger(val);
-        writer.write(val);
-      }
-      super.write(obj);
-    }
-
-    @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
-      writer.flush();
-    }
-
-    @Override
-    void recordPosition() throws IOException {
-      super.recordPosition();
-      writer.getPosition(rowIndexPosition);
-    }
-  }
-
-  class FloatTreeWriter extends TreeWriter {
-    private final Map<Float,Integer> idMap = new HashMap<Float,Integer>();
-    private final RunLengthIntegerWriter rowData;
-    private final PositionedOutputStream dictionary;
-
-    FloatTreeWriter(int columnId,
-                      ObjectInspector inspector,
-                      SectionWriter writer,
-                      boolean nullable) throws IOException {
-      super(columnId, inspector, writer, nullable);
-      this.dictionary = writer.createSection(id,
-        OrcProto.StripeSection.Kind.FLOAT_ROW_DATA);
-      this.rowData = new RunLengthIntegerWriter(writer.createSection(id,
-        OrcProto.StripeSection.Kind.INT_ROW_DATA), false);
+      ListObjectInspector listObjectInspector = (ListObjectInspector) inspector;
+      childrenWriters = new TreeWriter[1];
+      childrenWriters[0] =
+        createTreeWriter(listObjectInspector.getListElementObjectInspector(),
+          writer, true);
+      lengths =
+        new RunLengthIntegerWriter(writer.createSection(columnId,
+          OrcProto.StripeSection.Kind.LENGTH), false);
     }
 
     @Override
     void write(Object obj) throws IOException {
       super.write(obj);
       if (obj != null) {
-        Float val = ((FloatObjectInspector) inspector).get(obj);
-        stripeStatistics.updateDouble(val);
-        Integer id = idMap.get(val);
-        if (id == null) {
-          id = idMap.size();
-          idMap.put(val, id);
-          SerializationUtils.writeFloat(dictionary, val);
+        ListObjectInspector insp = (ListObjectInspector) inspector;
+        int len = insp.getListLength(obj);
+        lengths.write(len);
+        for(int i=0; i < len; ++i) {
+          childrenWriters[0].write(insp.getListElement(obj, i));
         }
-        rowData.write(id);
       }
     }
 
     @Override
     void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
       super.writeStripe(builder);
-      dictionary.flush();
-      rowData.flush();
+      lengths.flush();
+      for(TreeWriter child: childrenWriters) {
+        child.writeStripe(builder);
+      }
     }
 
     @Override
     void recordPosition() throws IOException {
       super.recordPosition();
-      rowData.getPosition(rowIndexPosition);
+      lengths.getPosition(rowIndexPosition);
     }
   }
 
-  class StringTreeWriter extends TreeWriter {
-    private final PositionedOutputStream stringOutput;
-    private final RunLengthIntegerWriter lengthOutput;
-    private final RunLengthIntegerWriter rowOutput;
-    private final RunLengthIntegerWriter countOutput;
-    private final StringRedBlackTree dictionary = new StringRedBlackTree();
-    private final DynamicIntArray rows = new DynamicIntArray();
+  private static class MapTreeWriter extends TreeWriter {
+    private final RunLengthIntegerWriter lengths;
 
-    StringTreeWriter(int columnId,
-                     ObjectInspector inspector,
-                     SectionWriter writer,
-                     boolean nullable) throws IOException {
+    MapTreeWriter(int columnId,
+                  ObjectInspector inspector,
+                  SectionWriter writer,
+                  boolean nullable) throws IOException {
       super(columnId, inspector, writer, nullable);
-      stringOutput = writer.createSection(id,
-        OrcProto.StripeSection.Kind.DICTIONARY_DATA);
-      lengthOutput = new RunLengthIntegerWriter(writer.createSection(id,
-        OrcProto.StripeSection.Kind.DICTIONARY_LENGTH), false);
-      rowOutput = new RunLengthIntegerWriter(writer.createSection(id,
-        OrcProto.StripeSection.Kind.DICTIONARY_ROWS), false);
-      countOutput = new RunLengthIntegerWriter(writer.createSection(id,
-        OrcProto.StripeSection.Kind.DICTIONARY_COUNT), false);
+      MapObjectInspector insp = (MapObjectInspector) inspector;
+      childrenWriters = new TreeWriter[2];
+      childrenWriters[0] =
+        createTreeWriter(insp.getMapKeyObjectInspector(), writer, true);
+      childrenWriters[1] =
+        createTreeWriter(insp.getMapValueObjectInspector(), writer, true);
+      lengths =
+        new RunLengthIntegerWriter(writer.createSection(columnId,
+          OrcProto.StripeSection.Kind.LENGTH), false);
     }
 
     @Override
     void write(Object obj) throws IOException {
-      if (obj != null) {
-        String val = ((StringObjectInspector) inspector)
-          .getPrimitiveJavaObject(obj);
-        rows.add(dictionary.add(val));
-        stripeStatistics.updateString(val);
-      }
       super.write(obj);
+      if (obj != null) {
+        MapObjectInspector insp = (MapObjectInspector) inspector;
+        int len = insp.getMapSize(obj);
+        lengths.write(len);
+        // this sucks, but it will have to do until we can get a better
+        // accessor in the MapObjectInspector.
+        Map<?,?> valueMap = insp.getMap(obj);
+        for(Map.Entry<?,?> entry: valueMap.entrySet()) {
+          childrenWriters[0].write(entry.getKey());
+          childrenWriters[1].write(entry.getValue());
+        }
+      }
     }
 
     @Override
     void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
       super.writeStripe(builder);
-      final int[] dumpOrder = new int[dictionary.size()];
-      dictionary.visit(new StringRedBlackTree.Visitor() {
-        int currentId = 0;
-        @Override
-        public void visit(StringRedBlackTree.VisitorContext context) throws IOException {
-          context.writeBytes(stringOutput);
-          lengthOutput.write(context.getLength());
-          dumpOrder[context.getOriginalPosition()] = currentId++;
-          countOutput.write(context.getCount());
-        }
-      });
-      int length = rows.size();
-      for(int i=0; i < length; ++i) {
-        rowOutput.write(dumpOrder[rows.get(i)]);
+      lengths.flush();
+      for(TreeWriter child: childrenWriters) {
+        child.writeStripe(builder);
       }
-      stringOutput.flush();
-      lengthOutput.flush();
-      rowOutput.flush();
-      countOutput.flush();
-      dictionary.clear();
     }
 
     @Override
     void recordPosition() throws IOException {
       super.recordPosition();
-      // TODO????
+      lengths.getPosition(rowIndexPosition);
     }
   }
 
-  TreeWriter createTreeWriter(ObjectInspector inspector,
-                              SectionWriter writer,
-                              boolean nullable) throws IOException {
+  private static class UnionTreeWriter extends TreeWriter {
+    private final RunLengthByteWriter tags;
+
+    UnionTreeWriter(int columnId,
+                  ObjectInspector inspector,
+                  SectionWriter writer,
+                  boolean nullable) throws IOException {
+      super(columnId, inspector, writer, nullable);
+      UnionObjectInspector insp = (UnionObjectInspector) inspector;
+      List<ObjectInspector> choices = insp.getObjectInspectors();
+      childrenWriters = new TreeWriter[choices.size()];
+      for(int i=0; i < childrenWriters.length; ++i) {
+        childrenWriters[i] = createTreeWriter(choices.get(i), writer, true);
+      }
+      tags =
+        new RunLengthByteWriter(writer.createSection(columnId,
+          OrcProto.StripeSection.Kind.DATA));
+    }
+
+    @Override
+    void write(Object obj) throws IOException {
+      super.write(obj);
+      if (obj != null) {
+        UnionObjectInspector insp = (UnionObjectInspector) inspector;
+        byte tag = insp.getTag(obj);
+        tags.write(tag);
+        childrenWriters[tag].write(insp.getField(obj));
+      }
+    }
+
+    @Override
+    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+      super.writeStripe(builder);
+      tags.flush();
+      for(TreeWriter child: childrenWriters) {
+        child.writeStripe(builder);
+      }
+    }
+
+    @Override
+    void recordPosition() throws IOException {
+      super.recordPosition();
+      tags.getPosition(rowIndexPosition);
+    }
+  }
+
+  private static TreeWriter createTreeWriter(ObjectInspector inspector,
+                                             SectionWriter writer,
+                                             boolean nullable
+                                            ) throws IOException {
     switch (inspector.getCategory()) {
       case PRIMITIVE:
         switch (((PrimitiveObjectInspector) inspector).getPrimitiveCategory()) {
+          case BOOLEAN:
+            return new BooleanTreeWriter(writer.getNextColumnId(), inspector,
+              writer, nullable);
+          case BYTE:
+            return new ByteTreeWriter(writer.getNextColumnId(), inspector,
+              writer, nullable);
+          case SHORT:
           case INT:
-            return new IntegerTreeWriter(columnCount++, inspector, writer,
-              nullable);
+          case LONG:
+            return new IntegerTreeWriter(writer.getNextColumnId(), inspector,
+              writer, nullable);
           case FLOAT:
-            return new FloatTreeWriter(columnCount++, inspector, writer,
-              nullable);
+            return new FloatTreeWriter(writer.getNextColumnId(), inspector,
+              writer, nullable);
+          case DOUBLE:
+            return new DoubleTreeWriter(writer.getNextColumnId(), inspector,
+              writer, nullable);
           case STRING:
-            return new StringTreeWriter(columnCount++, inspector, writer,
-              nullable);
+            return new StringTreeWriter(writer.getNextColumnId(), inspector,
+              writer, nullable);
+          case BINARY:
+            return new BinaryTreeWriter(writer.getNextColumnId(), inspector,
+                writer, nullable);
+          case TIMESTAMP:
+            return new TimestampTreeWriter(writer.getNextColumnId(), inspector,
+                writer, nullable);
           default:
             throw new IllegalArgumentException("Bad primitive category " +
               ((PrimitiveObjectInspector) inspector).getPrimitiveCategory());
         }
       case STRUCT:
-        return new StructTreeWriter(columnCount++, inspector, writer,
+        return new StructTreeWriter(writer.getNextColumnId(), inspector, writer,
+          nullable);
+      case MAP:
+        return new MapTreeWriter(writer.getNextColumnId(), inspector, writer,
+          nullable);
+      case LIST:
+        return new ListTreeWriter(writer.getNextColumnId(), inspector, writer,
+          nullable);
+      case UNION:
+        return new UnionTreeWriter(writer.getNextColumnId(), inspector, writer,
           nullable);
       default:
         throw new IllegalArgumentException("Bad category: " +
@@ -551,16 +967,16 @@ class WriterImpl implements Writer {
             type.setKind(OrcProto.Type.Kind.BOOLEAN);
             break;
           case BYTE:
-            type.setKind(OrcProto.Type.Kind.TINYINT);
+            type.setKind(OrcProto.Type.Kind.BYTE);
             break;
           case SHORT:
-            type.setKind(OrcProto.Type.Kind.SMALLINT);
+            type.setKind(OrcProto.Type.Kind.SHORT);
             break;
           case INT:
             type.setKind(OrcProto.Type.Kind.INT);
             break;
           case LONG:
-            type.setKind(OrcProto.Type.Kind.BIGINT);
+            type.setKind(OrcProto.Type.Kind.LONG);
             break;
           case FLOAT:
             type.setKind(OrcProto.Type.Kind.FLOAT);
@@ -575,7 +991,7 @@ class WriterImpl implements Writer {
             type.setKind(OrcProto.Type.Kind.BINARY);
             break;
           case TIMESTAMP:
-            type.setKind(OrcProto.Type.Kind.DATETIME);
+            type.setKind(OrcProto.Type.Kind.TIMESTAMP);
             break;
           default:
             throw new IllegalArgumentException("Unknown primitive category: " +
@@ -584,7 +1000,7 @@ class WriterImpl implements Writer {
         }
         break;
       case LIST:
-        type.setKind(OrcProto.Type.Kind.ARRAY);
+        type.setKind(OrcProto.Type.Kind.LIST);
         type.addSubtypes(treeWriter.childrenWriters[0].id);
         break;
       case MAP:
@@ -618,7 +1034,7 @@ class WriterImpl implements Writer {
     makeFlat(builder, treeWriter);
   }
 
-  private FSDataOutputStream getWriter() throws IOException {
+  private void ensureWriter() throws IOException {
     if (rawWriter == null) {
       rawWriter = fs.create(path, false, BUFFER_SIZE,
         fs.getDefaultReplication(), Math.min(stripeSize * 2L, Integer.MAX_VALUE));
@@ -628,20 +1044,21 @@ class WriterImpl implements Writer {
         new DirectStream(rawWriter));
       protobufWriter = CodedOutputStream.newInstance(writer);
     }
-    return rawWriter;
   }
 
   private void createRowIndexEntry() throws IOException {
+    if (rowsInIndex > 0) {
     OrcProto.RowIndexEntry.Builder entry = OrcProto.RowIndexEntry.newBuilder();
     entry.setRowCount(rowsInIndex);
-    rowsInStripe += rowsInIndex;
-    rowCount += rowsInIndex;
-    rowsInIndex = 0;
-    // get the column positions and stats for this index entry
-    treeWriter.getPosition(entry);
-    rowIndex.addEntry(entry);
-    // record the current positions for next time.
-    treeWriter.recordPosition();
+      rowsInStripe += rowsInIndex;
+      rowCount += rowsInIndex;
+      rowsInIndex = 0;
+      // get the column positions and stats for this index entry
+      treeWriter.getPosition(entry);
+      rowIndex.addEntry(entry);
+      // record the current positions for next time.
+      treeWriter.recordPosition();
+    }
   }
 
   private void writeRowIndex() throws IOException {
@@ -653,37 +1070,39 @@ class WriterImpl implements Writer {
   }
 
   private void flushStripe() throws IOException {
-    getWriter();
-    writeRowIndex();
-    OrcProto.StripeFooter.Builder builder = OrcProto.StripeFooter.newBuilder();
-    treeWriter.writeStripe(builder);
-    long start = rawWriter.getPos();
-    long section = start;
-    for(Map.Entry<StreamName,BufferedStream> pair: streams.entrySet()) {
-      BufferedStream stream = pair.getValue();
-      stream.flush();
-      stream.spillTo(rawWriter);
-      stream.clear();
+    ensureWriter();
+    if (rowsInStripe != 0) {
+      writeRowIndex();
+      OrcProto.StripeFooter.Builder builder = OrcProto.StripeFooter.newBuilder();
+      treeWriter.writeStripe(builder);
+      long start = rawWriter.getPos();
+      long section = start;
+      for(Map.Entry<StreamName,BufferedStream> pair: streams.entrySet()) {
+        BufferedStream stream = pair.getValue();
+        stream.flush();
+        stream.spillTo(rawWriter);
+        stream.clear();
+        long end = rawWriter.getPos();
+        StreamName name = pair.getKey();
+        builder.addSections(OrcProto.StripeSection.newBuilder()
+            .setColumn(name.column)
+            .setKind(name.kind)
+            .setLength(end-section));
+        section = end;
+      }
+      builder.build().writeTo(protobufWriter);
+      protobufWriter.flush();
+      writer.flush();
       long end = rawWriter.getPos();
-      StreamName name = pair.getKey();
-      builder.addSections(OrcProto.StripeSection.newBuilder()
-        .setColumn(name.column)
-        .setKind(name.kind)
-        .setLength(end-section));
-      section = end;
+      OrcProto.StripeInformation dirEntry =
+          OrcProto.StripeInformation.newBuilder()
+              .setOffset(start)
+              .setLength(end - start)
+              .setNumberOfRows(rowsInStripe)
+              .setTailLength(end - section).build();
+      stripes.add(dirEntry);
+      rowsInStripe = 0;
     }
-    builder.build().writeTo(protobufWriter);
-    protobufWriter.flush();
-    writer.flush();
-    long end = rawWriter.getPos();
-    OrcProto.StripeInformation dirEntry =
-      OrcProto.StripeInformation.newBuilder()
-        .setOffset(start)
-        .setLength(end - start)
-        .setNumberOfRows(rowsInStripe)
-        .setTailLength(end - section).build();
-    stripes.add(dirEntry);
-    rowsInStripe = 0;
   }
 
   private OrcProto.CompressionKind writeCompressionKind(CompressionKind kind) {
@@ -706,7 +1125,7 @@ class WriterImpl implements Writer {
   }
 
   private int writeFooter(long bodyLength) throws IOException {
-    getWriter();
+    ensureWriter();
     OrcProto.Footer.Builder builder = OrcProto.Footer.newBuilder();
     builder.setBodyLength(bodyLength);
     builder.setHeaderLength(headerLength);
@@ -751,7 +1170,7 @@ class WriterImpl implements Writer {
   }
 
   @Override
-  public void addUserMetadata(String name, ByteBuffer value) throws IOException {
+  public void addUserMetadata(String name, ByteBuffer value) {
     userMetadata.put(name, ByteString.copyFrom(value));
   }
 
@@ -772,9 +1191,8 @@ class WriterImpl implements Writer {
   public void close() throws IOException {
     createRowIndexEntry();
     flushStripe();
-    FSDataOutputStream file = getWriter();
-    int footerLength = writeFooter(file.getPos());
-    file.writeByte(writePostScript(footerLength));
-    file.close();
+    int footerLength = writeFooter(rawWriter.getPos());
+    rawWriter.writeByte(writePostScript(footerLength));
+    rawWriter.close();
   }
 }

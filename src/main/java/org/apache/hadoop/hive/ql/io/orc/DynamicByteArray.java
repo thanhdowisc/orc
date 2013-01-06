@@ -20,6 +20,7 @@ package org.apache.hadoop.hive.ql.io.orc;
 import org.apache.hadoop.io.Text;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
@@ -111,6 +112,28 @@ class DynamicByteArray {
     return result;
   }
 
+  /**
+   * Read the entire stream into this array
+   * @param in the stream to read from
+   * @throws IOException
+   */
+  public void readAll(InputStream in) throws IOException {
+    int currentChunk = length / chunkSize;
+    int currentOffset = length % chunkSize;
+    int currentLength = in.read(data[currentChunk], currentOffset,
+      chunkSize - currentOffset);
+    while (currentLength > 0) {
+      length += currentLength;
+      currentOffset = length % chunkSize;
+      if (currentOffset == 0) {
+        currentChunk = length / chunkSize;
+        grow(currentChunk);
+      }
+      currentLength = in.read(data[currentChunk], currentOffset,
+        chunkSize - currentOffset);
+    }
+  }
+
   public int compare(byte[] other, int otherOffset, int otherLength,
                      int ourOffset, int ourLength) {
     int currentChunk = ourOffset / chunkSize;
@@ -177,7 +200,7 @@ class DynamicByteArray {
 
   public String toString() {
     int i;
-    StringBuffer sb = new StringBuffer(length*3);
+    StringBuilder sb = new StringBuilder(length*3);
 
     sb.append('{');
     int l = length-1;

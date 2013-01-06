@@ -33,14 +33,14 @@ class RunLengthIntegerWriter {
   private static final int MAX_REPEAT_SIZE = 127 + MIN_REPEAT_SIZE;
   private final PositionedOutputStream output;
   private final boolean signed;
-  private final int[] literals = new int[MAX_LITERAL_SIZE];
+  private final long[] literals = new long[MAX_LITERAL_SIZE];
   private int numLiterals = 0;
-  private int delta = 0;
+  private long delta = 0;
   private boolean repeat = false;
   private int tailRunLength = 0;
 
   RunLengthIntegerWriter(PositionedOutputStream output,
-                         boolean signed) throws IOException {
+                         boolean signed) {
     this.output = output;
     this.signed = signed;
   }
@@ -49,19 +49,19 @@ class RunLengthIntegerWriter {
     if (numLiterals != 0) {
       if (repeat) {
         output.write(numLiterals - MIN_REPEAT_SIZE);
-        output.write(delta);
+        output.write((byte) delta);
         if (signed) {
-          SerializationUtils.writeVsint(output, literals[0]);
+          SerializationUtils.writeVslong(output, literals[0]);
         } else {
-          SerializationUtils.writeVuint(output, literals[0]);
+          SerializationUtils.writeVulong(output, literals[0]);
         }
       } else {
         output.write(-numLiterals);
         for(int i=0; i < numLiterals; ++i) {
           if (signed) {
-            SerializationUtils.writeVsint(output, literals[i]);
+            SerializationUtils.writeVslong(output, literals[i]);
           } else {
-            SerializationUtils.writeVuint(output, literals[i]);
+            SerializationUtils.writeVulong(output, literals[i]);
           }
         }
       }
@@ -76,7 +76,7 @@ class RunLengthIntegerWriter {
     output.flush();
   }
 
-  void write(int value) throws IOException {
+  void write(long value) throws IOException {
     if (numLiterals == 0) {
       literals[numLiterals++] = value;
       tailRunLength = 1;
@@ -115,7 +115,7 @@ class RunLengthIntegerWriter {
           numLiterals += 1;
         } else {
           numLiterals -= MIN_REPEAT_SIZE - 1;
-          int base = literals[numLiterals];
+          long base = literals[numLiterals];
           writeValues();
           literals[0] = base;
           repeat = true;

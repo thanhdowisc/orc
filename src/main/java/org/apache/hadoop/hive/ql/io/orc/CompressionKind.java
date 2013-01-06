@@ -19,5 +19,5 @@
 package org.apache.hadoop.hive.ql.io.orc;
 
 public enum CompressionKind {
-  NONE, ZLIB, SNAPPY, LZO;
+  NONE, ZLIB, SNAPPY, LZO
 }

@@ -62,9 +62,8 @@ public class OrcSerde implements SerDe {
     // Parse the configuration parameters
     ArrayList<String> columnNames = new ArrayList<String>();
     if (columnNameProperty != null && columnNameProperty.length() > 0) {
-      String[] names = columnNameProperty.split(",");
-      for(int i=0; i < names.length; i++) {
-        columnNames.add(names[i]);
+      for(String name: columnNameProperty.split(",")) {
+        columnNames.add(name);
       }
     } else {
       columnNames = new ArrayList<String>();
