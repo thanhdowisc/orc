@@ -38,13 +38,6 @@ class BitFieldReader {
     }
   }
 
-  boolean hasNext() throws IOException {
-    if (bitsLeft == 0) {
-      readByte();
-    }
-    return bitsLeft > 0;
-  }
-
   int next() throws IOException {
     int result = 0;
     int bitsLeftToRead = bitSize;

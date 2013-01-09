@@ -18,7 +18,7 @@
   </component>
   <component name="CoverageDataManager">
     <SUITE FILE_PATH="coverage/orc$OrcFile.coverage" NAME="OrcFile Coverage Results" MODIFIED="1353388538382" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="idea" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" />
-    <SUITE FILE_PATH="coverage/orc$TestStringRedBlackTree.coverage" NAME="TestStringRedBlackTree Coverage Results" MODIFIED="1357761176720" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="idea" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="true">
+    <SUITE FILE_PATH="coverage/orc$TestStringRedBlackTree.coverage" NAME="TestStringRedBlackTree Coverage Results" MODIFIED="1357761281734" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="idea" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="true">
       <FILTER>org.apache.hadoop.hive.ql.io.orc.*</FILTER>
     </SUITE>
     <SUITE FILE_PATH="coverage/orc$ZlibCodec.coverage" NAME="ZlibCodec Coverage Results" MODIFIED="1353423936877" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="idea" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false">
@@ -196,7 +196,6 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/FileDump.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/RedBlackTree.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/RunLengthIntegerReader.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/RunLengthByteReader.java" />
@@ -212,6 +211,7 @@
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/SerializationUtils.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/RecordReaderImpl.java" />
         <option value="$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestOrcFile.java" />
+        <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/BitFieldReader.java" />
       </list>
     </option>
   </component>
