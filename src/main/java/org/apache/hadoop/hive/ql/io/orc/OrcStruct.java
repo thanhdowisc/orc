@@ -375,6 +375,8 @@ final class OrcStruct implements Writable {
         return PrimitiveObjectInspectorFactory.writableBinaryObjectInspector;
       case STRING:
         return PrimitiveObjectInspectorFactory.writableStringObjectInspector;
+      case TIMESTAMP:
+        return PrimitiveObjectInspectorFactory.javaTimestampObjectInspector;
       case STRUCT:
         return new OrcStructInspector(columnId, types);
       case UNION:

@@ -249,5 +249,6 @@ public class TestStringRedBlackTree {
     test1.test1();
     test1.emptyFile();
     test1.metaData();
+    test1.testUnionAndTimestamp();
   }
 }

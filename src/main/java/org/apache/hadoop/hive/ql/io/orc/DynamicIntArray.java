@@ -117,6 +117,7 @@ class DynamicIntArray {
     for(int i=0; i < data.length; ++i) {
       data[i] = null;
     }
+    initializedChunks = 0;
   }
 
   public String toString() {

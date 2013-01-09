@@ -605,6 +605,7 @@ class WriterImpl implements Writer {
       rowOutput.flush();
       countOutput.flush();
       dictionary.clear();
+      rows.clear();
     }
 
     @Override
@@ -956,8 +957,8 @@ class WriterImpl implements Writer {
     }
   }
 
-  private void makeFlat(OrcProto.Footer.Builder builder,
-                       TreeWriter treeWriter) {
+  private static void writeTypes(OrcProto.Footer.Builder builder,
+                                 TreeWriter treeWriter) {
     OrcProto.Type.Builder type = OrcProto.Type.newBuilder();
     switch (treeWriter.inspector.getCategory()) {
       case PRIMITIVE:
@@ -1019,6 +1020,9 @@ class WriterImpl implements Writer {
         break;
       case UNION:
         type.setKind(OrcProto.Type.Kind.UNION);
+        for(TreeWriter child: treeWriter.childrenWriters) {
+          type.addSubtypes(child.id);
+        }
         break;
       default:
         throw new IllegalArgumentException("Unknown category: " +
@@ -1026,12 +1030,8 @@ class WriterImpl implements Writer {
     }
     builder.addTypes(type);
     for(TreeWriter child: treeWriter.childrenWriters) {
-      makeFlat(builder, child);
+      writeTypes(builder, child);
     }
-  }
-
-  private void writeTypes(OrcProto.Footer.Builder builder) {
-    makeFlat(builder, treeWriter);
   }
 
   private void ensureWriter() throws IOException {
@@ -1102,6 +1102,8 @@ class WriterImpl implements Writer {
               .setTailLength(end - section).build();
       stripes.add(dirEntry);
       rowsInStripe = 0;
+      rowsInIndex = 0;
+      bytesInStripe = 0;
     }
   }
 
@@ -1131,7 +1133,7 @@ class WriterImpl implements Writer {
     builder.setHeaderLength(headerLength);
     builder.setNumberOfRows(rowCount);
     // serialize the types
-    writeTypes(builder);
+    writeTypes(builder, treeWriter);
     // add the stripe information
     for(OrcProto.StripeInformation stripe: stripes) {
       builder.addStripes(stripe);

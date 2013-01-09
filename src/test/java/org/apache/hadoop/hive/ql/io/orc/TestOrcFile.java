@@ -21,13 +21,24 @@ package org.apache.hadoop.hive.ql.io.orc;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.serde2.objectinspector.ListObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.MapObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StandardStructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.BinaryObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.BooleanObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.ByteObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.DoubleObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.FloatObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.IntObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.LongObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.ShortObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
@@ -37,12 +48,11 @@ import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertFalse;
-import static junit.framework.Assert.assertTrue;
+import static junit.framework.Assert.*;
 
 /**
  * Tests for the top level reader/writer of ORC files.
@@ -165,11 +175,12 @@ public class TestOrcFile {
     writer.addRow(new BigRow(true, (byte) 100, (short) 2048, 65536, 42L,
         (float) 2.0, -5.0, bytes(), "bye",
         new MiddleStruct(inner(1, "bye"), inner(2, "sigh")),
-        list(inner(3, "good"), inner(4, "bad")),
+        list(inner(100000000, "cat"), inner(-100000, "in"), inner(1234, "hat")),
         map(inner(5,"chani"), inner(1,"mauddib"))));
     writer.close();
     Reader reader = OrcFile.createReader(fs, p, conf);
-    ObjectInspector readerInspector = reader.getObjectInspector();
+    StructObjectInspector readerInspector =
+        (StructObjectInspector) reader.getObjectInspector();
     assertEquals(ObjectInspector.Category.STRUCT,
         readerInspector.getCategory());
     assertEquals("struct{boolean1: boolean, byte1: tinyint, short1: smallint, "
@@ -178,6 +189,172 @@ public class TestOrcFile {
         + " string1: string}>}, list: list<struct{int1: int, string1: string}>,"
         + " map: map<string, struct{int1: int, string1: string}>}",
         readerInspector.getTypeName());
+    List<? extends StructField> fields =
+        readerInspector.getAllStructFieldRefs();
+    BooleanObjectInspector bo = (BooleanObjectInspector) readerInspector.
+        getStructFieldRef("boolean1").getFieldObjectInspector();
+    ByteObjectInspector by = (ByteObjectInspector) readerInspector.
+        getStructFieldRef("byte1").getFieldObjectInspector();
+    ShortObjectInspector sh = (ShortObjectInspector) readerInspector.
+        getStructFieldRef("short1").getFieldObjectInspector();
+    IntObjectInspector in = (IntObjectInspector) readerInspector.
+        getStructFieldRef("int1").getFieldObjectInspector();
+    LongObjectInspector lo = (LongObjectInspector) readerInspector.
+        getStructFieldRef("long1").getFieldObjectInspector();
+    FloatObjectInspector fl = (FloatObjectInspector) readerInspector.
+        getStructFieldRef("float1").getFieldObjectInspector();
+    DoubleObjectInspector dbl = (DoubleObjectInspector) readerInspector.
+        getStructFieldRef("double1").getFieldObjectInspector();
+    BinaryObjectInspector bi = (BinaryObjectInspector) readerInspector.
+        getStructFieldRef("bytes1").getFieldObjectInspector();
+    StringObjectInspector st = (StringObjectInspector) readerInspector.
+        getStructFieldRef("string1").getFieldObjectInspector();
+    StructObjectInspector mid = (StructObjectInspector) readerInspector.
+        getStructFieldRef("middle").getFieldObjectInspector();
+    List<? extends StructField> midFields =
+        mid.getAllStructFieldRefs();
+    ListObjectInspector midli =
+        (ListObjectInspector) midFields.get(0).getFieldObjectInspector();
+    StructObjectInspector inner = (StructObjectInspector)
+        midli.getListElementObjectInspector();
+    List<? extends StructField> inFields = inner.getAllStructFieldRefs();
+    ListObjectInspector li = (ListObjectInspector) readerInspector.
+        getStructFieldRef("list").getFieldObjectInspector();
+    MapObjectInspector ma = (MapObjectInspector) readerInspector.
+        getStructFieldRef("map").getFieldObjectInspector();
+    StructObjectInspector lc = (StructObjectInspector)
+        li.getListElementObjectInspector();
+    StringObjectInspector mk = (StringObjectInspector)
+        ma.getMapKeyObjectInspector();
+    StructObjectInspector mv = (StructObjectInspector)
+        ma.getMapValueObjectInspector();
+    RecordReader rows = reader.rows();
+    Object row = rows.next(null);
+    assertNotNull(row);
+    // check the contents of the first row
+    assertEquals(false,
+        bo.get(readerInspector.getStructFieldData(row, fields.get(0))));
+    assertEquals(1, by.get(readerInspector.getStructFieldData(row,
+        fields.get(1))));
+    assertEquals(1024, sh.get(readerInspector.getStructFieldData(row,
+        fields.get(2))));
+    assertEquals(65536, in.get(readerInspector.getStructFieldData(row,
+        fields.get(3))));
+    assertEquals(-4L, lo.get(readerInspector.getStructFieldData(row,
+        fields.get(4))));
+    assertEquals(1.0, fl.get(readerInspector.getStructFieldData(row,
+        fields.get(5))), 0.00001);
+    assertEquals(-5.0, dbl.get(readerInspector.getStructFieldData(row,
+        fields.get(6))), 0.00001);
+    assertEquals(bytes(0,1,2,3,4), bi.getPrimitiveWritableObject(
+        readerInspector.getStructFieldData(row, fields.get(7))));
+    assertEquals("hi", st.getPrimitiveJavaObject(readerInspector.
+        getStructFieldData(row, fields.get(8))));
+    List<?> midRow = midli.getList(mid.getStructFieldData(readerInspector.
+        getStructFieldData(row, fields.get(9)), midFields.get(0)));
+    assertNotNull(midRow);
+    assertEquals(2, midRow.size());
+    assertEquals(1, in.get(inner.getStructFieldData(midRow.get(0),
+        inFields.get(0))));
+    assertEquals("bye", st.getPrimitiveJavaObject(inner.getStructFieldData
+        (midRow.get(0), inFields.get(1))));
+    assertEquals(2, in.get(inner.getStructFieldData(midRow.get(1),
+        inFields.get(0))));
+    assertEquals("sigh", st.getPrimitiveJavaObject(inner.getStructFieldData
+        (midRow.get(1), inFields.get(1))));
+    List<?> list = li.getList(readerInspector.getStructFieldData(row,
+        fields.get(10)));
+    assertEquals(2, list.size());
+    assertEquals(3, in.get(inner.getStructFieldData(list.get(0),
+        inFields.get(0))));
+    assertEquals("good", st.getPrimitiveJavaObject(inner.getStructFieldData
+        (list.get(0), inFields.get(1))));
+    assertEquals(4, in.get(inner.getStructFieldData(list.get(1),
+        inFields.get(0))));
+    assertEquals("bad", st.getPrimitiveJavaObject(inner.getStructFieldData
+        (list.get(1), inFields.get(1))));
+    Map<?,?> map = ma.getMap(readerInspector.getStructFieldData(row,
+        fields.get(11)));
+    assertEquals(0, map.size());
+
+    // check the contents of second row
+    assertEquals(true, rows.hasNext());
+    row = rows.next(row);
+    assertEquals(true,
+        bo.get(readerInspector.getStructFieldData(row, fields.get(0))));
+    assertEquals(100, by.get(readerInspector.getStructFieldData(row,
+        fields.get(1))));
+    assertEquals(2048, sh.get(readerInspector.getStructFieldData(row,
+        fields.get(2))));
+    assertEquals(65536, in.get(readerInspector.getStructFieldData(row,
+        fields.get(3))));
+    assertEquals(42L, lo.get(readerInspector.getStructFieldData(row,
+        fields.get(4))));
+    assertEquals(2.0, fl.get(readerInspector.getStructFieldData(row,
+        fields.get(5))), 0.00001);
+    assertEquals(-5.0, dbl.get(readerInspector.getStructFieldData(row,
+        fields.get(6))), 0.00001);
+    assertEquals(bytes(), bi.getPrimitiveWritableObject(
+        readerInspector.getStructFieldData(row, fields.get(7))));
+    assertEquals("bye", st.getPrimitiveJavaObject(readerInspector.
+        getStructFieldData(row, fields.get(8))));
+    midRow = midli.getList(mid.getStructFieldData(readerInspector.
+        getStructFieldData(row, fields.get(9)), midFields.get(0)));
+    assertNotNull(midRow);
+    assertEquals(2, midRow.size());
+    assertEquals(1, in.get(inner.getStructFieldData(midRow.get(0),
+        inFields.get(0))));
+    assertEquals("bye", st.getPrimitiveJavaObject(inner.getStructFieldData
+        (midRow.get(0), inFields.get(1))));
+    assertEquals(2, in.get(inner.getStructFieldData(midRow.get(1),
+        inFields.get(0))));
+    assertEquals("sigh", st.getPrimitiveJavaObject(inner.getStructFieldData
+        (midRow.get(1), inFields.get(1))));
+    list = li.getList(readerInspector.getStructFieldData(row,
+        fields.get(10)));
+    assertEquals(3, list.size());
+    assertEquals(100000000, in.get(inner.getStructFieldData(list.get(0),
+        inFields.get(0))));
+    assertEquals("cat", st.getPrimitiveJavaObject(inner.getStructFieldData
+        (list.get(0), inFields.get(1))));
+    assertEquals(-100000, in.get(inner.getStructFieldData(list.get(1),
+        inFields.get(0))));
+    assertEquals("in", st.getPrimitiveJavaObject(inner.getStructFieldData
+        (list.get(1), inFields.get(1))));
+    assertEquals(1234, in.get(inner.getStructFieldData(list.get(2),
+        inFields.get(0))));
+    assertEquals("hat", st.getPrimitiveJavaObject(inner.getStructFieldData
+        (list.get(2), inFields.get(1))));
+    map = ma.getMap(readerInspector.getStructFieldData(row,
+        fields.get(11)));
+    assertEquals(2, map.size());
+    boolean[] found = new boolean[2];
+    for(Object key: map.keySet()) {
+      String str = mk.getPrimitiveJavaObject(key);
+      if (str.equals("chani")) {
+        assertEquals(false, found[0]);
+        assertEquals(5, in.get(inner.getStructFieldData(map.get(key),
+            inFields.get(0))));
+        assertEquals(str, st.getPrimitiveJavaObject(
+            inner.getStructFieldData(map.get(key), inFields.get(1))));
+        found[0] = true;
+      } else if (str.equals("mauddib")) {
+        assertEquals(false, found[1]);
+        assertEquals(1, in.get(inner.getStructFieldData(map.get(key),
+            inFields.get(0))));
+        assertEquals(str, st.getPrimitiveJavaObject(
+            inner.getStructFieldData(map.get(key), inFields.get(1))));
+        found[1] = true;
+      } else {
+        throw new IllegalArgumentException("Unknown key " + str);
+      }
+    }
+    assertEquals(true, found[0]);
+    assertEquals(true, found[1]);
+
+    // handle the close up
+    assertEquals(false, rows.hasNext());
+    rows.close();
   }
 
   @Test
@@ -291,8 +468,104 @@ public class TestOrcFile {
     writer.addRow(row);
     for(int i=1900; i < 2200; ++i) {
       row.setFieldValue(0, Timestamp.valueOf(i + "-05-05 12:34:56." + i));
-      union.set((byte) (i & 1), new IntWritable(i*i));
+      if ((i & 1) == 0) {
+        union.set((byte) 0, new IntWritable(i*i));
+      } else {
+        union.set((byte) 1, new Text(new Integer(i*i).toString()));
+      }
       writer.addRow(row);
     }
+    // let's add a lot of constant rows to test the rle
+    row.setFieldValue(0, null);
+    union.set((byte) 0, new IntWritable(1732050807));
+    for(int i=0; i < 1000; ++i) {
+      writer.addRow(row);
+    }
+    union.set((byte) 0, new IntWritable(0));
+    writer.addRow(row);
+    union.set((byte) 0, new IntWritable(10));
+    writer.addRow(row);
+    union.set((byte) 0, new IntWritable(138));
+    writer.addRow(row);
+    writer.close();
+    Reader reader = OrcFile.createReader(fs, p, conf);
+    assertEquals(false, reader.getMetadataKeys().iterator().hasNext());
+    assertEquals(1309, reader.getNumberOfRows());
+    int stripeCount = 0;
+    int rowCount = 0;
+    long currentOffset = -1;
+    for(StripeInformation stripe: reader.getStripes()) {
+      stripeCount += 1;
+      rowCount += stripe.getNumberOfRows();
+      if (currentOffset < 0) {
+        currentOffset = stripe.getOffset() + stripe.getLength();
+      } else {
+        assertEquals(currentOffset, stripe.getOffset());
+        currentOffset += stripe.getLength();
+      }
+    }
+    assertEquals(reader.getNumberOfRows(), rowCount);
+    assertEquals(2, stripeCount);
+    assertEquals(reader.getLength(), currentOffset);
+    RecordReader rows = reader.rows();
+    assertEquals(0, rows.getRowNumber());
+    assertEquals(0.0, rows.getProgress(), 0.000001);
+    assertEquals(true, rows.hasNext());
+    row = (OrcStruct) rows.next(null);
+    inspector = reader.getObjectInspector();
+    assertEquals("struct{time: timestamp, union: union{int, string}}",
+        inspector.getTypeName());
+    assertEquals(Timestamp.valueOf("2000-03-12 15:00:00"),
+        row.getFieldValue(0));
+    union = (OrcUnion) row.getFieldValue(1);
+    assertEquals(0, union.getTag());
+    assertEquals(new IntWritable(42), union.getObject());
+    row = (OrcStruct) rows.next(row);
+    assertEquals(Timestamp.valueOf("2000-03-20 12:00:00.123456789"),
+        row.getFieldValue(0));
+    assertEquals(1, union.getTag());
+    assertEquals(new Text("hello"), union.getObject());
+    row = (OrcStruct) rows.next(row);
+    assertEquals(null, row.getFieldValue(0));
+    assertEquals(null, row.getFieldValue(1));
+    row = (OrcStruct) rows.next(row);
+    assertEquals(null, row.getFieldValue(0));
+    union = (OrcUnion) row.getFieldValue(1);
+    assertEquals(0, union.getTag());
+    assertEquals(null, union.getObject());
+    row = (OrcStruct) rows.next(row);
+    assertEquals(null, row.getFieldValue(0));
+    assertEquals(1, union.getTag());
+    assertEquals(null, union.getObject());
+    row = (OrcStruct) rows.next(row);
+    assertEquals(Timestamp.valueOf("1900-01-01 00:00:00"),
+        row.getFieldValue(0));
+    assertEquals(new IntWritable(200000), union.getObject());
+    for(int i=1900; i < 2200; ++i) {
+      row = (OrcStruct) rows.next(row);
+      assertEquals(Timestamp.valueOf(i + "-05-05 12:34:56." + i),
+          row.getFieldValue(0));
+      if ((i & 1) == 0) {
+        assertEquals(0, union.getTag());
+        assertEquals(new IntWritable(i*i), union.getObject());
+      } else {
+        assertEquals(1, union.getTag());
+        assertEquals(new Text(new Integer(i*i).toString()), union.getObject());
+      }
+    }
+    for(int i=0; i < 1000; ++i) {
+      row = (OrcStruct) rows.next(row);
+      assertEquals(new IntWritable(1732050807), union.getObject());
+    }
+    row = (OrcStruct) rows.next(row);
+    assertEquals(new IntWritable(0), union.getObject());
+    row = (OrcStruct) rows.next(row);
+    assertEquals(new IntWritable(10), union.getObject());
+    row = (OrcStruct) rows.next(row);
+    assertEquals(new IntWritable(138), union.getObject());
+    assertEquals(false, rows.hasNext());
+    assertEquals(1.0, rows.getProgress(), 0.00001);
+    assertEquals(reader.getNumberOfRows(), rows.getRowNumber());
+    rows.close();
   }
 }

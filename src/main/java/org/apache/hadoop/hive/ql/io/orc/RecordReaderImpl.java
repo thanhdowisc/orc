@@ -20,11 +20,11 @@ package org.apache.hadoop.hive.ql.io.orc;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.serde2.io.ByteWritable;
+import org.apache.hadoop.hive.serde2.io.DoubleWritable;
 import org.apache.hadoop.hive.serde2.io.ShortWritable;
 import org.apache.hadoop.io.BooleanWritable;
-import org.apache.hadoop.io.ByteWritable;
 import org.apache.hadoop.io.BytesWritable;
-import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
@@ -48,8 +48,10 @@ class RecordReaderImpl implements RecordReader {
   private final CompressionCodec codec;
   private final int bufferSize;
   private final boolean[] included;
-  private int currentStripe = -1;
-  private long currentRow = 0;
+  private long rowInStripe = 0;
+  private int currentStripe = 0;
+  private long rowBaseInStripe = 0;
+  private long rowCountInStripe = 0;
   private final Map<WriterImpl.StreamName, InStream> streams =
     new HashMap<WriterImpl.StreamName, InStream>();
   private final TreeReader reader;
@@ -81,11 +83,13 @@ class RecordReaderImpl implements RecordReader {
     firstRow = skippedRows;
     totalRowCount = rows;
     reader = createTreeReader(0, types, included);
+    if (this.stripes.size() > 0) {
+      readStripe();
+    }
   }
 
   private abstract static class TreeReader {
     protected final int columnId;
-    private boolean done = true;
     private BitFieldReader present = null;
     protected boolean valuePresent = false;
 
@@ -102,28 +106,16 @@ class RecordReaderImpl implements RecordReader {
       if (in == null) {
         present = null;
         valuePresent = true;
-        done = false;
       } else {
         present = new BitFieldReader(in, 1);
-        done = !present.hasNext();
-        if (!done) {
-          valuePresent = present.next() == 1;
-        }
       }
     }
 
     abstract void seekToRow(long row) throws IOException;
 
-    boolean hasNext() throws IOException {
-      return !done;
-    }
-
     Object next(Object previous) throws IOException {
       if (present != null) {
-        done = !present.hasNext();
-        if (!done) {
-          valuePresent = present.next() == 1;
-        }
+        valuePresent = present.next() == 1;
       }
       return previous;
     }
@@ -138,15 +130,10 @@ class RecordReaderImpl implements RecordReader {
 
     @Override
     void startStripe(Map<WriterImpl.StreamName, InStream> streams
-    ) throws IOException {
+                     ) throws IOException {
       super.startStripe(streams);
       reader = new BitFieldReader(streams.get(new WriterImpl.StreamName
           (columnId, OrcProto.StripeSection.Kind.DATA)), 1);
-    }
-
-    @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || reader.hasNext());
     }
 
     @Override
@@ -156,6 +143,7 @@ class RecordReaderImpl implements RecordReader {
 
     @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       BooleanWritable result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -165,7 +153,7 @@ class RecordReaderImpl implements RecordReader {
         }
         result.set(reader.next() == 1);
       }
-      return super.next(result);
+      return result;
     }
   }
 
@@ -185,17 +173,13 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || reader.hasNext());
-    }
-
-    @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       ByteWritable result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -205,7 +189,7 @@ class RecordReaderImpl implements RecordReader {
         }
         result.set(reader.next());
       }
-      return super.next(result);
+      return result;
     }
   }
 
@@ -227,17 +211,13 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || reader.hasNext());
-    }
-
-    @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       ShortWritable result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -247,7 +227,7 @@ class RecordReaderImpl implements RecordReader {
         }
         result.set((short) reader.next());
       }
-      return super.next(result);
+      return result;
     }
   }
 
@@ -269,17 +249,13 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || reader.hasNext());
-    }
-
-    @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       IntWritable result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -289,7 +265,7 @@ class RecordReaderImpl implements RecordReader {
         }
         result.set((int) reader.next());
       }
-      return super.next(result);
+      return result;
     }
   }
 
@@ -311,17 +287,13 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || reader.hasNext());
-    }
-
-    @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       LongWritable result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -331,7 +303,7 @@ class RecordReaderImpl implements RecordReader {
         }
         result.set(reader.next());
       }
-      return super.next(result);
+      return result;
     }
   }
 
@@ -353,17 +325,13 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || stream.available() > 0);
-    }
-
-    @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       FloatWritable result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -373,7 +341,7 @@ class RecordReaderImpl implements RecordReader {
         }
         result.set(SerializationUtils.readFloat(stream));
       }
-      return super.next(result);
+      return result;
     }
   }
 
@@ -395,17 +363,13 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || stream.available() > 0);
-    }
-
-    @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       DoubleWritable result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -415,7 +379,7 @@ class RecordReaderImpl implements RecordReader {
         }
         result.set(SerializationUtils.readDouble(stream));
       }
-      return super.next(result);
+      return result;
     }
   }
 
@@ -441,17 +405,13 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || lengths.hasNext());
-    }
-
-    @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       BytesWritable result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -471,7 +431,7 @@ class RecordReaderImpl implements RecordReader {
           offset += written;
         }
       }
-      return super.next(result);
+      return result;
     }
   }
 
@@ -494,17 +454,13 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || data.hasNext());
-    }
-
-    @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       Timestamp result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -512,17 +468,23 @@ class RecordReaderImpl implements RecordReader {
         } else {
           result = (Timestamp) previous;
         }
-        long seconds = data.next() + WriterImpl.BASE_TIMESTAMP;
+        long millis = (data.next() + WriterImpl.BASE_TIMESTAMP) *
+            WriterImpl.MILLIS_PER_SECOND;
         int nanos = parseNanos(this.nanos.next());
-        int millis = nanos / 1000*1000;
-        result.setTime(seconds * WriterImpl.MILLIS_PER_SECOND + millis);
+        // fix the rounding when we divided by 1000.
+        if (millis >= 0) {
+          millis += nanos / 1000000;
+        } else {
+          millis -= nanos / 1000000;
+        }
+        result.setTime(millis);
         result.setNanos(nanos);
       }
-      return super.next(result);
+      return result;
     }
 
     private static int parseNanos(long serialized) {
-      int zeros = 3 & (int) serialized;
+      int zeros = 7 & (int) serialized;
       int result = (int) serialized >>> 3;
       if (zeros != 0) {
         for(int i =0; i <= zeros; ++i) {
@@ -585,12 +547,8 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || reader.hasNext());
-    }
-
-    @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       Text result = null;
       if (valuePresent) {
         int entry = (int) reader.next();
@@ -603,7 +561,7 @@ class RecordReaderImpl implements RecordReader {
         int length = dictionaryLengths.get(entry);
         dictionaryBuffer.setText(result, offset, length);
       }
-      return super.next(result);
+      return result;
     }
   }
 
@@ -628,38 +586,6 @@ class RecordReaderImpl implements RecordReader {
       }
     }
 
-    /**
-     * Check to make sure that the kids all agree about whether there is another
-     * row.
-     * @return true if there is another row
-     * @throws IOException
-     */
-    private boolean kidsHaveNext() throws IOException {
-      if (fields.length == 0) {
-        return true;
-      }
-      int field = 0;
-      while (field < fields.length && fields[field] == null) {
-        field += 1;
-      }
-      if (field == fields.length) {
-        return false;
-      }
-      boolean result = fields[field].hasNext();
-      for(int i=field+1; i < fields.length; ++i) {
-        if (fields[i] != null && fields[i].hasNext() != result) {
-          throw new IOException("Inconsistent struct length field " + field +
-            " = " + result + " differs from field " + i);
-        }
-      }
-      return result;
-    }
-
-    @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || kidsHaveNext());
-    }
-
     @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
@@ -667,6 +593,7 @@ class RecordReaderImpl implements RecordReader {
 
     @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       OrcStruct result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -680,7 +607,7 @@ class RecordReaderImpl implements RecordReader {
           }
         }
       }
-      return super.next(result);
+      return result;
     }
 
     @Override
@@ -697,7 +624,7 @@ class RecordReaderImpl implements RecordReader {
 
   private static class UnionTreeReader extends TreeReader {
     private final TreeReader[] fields;
-    private RunLengthIntegerReader tags;
+    private RunLengthByteReader tags;
 
     UnionTreeReader(int columnId,
                      List<OrcProto.Type> types,
@@ -715,17 +642,13 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || tags.hasNext());
-    }
-
-    @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
     }
 
     @Override
     Object next(Object previous) throws IOException {
+      super.next(previous);
       OrcUnion result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -738,15 +661,15 @@ class RecordReaderImpl implements RecordReader {
         result.set(tag, fields[tag].next(tag == result.getTag() ?
             previousVal : null));
       }
-      return super.next(result);
+      return result;
     }
 
     @Override
     void startStripe(Map<WriterImpl.StreamName, InStream> streams
-    ) throws IOException {
+                     ) throws IOException {
       super.startStripe(streams);
-      tags = new RunLengthIntegerReader(streams.get(new WriterImpl.StreamName
-          (columnId, OrcProto.StripeSection.Kind.DATA)), false);
+      tags = new RunLengthByteReader(streams.get(new WriterImpl.StreamName
+          (columnId, OrcProto.StripeSection.Kind.DATA)));
       for(TreeReader field: fields) {
         if (field != null) {
           field.startStripe(streams);
@@ -768,11 +691,6 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || lengths.hasNext());
-    }
-
-    @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
     }
@@ -780,6 +698,7 @@ class RecordReaderImpl implements RecordReader {
     @Override
     @SuppressWarnings("unchecked")
     Object next(Object previous) throws IOException {
+      super.next(previous);
       ArrayList<Object> result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -789,6 +708,10 @@ class RecordReaderImpl implements RecordReader {
         }
         int prevLength = result.size();
         int length = (int) lengths.next();
+        // extend the list to the new length
+        for(int i=prevLength; i < length; ++i) {
+          result.add(null);
+        }
         // read the new elements into the array
         for(int i=0; i< length; i++) {
           result.set(i, elementReader.next(i < prevLength ?
@@ -799,7 +722,7 @@ class RecordReaderImpl implements RecordReader {
           result.remove(i);
         }
       }
-      return super.next(result);
+      return result;
     }
 
     @Override
@@ -839,11 +762,6 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    boolean hasNext() throws IOException {
-      return super.hasNext() && (!valuePresent || lengths.hasNext());
-    }
-
-    @Override
     void seekToRow(long row) throws IOException {
       //To change body of implemented methods use File | Settings | File Templates.
     }
@@ -851,6 +769,7 @@ class RecordReaderImpl implements RecordReader {
     @Override
     @SuppressWarnings("unchecked")
     Object next(Object previous) throws IOException {
+      super.next(previous);
       HashMap<Object,Object> result = null;
       if (valuePresent) {
         if (previous == null) {
@@ -866,7 +785,7 @@ class RecordReaderImpl implements RecordReader {
           result.put(keyReader.next(null), valueReader.next(null));
         }
       }
-      return super.next(result);
+      return result;
     }
 
     @Override
@@ -938,7 +857,8 @@ class RecordReaderImpl implements RecordReader {
       codec, bufferSize));
   }
 
-  private void readStreams(StripeInformation stripe) throws IOException {
+  private void readStripe() throws IOException {
+    StripeInformation stripe = stripes.get(currentStripe);
     OrcProto.StripeFooter footer = readerStripeFooter(stripe);
     long offset = stripe.getOffset();
     streams.clear();
@@ -1008,24 +928,26 @@ class RecordReaderImpl implements RecordReader {
       }
     }
     reader.startStripe(streams);
+    rowInStripe = 0;
+    rowCountInStripe = stripe.getNumberOfRows();
+    rowBaseInStripe = 0;
+    for(int i=0; i < currentStripe; ++i) {
+      rowBaseInStripe += stripes.get(i).getNumberOfRows();
+    }
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    while (!reader.hasNext()) {
-      if (currentStripe + 1 < stripes.size()) {
-        currentStripe += 1;
-        readStreams(stripes.get(currentStripe));
-      } else {
-        return false;
-      }
-    }
-    return currentRow < totalRowCount;
+    return rowInStripe < rowCountInStripe || currentStripe < stripes.size() - 1;
   }
 
   @Override
   public Object next(Object previous) throws IOException {
-    currentRow += 1;
+    if (rowInStripe >= rowCountInStripe) {
+      currentStripe += 1;
+      readStripe();
+    }
+    rowInStripe += 1;
     return reader.next(previous);
   }
 
@@ -1036,7 +958,7 @@ class RecordReaderImpl implements RecordReader {
 
   @Override
   public long getRowNumber() {
-    return currentRow + firstRow;
+    return rowInStripe + rowBaseInStripe + firstRow;
   }
 
   /**
@@ -1046,6 +968,6 @@ class RecordReaderImpl implements RecordReader {
    */
   @Override
   public float getProgress() {
-    return ((float) currentRow)/totalRowCount;
+    return ((float) rowBaseInStripe + rowInStripe)/totalRowCount;
   }
 }

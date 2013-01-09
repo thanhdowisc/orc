@@ -72,6 +72,12 @@ final class OrcUnion implements UnionObject {
     return result;
   }
 
+  @Override
+  public String toString() {
+    return "union(" + Integer.toString(tag & 0xff) + ", " + object.toString() +
+        ")";
+  }
+
   static class OrcUnionObjectInspector implements UnionObjectInspector {
     private final List<ObjectInspector> children;
 

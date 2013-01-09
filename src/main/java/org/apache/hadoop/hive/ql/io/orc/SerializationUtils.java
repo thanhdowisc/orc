@@ -26,18 +26,6 @@ import java.nio.ByteBuffer;
 
 class SerializationUtils {
 
-  static void writeVuint(OutputStream output, int value) throws IOException {
-    while (true) {
-      if ((value & ~0x7f) == 0) {
-        output.write((byte) value);
-        return;
-      } else {
-        output.write((byte) (value | 0x80));
-        value >>>= 7;
-      }
-    }
-  }
-
   static void writeVulong(OutputStream output, long value) throws IOException {
     while (true) {
       if ((value & ~0x7f) == 0) {
@@ -54,24 +42,10 @@ class SerializationUtils {
     writeVulong(output, (value << 1) ^ (value >> 63));
   }
 
-  static int readVuint(InputStream in) throws IOException {
-    int result = 0;
-    int b;
-    int offset = 0;
-    do {
-      b = in.read();
-      if (b == -1) {
-        throw new EOFException("Reading Vuint past EOF");
-      }
-      result |= (0x7f & b) << offset;
-      offset += 7;
-    } while (b >= 0x80);
-    return result;
-  }
 
   static long readVulong(InputStream in) throws IOException {
     long result = 0;
-    int b;
+    long b;
     int offset = 0;
     do {
       b = in.read();
@@ -114,6 +88,7 @@ class SerializationUtils {
                           double value) throws IOException {
     long ser = Double.doubleToLongBits(value);
     output.write(((int) ser) & 0xff);
+    output.write(((int) (ser >> 8)) & 0xff);
     output.write(((int) (ser >> 16)) & 0xff);
     output.write(((int) (ser >> 24)) & 0xff);
     output.write(((int) (ser >> 32)) & 0xff);

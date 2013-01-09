@@ -358,16 +358,18 @@ class ColumnStatisticsImpl implements ColumnStatistics {
 
     @Override
     void merge(ColumnStatisticsImpl other) {
-      StringStatisticsImpl str = (StringStatisticsImpl) other;
-      if (count == 0) {
-        minimum = str.minimum;
-        maximum = str.maximum;
-      } else if (minimum.compareTo(str.minimum) > 0) {
-        minimum = str.minimum;
-      } else if (maximum.compareTo(str.maximum) < 0) {
-        maximum = str.maximum;
-      }
       super.merge(other);
+      StringStatisticsImpl str = (StringStatisticsImpl) other;
+      if (minimum == null) {
+        minimum = str.minimum;
+        maximum = str.maximum;
+      } else if (str.minimum != null) {
+        if (minimum.compareTo(str.minimum) > 0) {
+          minimum = str.minimum;
+        } else if (maximum.compareTo(str.maximum) < 0) {
+          maximum = str.maximum;
+        }
+      }
     }
 
     @Override

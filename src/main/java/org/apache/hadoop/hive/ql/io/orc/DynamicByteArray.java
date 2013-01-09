@@ -120,6 +120,7 @@ class DynamicByteArray {
   public void readAll(InputStream in) throws IOException {
     int currentChunk = length / chunkSize;
     int currentOffset = length % chunkSize;
+    grow(currentChunk);
     int currentLength = in.read(data[currentChunk], currentOffset,
       chunkSize - currentOffset);
     while (currentLength > 0) {
@@ -169,6 +170,7 @@ class DynamicByteArray {
     for(int i=0; i < data.length; ++i) {
       data[i] = null;
     }
+    initializedChunks = 0;
   }
 
   public void setText(Text result, int offset, int length) {
