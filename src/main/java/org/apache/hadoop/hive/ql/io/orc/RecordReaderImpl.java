@@ -857,6 +857,10 @@ class RecordReaderImpl implements RecordReader {
       codec, bufferSize));
   }
 
+  private boolean includeColumn(int id) {
+    return id < included.length && included[id];
+  }
+
   private void readStripe() throws IOException {
     StripeInformation stripe = stripes.get(currentStripe);
     OrcProto.StripeFooter footer = readerStripeFooter(stripe);
@@ -892,7 +896,7 @@ class RecordReaderImpl implements RecordReader {
         // find the first section that shouldn't be read
         int excluded=currentSection;
         while (excluded < sections.size() &&
-               included[sections.get(excluded).getColumn()]) {
+               includeColumn(sections.get(excluded).getColumn())) {
           bytes += sections.get(excluded).getLength();
           excluded += 1;
         }
@@ -921,7 +925,7 @@ class RecordReaderImpl implements RecordReader {
 
         // skip forward until we get back to a section that we need
         while (currentSection < sections.size() &&
-               !included[sections.get(currentSection).getColumn()]) {
+               !includeColumn(sections.get(currentSection).getColumn())) {
           sectionOffset += sections.get(currentSection).getLength();
           currentSection += 1;
         }

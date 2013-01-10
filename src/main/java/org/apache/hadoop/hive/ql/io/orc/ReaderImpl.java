@@ -19,11 +19,9 @@
 package org.apache.hadoop.hive.ql.io.orc;
 
 import com.google.protobuf.CodedInputStream;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 
 import java.io.IOException;
@@ -42,7 +40,6 @@ class ReaderImpl implements Reader {
   private final CompressionKind compressionKind;
   private final CompressionCodec codec;
   private final int bufferSize;
-  private final boolean[] included;
   private final OrcProto.Footer footer;
   private final ObjectInspector inspector;
 
@@ -155,69 +152,20 @@ class ReaderImpl implements Reader {
   }
 
   @Override
-  public org.apache.hadoop.hive.ql.io.orc.ColumnStatistics[] getStatistics() {
-    org.apache.hadoop.hive.ql.io.orc.ColumnStatistics[] result = new org.apache.hadoop.hive.ql.io.orc.ColumnStatistics[footer.getTypesCount()];
+  public List<OrcProto.Type> getTypes() {
+    return footer.getTypesList();
+  }
+
+  @Override
+  public ColumnStatistics[] getStatistics() {
+    ColumnStatistics[] result = new ColumnStatistics[footer.getTypesCount()];
     for(OrcProto.ColumnStatistics stats: footer.getStatisticsList()) {
       result[stats.getColumn()] = ColumnStatisticsImpl.deserialize(stats);
     }
     return result;
   }
 
-  /**
-   * Recurse down into a type subtree turning on all of the sub-columns.
-   * @param footer footer of the file
-   * @param result the global view of columns that should be included
-   * @param typeId the root of tree to enable
-   */
-  private static void includeColumnRecursive(OrcProto.Footer footer,
-                                             boolean[] result,
-                                             int typeId) {
-    result[typeId] = true;
-    OrcProto.Type type = footer.getTypes(typeId);
-    int children = type.getSubtypesCount();
-    for(int i=0; i < children; ++i) {
-      includeColumnRecursive(footer, result, type.getSubtypes(i));
-    }
-  }
-
-  /**
-   * Take the configuration and figure out which columns we need to include.
-   * @param footer the footer of the file
-   * @param conf the configuration
-   * @return true for each column that should be included
-   */
-  private static boolean[] findIncludedColumns(OrcProto.Footer footer,
-                                               Configuration conf) {
-    String includedStr =
-      conf.get(ColumnProjectionUtils.READ_COLUMN_IDS_CONF_STR);
-    if (includedStr == null) {
-      return null;
-    } else {
-      int numColumns = footer.getTypesCount();
-      boolean[] result = new boolean[numColumns+1];
-      result[0] = true;
-      OrcProto.Type root = footer.getTypes(0);
-      List<Integer> included = ColumnProjectionUtils.getReadColumnIDs(conf);
-      for(int i=1; i < result.length; ++i) {
-        result[i] = false;
-      }
-      for(int i=0; i < root.getSubtypesCount(); ++i) {
-        if (included.contains(i)) {
-          includeColumnRecursive(footer, result, root.getSubtypes(i));
-        }
-      }
-      // if we are filtering at least one column, return the boolean array
-      for(boolean include: result) {
-        if (!include) {
-          return result;
-        }
-      }
-      return null;
-    }
-  }
-
-  ReaderImpl(FileSystem fs, Path path,
-             Configuration conf) throws IOException {
+  ReaderImpl(FileSystem fs, Path path) throws IOException {
     this.fileSystem = fs;
     this.path = path;
     FSDataInputStream file = fs.open(path);
@@ -269,19 +217,19 @@ class ReaderImpl implements Reader {
     footer = OrcProto.Footer.parseFrom(instream);
     inspector = OrcStruct.createObjectInspector(0, footer.getTypesList());
     file.close();
-    this.included = findIncludedColumns(footer, conf);
   }
 
   @Override
-  public RecordReader rows() throws IOException {
-    return rows(0, Long.MAX_VALUE);
+  public RecordReader rows(boolean include[]) throws IOException {
+    return rows(0, Long.MAX_VALUE, include);
   }
 
   @Override
-  public RecordReader rows(long offset, long length) throws IOException {
+  public RecordReader rows(long offset, long length, boolean[] include
+                           ) throws IOException {
     return new RecordReaderImpl(this.getStripes(), fileSystem,  path, offset,
       length, footer.getTypesList(), codec, bufferSize,
-      included);
+      include);
   }
 
 }

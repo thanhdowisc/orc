@@ -39,13 +39,12 @@ public class OrcFile {
    * Create an ORC file reader.
    * @param fs file system
    * @param path file name to read from
-   * @param conf the Hadoop configuration
    * @return a new ORC file reader.
    * @throws IOException
    */
-  public static Reader createReader(FileSystem fs, Path path,
-                                    Configuration conf) throws IOException {
-    return new ReaderImpl(fs, path, conf);
+  public static Reader createReader(FileSystem fs, Path path
+                                    ) throws IOException {
+    return new ReaderImpl(fs, path);
   }
 
   /**

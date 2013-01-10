@@ -250,5 +250,6 @@ public class TestStringRedBlackTree {
     test1.emptyFile();
     test1.metaData();
     test1.testUnionAndTimestamp();
+    test1.columnProjection();
   }
 }

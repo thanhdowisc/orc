@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hive.ql.io.orc;
 
+import com.sun.jdi.LongType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -25,8 +26,6 @@ import org.apache.hadoop.hive.serde2.objectinspector.ListObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.MapObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
-import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.StandardStructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.BinaryObjectInspector;
@@ -36,7 +35,6 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.DoubleObjectInspe
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.FloatObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.IntObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.LongObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.ShortObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
 import org.apache.hadoop.io.BytesWritable;
@@ -48,9 +46,9 @@ import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import static junit.framework.Assert.*;
 
@@ -178,7 +176,7 @@ public class TestOrcFile {
         list(inner(100000000, "cat"), inner(-100000, "in"), inner(1234, "hat")),
         map(inner(5,"chani"), inner(1,"mauddib"))));
     writer.close();
-    Reader reader = OrcFile.createReader(fs, p, conf);
+    Reader reader = OrcFile.createReader(fs, p);
     StructObjectInspector readerInspector =
         (StructObjectInspector) reader.getObjectInspector();
     assertEquals(ObjectInspector.Category.STRUCT,
@@ -228,7 +226,7 @@ public class TestOrcFile {
         ma.getMapKeyObjectInspector();
     StructObjectInspector mv = (StructObjectInspector)
         ma.getMapValueObjectInspector();
-    RecordReader rows = reader.rows();
+    RecordReader rows = reader.rows(null);
     Object row = rows.next(null);
     assertNotNull(row);
     // check the contents of the first row
@@ -358,6 +356,89 @@ public class TestOrcFile {
   }
 
   @Test
+  public void columnProjection() throws Exception {
+    Configuration conf = new Configuration();
+    FileSystem fs = FileSystem.getLocal(conf);
+    Path p = new Path(workDir, "file.orc");
+    fs.delete(p, false);
+    ObjectInspector inspector =
+        ObjectInspectorFactory.getReflectionObjectInspector(InnerStruct.class,
+            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    Writer writer = OrcFile.createWriter(fs, p, inspector,
+        1000, CompressionKind.NONE, 100);
+    Random r1 = new Random(1);
+    Random r2 = new Random(2);
+    int x;
+    int minInt=0, maxInt=0;
+    String y;
+    String minStr = null, maxStr = null;
+    for(int i=0; i < 21000; ++i) {
+      x = r1.nextInt();
+      y = Long.toHexString(r2.nextLong());
+      if (i == 0 || x < minInt) {
+        minInt = x;
+      }
+      if (i == 0 || x > maxInt) {
+        maxInt = x;
+      }
+      if (i == 0 || y.compareTo(minStr) < 0) {
+        minStr = y;
+      }
+      if (i == 0 || y.compareTo(maxStr) > 0) {
+        maxStr = y;
+      }
+      writer.addRow(inner(x, y));
+    }
+    writer.close();
+    Reader reader = OrcFile.createReader(fs, p);
+
+    // check out the statistics
+    ColumnStatistics[] stats = reader.getStatistics();
+    assertEquals(3, stats.length);
+    for(ColumnStatistics s: stats) {
+      assertEquals(21000, s.getNumberOfValues());
+      if (s instanceof IntegerColumnStatistics) {
+        assertEquals(minInt, ((IntegerColumnStatistics) s).getMinimum());
+        assertEquals(maxInt, ((IntegerColumnStatistics) s).getMaximum());
+      } else if (s instanceof  StringColumnStatistics) {
+        assertEquals(maxStr, ((StringColumnStatistics) s).getMaximum());
+        assertEquals(minStr, ((StringColumnStatistics) s).getMinimum());
+      }
+    }
+
+    // check out the types
+    List<OrcProto.Type> types = reader.getTypes();
+    assertEquals(3, types.size());
+    assertEquals(OrcProto.Type.Kind.STRUCT, types.get(0).getKind());
+    assertEquals(2, types.get(0).getSubtypesCount());
+    assertEquals(1, types.get(0).getSubtypes(0));
+    assertEquals(2, types.get(0).getSubtypes(1));
+    assertEquals(OrcProto.Type.Kind.INT, types.get(1).getKind());
+    assertEquals(0, types.get(1).getSubtypesCount());
+    assertEquals(OrcProto.Type.Kind.STRING, types.get(2).getKind());
+    assertEquals(0, types.get(2).getSubtypesCount());
+    RecordReader rows1 = reader.rows(new boolean[]{true, true, false});
+    RecordReader rows2 = reader.rows(new boolean[]{true, false, true});
+    r1 = new Random(1);
+    r2 = new Random(2);
+    OrcStruct row1 = null;
+    OrcStruct row2 = null;
+    for(int i = 0; i < 21000; ++i) {
+      assertEquals(true, rows1.hasNext());
+      assertEquals(true, rows2.hasNext());
+      row1 = (OrcStruct) rows1.next(row1);
+      row2 = (OrcStruct) rows2.next(row2);
+      assertEquals(r1.nextInt(), ((IntWritable) row1.getFieldValue(0)).get());
+      assertEquals(Long.toHexString(r2.nextLong()),
+          row2.getFieldValue(1).toString());
+    }
+    assertEquals(false, rows1.hasNext());
+    assertEquals(false, rows2.hasNext());
+    rows1.close();
+    rows2.close();
+  }
+
+  @Test
   public void emptyFile() throws Exception {
     Configuration conf = new Configuration();
     FileSystem fs = FileSystem.getLocal(conf);
@@ -369,8 +450,8 @@ public class TestOrcFile {
     Writer writer = OrcFile.createWriter(fs, p, inspector,
         1000, CompressionKind.NONE, 100);
     writer.close();
-    Reader reader = OrcFile.createReader(fs, p, conf);
-    assertEquals(false, reader.rows().hasNext());
+    Reader reader = OrcFile.createReader(fs, p);
+    assertEquals(false, reader.rows(null).hasNext());
     assertEquals(CompressionKind.NONE, reader.getCompression());
     assertEquals(0, reader.getNumberOfRows());
     assertEquals(0, reader.getCompressionSize());
@@ -393,15 +474,21 @@ public class TestOrcFile {
     writer.addUserMetadata("my.meta", byteBuf(1, 2, 3, 4, 5, 6, 7, -1, -2, 127, -128));
     writer.addUserMetadata("clobber", byteBuf(1,2,3));
     writer.addUserMetadata("clobber", byteBuf(4,3,2,1));
+    ByteBuffer bigBuf = ByteBuffer.allocate(40000);
+    Random random = new Random(0);
+    random.nextBytes(bigBuf.array());
+    writer.addUserMetadata("big", bigBuf);
+    bigBuf.position(0);
     writer.addRow(new BigRow(true, (byte) 127, (short) 1024, 42,
-        42L*1024*1024*1024, (float) 3.1415, -2.713, null,
+        42L * 1024 * 1024 * 1024, (float) 3.1415, -2.713, null,
         null, null, null, null));
     writer.addUserMetadata("clobber", byteBuf(5,7,11,13,17,19));
     writer.close();
-    Reader reader = OrcFile.createReader(fs, p, conf);
+    Reader reader = OrcFile.createReader(fs, p);
     assertEquals(byteBuf(5,7,11,13,17,19), reader.getMetadataValue("clobber"));
     assertEquals(byteBuf(1,2,3,4,5,6,7,-1,-2,127,-128),
         reader.getMetadataValue("my.meta"));
+    assertEquals(bigBuf, reader.getMetadataValue("big"));
     try {
       reader.getMetadataValue("unknown");
       assertTrue(false);
@@ -411,13 +498,14 @@ public class TestOrcFile {
     int i = 0;
     for(String key: reader.getMetadataKeys()) {
       if ("my.meta".equals(key) ||
-          "clobber".equals(key)) {
+          "clobber".equals(key) ||
+          "big".equals(key)) {
         i += 1;
       } else {
         throw new IllegalArgumentException("unknown key " + key);
       }
     }
-    assertEquals(2, i);
+    assertEquals(3, i);
   }
 
   /**
@@ -488,7 +576,7 @@ public class TestOrcFile {
     union.set((byte) 0, new IntWritable(138));
     writer.addRow(row);
     writer.close();
-    Reader reader = OrcFile.createReader(fs, p, conf);
+    Reader reader = OrcFile.createReader(fs, p);
     assertEquals(false, reader.getMetadataKeys().iterator().hasNext());
     assertEquals(1309, reader.getNumberOfRows());
     int stripeCount = 0;
@@ -507,7 +595,7 @@ public class TestOrcFile {
     assertEquals(reader.getNumberOfRows(), rowCount);
     assertEquals(2, stripeCount);
     assertEquals(reader.getLength(), currentOffset);
-    RecordReader rows = reader.rows();
+    RecordReader rows = reader.rows(null);
     assertEquals(0, rows.getRowNumber());
     assertEquals(0.0, rows.getProgress(), 0.000001);
     assertEquals(true, rows.hasNext());

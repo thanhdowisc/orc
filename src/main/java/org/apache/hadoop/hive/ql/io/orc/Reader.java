@@ -22,6 +22,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public interface Reader {
 
@@ -81,11 +82,19 @@ public interface Reader {
   public ColumnStatistics[] getStatistics();
 
   /**
+   * Get the list of types contained in the file. The root type is the first
+   * type in the list.
+   * @return the list of flattened types
+   */
+  public List<OrcProto.Type> getTypes();
+
+  /**
    * Create a RecordReader that will scan the entire file.
+   * @param include true for each column that should be included
    * @return A new RecordReader
    * @throws IOException
    */
-  public RecordReader rows() throws IOException;
+  public RecordReader rows(boolean[] include) throws IOException;
 
   /**
    * Create a RecordReader that will start reading at the first stripe after
@@ -94,9 +103,11 @@ public interface Reader {
    * blindly, but they must cover all of the rows.
    * @param offset a byte offset in the file
    * @param length a number of bytes in the file
+   * @param include true for each column that should be included
    * @return a new RecordReader that will read the specified rows.
    * @throws IOException
    */
-  public RecordReader rows(long offset, long length) throws IOException;
+  public RecordReader rows(long offset, long length, boolean[] include
+                           ) throws IOException;
 
 }

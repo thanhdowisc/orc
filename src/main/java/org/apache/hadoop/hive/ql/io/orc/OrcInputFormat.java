@@ -18,11 +18,13 @@
 
 package org.apache.hadoop.hive.ql.io.orc;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.io.InputFormatChecker;
+import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.FileSplit;
@@ -33,6 +35,7 @@ import org.apache.hadoop.mapred.Reporter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A MapReduce/Hive input format for ORC files.
@@ -48,8 +51,10 @@ public class OrcInputFormat  extends FileInputFormat<NullWritable, OrcStruct>
     private final OrcStruct row;
     private boolean firstRow = true;
 
-    OrcRecordReader(Reader file, long offset, long length) throws IOException {
-      this.reader = file.rows(offset, length);
+    OrcRecordReader(Reader file, Configuration conf,
+                    long offset, long length) throws IOException {
+      this.reader = file.rows(offset, length,
+          findIncludedColumns(file.getTypes(), conf));
       this.offset = offset;
       this.length = length;
       if (reader.hasNext()) {
@@ -104,6 +109,59 @@ public class OrcInputFormat  extends FileInputFormat<NullWritable, OrcStruct>
     setMinSplitSize(16 * 1024);
   }
 
+  /**
+   * Recurse down into a type subtree turning on all of the sub-columns.
+   * @param types the types of the file
+   * @param result the global view of columns that should be included
+   * @param typeId the root of tree to enable
+   */
+  private static void includeColumnRecursive(List<OrcProto.Type> types,
+                                             boolean[] result,
+                                             int typeId) {
+    result[typeId] = true;
+    OrcProto.Type type = types.get(typeId);
+    int children = type.getSubtypesCount();
+    for(int i=0; i < children; ++i) {
+      includeColumnRecursive(types, result, type.getSubtypes(i));
+    }
+  }
+
+  /**
+   * Take the configuration and figure out which columns we need to include.
+   * @param types the types of the file
+   * @param conf the configuration
+   * @return true for each column that should be included
+   */
+  private static boolean[] findIncludedColumns(List<OrcProto.Type> types,
+                                               Configuration conf) {
+    String includedStr =
+        conf.get(ColumnProjectionUtils.READ_COLUMN_IDS_CONF_STR);
+    if (includedStr == null) {
+      return null;
+    } else {
+      int numColumns = types.size();
+      boolean[] result = new boolean[numColumns];
+      result[0] = true;
+      OrcProto.Type root = types.get(0);
+      List<Integer> included = ColumnProjectionUtils.getReadColumnIDs(conf);
+      for(int i=1; i < result.length; ++i) {
+        result[i] = false;
+      }
+      for(int i=0; i < root.getSubtypesCount(); ++i) {
+        if (included.contains(i)) {
+          includeColumnRecursive(types, result, root.getSubtypes(i));
+        }
+      }
+      // if we are filtering at least one column, return the boolean array
+      for(boolean include: result) {
+        if (!include) {
+          return result;
+        }
+      }
+      return null;
+    }
+  }
+
   @Override
   public RecordReader<NullWritable, OrcStruct>
       getRecordReader(InputSplit inputSplit, JobConf conf,
@@ -112,7 +170,7 @@ public class OrcInputFormat  extends FileInputFormat<NullWritable, OrcStruct>
     Path path = fileSplit.getPath();
     FileSystem fs = path.getFileSystem(conf);
     reporter.setStatus(fileSplit.toString());
-    return new OrcRecordReader(OrcFile.createReader(fs, path, conf),
+    return new OrcRecordReader(OrcFile.createReader(fs, path), conf,
                                fileSplit.getStart(), fileSplit.getLength());
   }
 
@@ -125,7 +183,7 @@ public class OrcInputFormat  extends FileInputFormat<NullWritable, OrcStruct>
     }
     for (FileStatus file : files) {
       try {
-        OrcFile.createReader(fs, file.getPath(), conf);
+        OrcFile.createReader(fs, file.getPath());
       } catch (IOException e) {
         return false;
       }

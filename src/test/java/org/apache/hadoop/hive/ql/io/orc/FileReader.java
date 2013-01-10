@@ -8,8 +8,8 @@ public class FileReader {
   private static void readDemographics() throws Exception {
     Configuration conf = new Configuration();
     Path path = new Path("/tmp/demographics.orc");
-    Reader file = OrcFile.createReader(FileSystem.getLocal(conf), path, conf);
-    RecordReader reader = file.rows();
+    Reader file = OrcFile.createReader(FileSystem.getLocal(conf), path);
+    RecordReader reader = file.rows(null);
     java.io.FileWriter writer = new java.io.FileWriter("/tmp/demographics.txt");
     OrcStruct row = null;
     while (reader.hasNext()) {
@@ -27,8 +27,8 @@ public class FileReader {
     Configuration conf = new Configuration();
     long start = System.currentTimeMillis();
     Path path = new Path("/tmp/store_sales.orc");
-    Reader file = OrcFile.createReader(FileSystem.getLocal(conf), path, conf);
-    RecordReader reader = file.rows();
+    Reader file = OrcFile.createReader(FileSystem.getLocal(conf), path);
+    RecordReader reader = file.rows(null);
     java.io.FileWriter writer = new java.io.FileWriter("/tmp/store_sales.txt");
     OrcStruct row = null;
     while (reader.hasNext()) {
