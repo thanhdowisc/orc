@@ -119,43 +119,6 @@ class OutStream extends PositionedOutputStream {
     }
   }
 
-  void printStatus(String msg) throws IOException {
-    StringBuilder builder = new StringBuilder(name);
-    builder.append(" ");
-    builder.append(msg);
-    builder.append(" current: ");
-    if (current == null) {
-      builder.append("null");
-    } else {
-      builder.append(current.position());
-      builder.append(", ");
-      builder.append(current.limit());
-      builder.append(", ");
-      builder.append(current.capacity());
-    }
-    builder.append("; compressed: ");
-    if (compressed == null) {
-      builder.append("null");
-    } else {
-      builder.append(compressed.position());
-      builder.append(", ");
-      builder.append(compressed.limit());
-      builder.append(", ");
-      builder.append(compressed.capacity());
-    }
-    builder.append("; overflow: ");
-    if (overflow == null) {
-      builder.append("null");
-    } else {
-      builder.append(overflow.position());
-      builder.append(", ");
-      builder.append(overflow.limit());
-      builder.append(", ");
-      builder.append(overflow.capacity());
-    }
-    System.out.println(builder.toString());
-  }
-
   private void spill() throws java.io.IOException {
     // if there isn't anything in the current buffer, don't spill
     if (current.position() == (codec == null ? 0 : HEADER_SIZE)) {
@@ -204,6 +167,7 @@ class OutStream extends PositionedOutputStream {
           if (overflow != null) {
             overflow.clear();
             compressed = overflow;
+            overflow = null;
           }
         } else {
           compressed.clear();

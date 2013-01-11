@@ -89,6 +89,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
     long minimum = Long.MAX_VALUE;
     long maximum = Long.MIN_VALUE;
     long sum = 0;
+    boolean hasMinimum = false;
     boolean overflow = false;
 
     IntegerStatisticsImpl(int columnId) {
@@ -99,6 +100,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
       super(stats);
       OrcProto.IntegerStatistics intStat = stats.getIntStatistics();
       if (intStat.hasMinimum()) {
+        hasMinimum = true;
         minimum = intStat.getMinimum();
       }
       if (intStat.hasMaximum()) {
@@ -114,6 +116,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
     @Override
     void reset() {
       super.reset();
+      hasMinimum = false;
       minimum = Long.MAX_VALUE;
       maximum = Long.MIN_VALUE;
       sum = 0;
@@ -122,7 +125,8 @@ class ColumnStatisticsImpl implements ColumnStatistics {
 
     @Override
     void updateInteger(long value) {
-      if (count == 0) {
+      if (!hasMinimum) {
+        hasMinimum = true;
         minimum = value;
         maximum = value;
       } else if (value < minimum) {
@@ -142,13 +146,17 @@ class ColumnStatisticsImpl implements ColumnStatistics {
     @Override
     void merge(ColumnStatisticsImpl other) {
       IntegerStatisticsImpl otherInt = (IntegerStatisticsImpl) other;
-      if (count == 0) {
+      if (!hasMinimum) {
+        hasMinimum = otherInt.hasMinimum;
         minimum = otherInt.minimum;
         maximum = otherInt.maximum;
-      } else if (otherInt.minimum < minimum) {
-        minimum = otherInt.minimum;
-      } else if (otherInt.maximum > maximum) {
-        maximum = otherInt.maximum;
+      } else if (otherInt.hasMinimum) {
+        if (otherInt.minimum < minimum) {
+          minimum = otherInt.minimum;
+        }
+        if (otherInt.maximum > maximum) {
+          maximum = otherInt.maximum;
+        }
       }
       super.merge(other);
       overflow |= otherInt.overflow;
@@ -166,7 +174,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
       OrcProto.ColumnStatistics.Builder builder = super.serialize();
       OrcProto.IntegerStatistics.Builder intb =
         OrcProto.IntegerStatistics.newBuilder();
-      if (count != 0) {
+      if (hasMinimum) {
         intb.setMinimum(minimum);
         intb.setMaximum(maximum);
       }
@@ -200,7 +208,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
     @Override
     public String toString() {
       StringBuilder buf = new StringBuilder(super.toString());
-      if (count != 0) {
+      if (hasMinimum) {
         buf.append(" min: ");
         buf.append(minimum);
         buf.append(" max: ");
@@ -216,6 +224,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
 
   private final static class DoubleStatisticsImpl extends ColumnStatisticsImpl
        implements DoubleColumnStatistics {
+    boolean hasMinimum = false;
     double minimum = Double.MAX_VALUE;
     double maximum = Double.MIN_VALUE;
     double sum = 0;
@@ -228,6 +237,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
       super(stats);
       OrcProto.DoubleStatistics dbl = stats.getDoubleStatistics();
       if (dbl.hasMinimum()) {
+        hasMinimum = true;
         minimum = dbl.getMinimum();
       }
       if (dbl.hasMaximum()) {
@@ -241,6 +251,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
     @Override
     void reset() {
       super.reset();
+      hasMinimum = false;
       minimum = Double.MAX_VALUE;
       maximum = Double.MIN_VALUE;
       sum = 0;
@@ -248,7 +259,8 @@ class ColumnStatisticsImpl implements ColumnStatistics {
 
     @Override
     void updateDouble(double value) {
-      if (count == 0) {
+      if (!hasMinimum) {
+        hasMinimum = true;
         minimum = value;
         maximum = value;
       } else if (value < minimum) {
@@ -261,16 +273,20 @@ class ColumnStatisticsImpl implements ColumnStatistics {
 
     @Override
     void merge(ColumnStatisticsImpl other) {
-      DoubleStatisticsImpl dbl = (DoubleStatisticsImpl) other;
-      if (count == 0) {
-        minimum = dbl.minimum;
-        maximum = dbl.maximum;
-      } else if (dbl.minimum < minimum) {
-        minimum = dbl.minimum;
-      } else if (dbl.maximum > maximum) {
-        maximum = dbl.maximum;
-      }
       super.merge(other);
+      DoubleStatisticsImpl dbl = (DoubleStatisticsImpl) other;
+      if (!hasMinimum) {
+        hasMinimum = dbl.hasMinimum;
+        minimum = dbl.minimum;
+        maximum = dbl.maximum;
+      } else if (dbl.hasMinimum) {
+        if (dbl.minimum < minimum) {
+          minimum = dbl.minimum;
+        }
+        if (dbl.maximum > maximum) {
+          maximum = dbl.maximum;
+        }
+      }
       sum += dbl.sum;
     }
 
@@ -279,7 +295,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
       OrcProto.ColumnStatistics.Builder builder = super.serialize();
       OrcProto.DoubleStatistics.Builder dbl =
         OrcProto.DoubleStatistics.newBuilder();
-      if (count != 0) {
+      if (hasMinimum) {
         dbl.setMinimum(minimum);
         dbl.setMaximum(maximum);
       }
@@ -302,10 +318,11 @@ class ColumnStatisticsImpl implements ColumnStatistics {
     public double getSum() {
       return sum;
     }
+
     @Override
     public String toString() {
       StringBuilder buf = new StringBuilder(super.toString());
-      if (count != 0) {
+      if (hasMinimum) {
         buf.append(" min: ");
         buf.append(minimum);
         buf.append(" max: ");
@@ -394,6 +411,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
     public String getMaximum() {
       return maximum;
     }
+
     @Override
     public String toString() {
       StringBuilder buf = new StringBuilder(super.toString());

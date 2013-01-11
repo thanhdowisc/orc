@@ -352,7 +352,7 @@ public class FileWriter {
     Writer writer = OrcFile.createWriter(local,
         new Path("file:///tmp/demographics.orc"),
       demographicsInspector, 256*1024*1024, CompressionKind.ZLIB, 256 * 1024);
-    for(Demographics record: readDemographics("customer_demographics.dat")) {
+    for(Demographics record: readDemographics("../customer_demographics.dat")) {
       writer.addRow(record);
     }
     writer.close();
@@ -363,7 +363,7 @@ public class FileWriter {
     writer = OrcFile.createWriter(local,
       new Path("file:///tmp/store_sales.orc"),
       salesInspector, 256*1024*1024, CompressionKind.ZLIB, 256 * 1024);
-    for(StoreSales record: readStoreSales("store_sales.dat")) {
+    for(StoreSales record: readStoreSales("../store_sales.dat")) {
       writer.addRow(record);
     }
     writer.close();

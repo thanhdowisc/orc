@@ -1,0 +1,30 @@
+Structure for target/test/tmp/file.orc
+Rows: 21000
+Compression: ZLIB
+Compression size: 10000
+Type: struct{f: float, d: double}
+
+Statistics:
+  Column 0: count: 21000
+  Column 1: count: 21000 min: 8.881092071533203E-6 max: 0.9999387264251709 sum: 10551.349509894848
+  Column 2: count: 21000 min: 2.3379546596924428E-5 max: 0.9999973837551178 sum: 10486.848248849014
+
+Stripes:
+  Stripe: offset: 3 length: 111734 rows: 10001 tail: 42
+    Section: column 1 section PRESENT start: 3 length 14
+    Section: column 1 section DATA start: 17 length 35917
+    Section: column 2 section PRESENT start: 35934 length 14
+    Section: column 2 section DATA start: 35948 length 75583
+    Section: column 3 section ROW_INDEX start: 111531 length 164
+  Stripe: offset: 111737 length: 111694 rows: 10001 tail: 42
+    Section: column 1 section PRESENT start: 111737 length 14
+    Section: column 1 section DATA start: 111751 length 35862
+    Section: column 2 section PRESENT start: 147613 length 14
+    Section: column 2 section DATA start: 147627 length 75588
+    Section: column 3 section ROW_INDEX start: 223215 length 174
+  Stripe: offset: 223431 length: 11315 rows: 998 tail: 37
+    Section: column 1 section PRESENT start: 223431 length 7
+    Section: column 1 section DATA start: 223438 length 3607
+    Section: column 2 section PRESENT start: 227045 length 7
+    Section: column 2 section DATA start: 227052 length 7553
+    Section: column 3 section ROW_INDEX start: 234605 length 104

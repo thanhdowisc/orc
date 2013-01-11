@@ -251,5 +251,13 @@ public class TestStringRedBlackTree {
     test1.metaData();
     test1.testUnionAndTimestamp();
     test1.columnProjection();
+    TestFileDump test2 = new TestFileDump();
+    test2.testDump();
+    TestStreamName test3 = new TestStreamName();
+    test3.test1();
+    TestInputOutputFormat test4 = new TestInputOutputFormat();
+    test4.test1();
+    test4.testMROutput();
+    test4.testEmptyFile();
   }
 }

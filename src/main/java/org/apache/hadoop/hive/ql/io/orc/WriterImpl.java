@@ -197,48 +197,6 @@ class WriterImpl implements Writer {
     int getNextColumnId();
   }
 
-  static class StreamName implements Comparable<StreamName> {
-    private final int column;
-    private final OrcProto.StripeSection.Kind kind;
-
-    public StreamName(int column, OrcProto.StripeSection.Kind kind) {
-      this.column = column;
-      this.kind = kind;
-    }
-
-    public boolean equals(Object obj) {
-      if (obj != null && obj instanceof  StreamName) {
-        StreamName other = (StreamName) obj;
-        return other.column == column && other.kind == kind;
-      } else {
-        return false;
-      }
-    }
-
-    @Override
-    public int compareTo(StreamName streamName) {
-      if (streamName == null) {
-        return -1;
-      } else if (column > streamName.column) {
-        return 1;
-      } else if (column < streamName.column) {
-        return -1;
-      } else {
-        return kind.compareTo(streamName.kind);
-      }
-    }
-
-    @Override
-    public String toString() {
-      return "Stream for column " + column + " kind " + kind;
-    }
-
-    @Override
-    public int hashCode() {
-      return column * 101 + kind.getNumber();
-    }
-  }
-
   private static class RowIndexPositionRecorder implements PositionRecorder {
     private final OrcProto.ColumnPosition.Builder builder =
       OrcProto.ColumnPosition.newBuilder();
@@ -1037,7 +995,8 @@ class WriterImpl implements Writer {
   private void ensureWriter() throws IOException {
     if (rawWriter == null) {
       rawWriter = fs.create(path, false, BUFFER_SIZE,
-        fs.getDefaultReplication(), Math.min(stripeSize * 2L, Integer.MAX_VALUE));
+        fs.getDefaultReplication(),
+          Math.min(stripeSize * 2L, Integer.MAX_VALUE));
       rawWriter.writeBytes(OrcFile.MAGIC);
       headerLength = rawWriter.getPos();
       writer = new OutStream("metadata", bufferSize, codec,
@@ -1085,8 +1044,8 @@ class WriterImpl implements Writer {
         long end = rawWriter.getPos();
         StreamName name = pair.getKey();
         builder.addSections(OrcProto.StripeSection.newBuilder()
-            .setColumn(name.column)
-            .setKind(name.kind)
+            .setColumn(name.getColumn())
+            .setKind(name.getKind())
             .setLength(end-section));
         section = end;
       }

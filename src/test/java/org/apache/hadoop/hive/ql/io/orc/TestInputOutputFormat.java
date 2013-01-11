@@ -1,0 +1,268 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.hadoop.hive.ql.io.orc;
+
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
+import org.apache.hadoop.hive.ql.io.HiveOutputFormat;
+import org.apache.hadoop.hive.ql.io.InputFormatChecker;
+import org.apache.hadoop.hive.serde2.SerDe;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
+import org.apache.hadoop.hive.serde2.objectinspector.StructField;
+import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.IntObjectInspector;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.mapred.FileInputFormat;
+import org.apache.hadoop.mapred.InputFormat;
+import org.apache.hadoop.mapred.InputSplit;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.OutputFormat;
+import org.apache.hadoop.mapred.RecordWriter;
+import org.apache.hadoop.mapred.Reporter;
+import org.junit.Test;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+
+import static org.junit.Assert.assertEquals;
+
+public class TestInputOutputFormat {
+
+  Path workDir = new Path(System.getProperty("test.tmp.dir","target/test/tmp"));
+
+  public static class MyRow implements Writable {
+    int x;
+    int y;
+    MyRow(int x, int y) {
+      this.x = x;
+      this.y = y;
+    }
+
+    @Override
+    public void write(DataOutput dataOutput) throws IOException {
+      throw new UnsupportedOperationException("no write");
+    }
+
+    @Override
+    public void readFields(DataInput dataInput) throws IOException {
+     throw new UnsupportedOperationException("no read");
+    }
+  }
+
+  @Test
+  public void test1() throws Exception {
+    JobConf conf = new JobConf();
+    Properties properties = new Properties();
+    FileSystem fs = FileSystem.getLocal(conf);
+    ObjectInspector inspector =
+        ObjectInspectorFactory.getReflectionObjectInspector(MyRow.class,
+            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    Path p = new Path(workDir, "file.orc");
+    fs.delete(p, false);
+    SerDe serde = new OrcSerde();
+    HiveOutputFormat<?, ?> outFormat = new OrcOutputFormat();
+    FileSinkOperator.RecordWriter writer =
+        outFormat.getHiveRecordWriter(conf, p, MyRow.class, true,
+            properties, Reporter.NULL);
+    writer.write(serde.serialize(new MyRow(1,2), inspector));
+    writer.write(serde.serialize(new MyRow(2,2), inspector));
+    writer.write(serde.serialize(new MyRow(3,2), inspector));
+    writer.close(true);
+    serde = new OrcSerde();
+    properties.setProperty("columns", "x,y");
+    properties.setProperty("columns.types", "int:int");
+    serde.initialize(conf, properties);
+    inspector = serde.getObjectInspector();
+    assertEquals("struct{x: int, y: int}", inspector.getTypeName());
+    InputFormat<?,?> in = new OrcInputFormat();
+    FileInputFormat.setInputPaths(conf, p.toString());
+    InputSplit[] splits = in.getSplits(conf, 1);
+    assertEquals(1, splits.length);
+
+    // the the validate input method
+    ArrayList<FileStatus> fileList = new ArrayList<FileStatus>();
+    assertEquals(false,
+        ((InputFormatChecker) in).validateInput(fs, new HiveConf(), fileList));
+    fileList.add(fs.getFileStatus(p));
+    assertEquals(true,
+        ((InputFormatChecker) in).validateInput(fs, new HiveConf(), fileList));
+    fileList.add(fs.getFileStatus(workDir));
+    assertEquals(false,
+        ((InputFormatChecker) in).validateInput(fs, new HiveConf(), fileList));
+
+
+    // read the whole file
+    org.apache.hadoop.mapred.RecordReader reader =
+        in.getRecordReader(splits[0], conf, Reporter.NULL);
+    Object key = reader.createKey();
+    Object value = reader.createValue();
+    int rowNum = 0;
+    List<? extends StructField> fields =
+        ((StructObjectInspector) inspector).getAllStructFieldRefs();
+    IntObjectInspector intInspector =
+        (IntObjectInspector) fields.get(0).getFieldObjectInspector();
+    assertEquals(0.0, reader.getProgress(), 0.00001);
+    assertEquals(0, reader.getPos());
+    while (reader.next(key, value)) {
+      assertEquals(++rowNum, intInspector.get(((StructObjectInspector)
+          inspector).getStructFieldData(value, fields.get(0))));
+      assertEquals(2, intInspector.get(((StructObjectInspector) inspector).
+          getStructFieldData(value, fields.get(1))));
+    }
+    assertEquals(3, rowNum);
+    assertEquals(1.0, reader.getProgress(), 0.00001);
+    reader.close();
+
+    // read just the first column
+    conf.set("hive.io.file.readcolumn.ids", "0");
+    reader = in.getRecordReader(splits[0], conf, Reporter.NULL);
+    key = reader.createKey();
+    value = reader.createValue();
+    rowNum = 0;
+    fields = ((StructObjectInspector) inspector).getAllStructFieldRefs();
+    while (reader.next(key, value)) {
+      assertEquals(++rowNum, intInspector.get(((StructObjectInspector)
+          inspector).getStructFieldData(value, fields.get(0))));
+      assertEquals(null, ((StructObjectInspector) inspector).
+          getStructFieldData(value, fields.get(1)));
+    }
+    assertEquals(3, rowNum);
+    reader.close();
+  }
+
+  static class NestedRow implements Writable {
+    int z;
+    MyRow r;
+    NestedRow(int x, int y, int z) {
+      this.z = z;
+      this.r = new MyRow(x,y);
+    }
+
+    @Override
+    public void write(DataOutput dataOutput) throws IOException {
+      throw new UnsupportedOperationException("unsupported");
+    }
+
+    @Override
+    public void readFields(DataInput dataInput) throws IOException {
+      throw new UnsupportedOperationException("unsupported");
+    }
+  }
+
+  @Test
+  public void testMROutput() throws Exception {
+    JobConf conf = new JobConf();
+    Properties properties = new Properties();
+    FileSystem fs = FileSystem.getLocal(conf);
+    StructObjectInspector inspector = (StructObjectInspector)
+        ObjectInspectorFactory.getReflectionObjectInspector(NestedRow.class,
+            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    Path p = new Path(workDir, "file.orc");
+    fs.delete(p, false);
+    SerDe serde = new OrcSerde();
+    OutputFormat<?, ?> outFormat = new OrcOutputFormat();
+    RecordWriter writer =
+        outFormat.getRecordWriter(fs, conf, p.toString(), Reporter.NULL);
+    writer.write(NullWritable.get(),
+        serde.serialize(new NestedRow(1,2,3), inspector));
+    writer.write(NullWritable.get(),
+        serde.serialize(new NestedRow(4,5,6), inspector));
+    writer.write(NullWritable.get(),
+        serde.serialize(new NestedRow(7,8,9), inspector));
+    writer.close(Reporter.NULL);
+    serde = new OrcSerde();
+    properties.setProperty("columns", "z,r");
+    properties.setProperty("columns.types", "int:struct<x:int,y:int>");
+    serde.initialize(conf, properties);
+    inspector = (StructObjectInspector) serde.getObjectInspector();
+    InputFormat<?,?> in = new OrcInputFormat();
+    FileInputFormat.setInputPaths(conf, p.toString());
+    InputSplit[] splits = in.getSplits(conf, 1);
+    assertEquals(1, splits.length);
+    conf.set("hive.io.file.readcolumn.ids", "1");
+    org.apache.hadoop.mapred.RecordReader reader =
+        in.getRecordReader(splits[0], conf, Reporter.NULL);
+    Object key = reader.createKey();
+    Object value = reader.createValue();
+    int rowNum = 0;
+    List<? extends StructField> fields = inspector.getAllStructFieldRefs();
+    StructObjectInspector inner = (StructObjectInspector)
+        fields.get(1).getFieldObjectInspector();
+    List<? extends StructField> inFields = inner.getAllStructFieldRefs();
+    IntObjectInspector intInspector =
+        (IntObjectInspector) fields.get(0).getFieldObjectInspector();
+    while (reader.next(key, value)) {
+      assertEquals(null, inspector.getStructFieldData(value, fields.get(0)));
+      Object sub = inspector.getStructFieldData(value, fields.get(1));
+      assertEquals(3*rowNum+1, intInspector.get(inner.getStructFieldData(sub,
+          inFields.get(0))));
+      assertEquals(3*rowNum+2, intInspector.get(inner.getStructFieldData(sub,
+          inFields.get(1))));
+      rowNum += 1;
+    }
+    assertEquals(3, rowNum);
+    reader.close();
+
+  }
+
+  @Test
+  public void testEmptyFile() throws Exception {
+    JobConf conf = new JobConf();
+    Properties properties = new Properties();
+    FileSystem fs = FileSystem.getLocal(conf);
+    ObjectInspector inspector =
+        ObjectInspectorFactory.getReflectionObjectInspector(MyRow.class,
+            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    Path p = new Path(workDir, "file.orc");
+    fs.delete(p, false);
+    HiveOutputFormat<?, ?> outFormat = new OrcOutputFormat();
+    FileSinkOperator.RecordWriter writer =
+        outFormat.getHiveRecordWriter(conf, p, MyRow.class, true,
+            properties, Reporter.NULL);
+    writer.close(true);
+    properties.setProperty("columns", "x,y");
+    properties.setProperty("columns.types", "int:int");
+    SerDe serde = new OrcSerde();
+    serde.initialize(conf, properties);
+    InputFormat<?,?> in = new OrcInputFormat();
+    FileInputFormat.setInputPaths(conf, p.toString());
+    InputSplit[] splits = in.getSplits(conf, 1);
+    assertEquals(1, splits.length);
+
+    // read the whole file
+    conf.set("hive.io.file.readcolumn.ids", "0,1");
+    org.apache.hadoop.mapred.RecordReader reader =
+        in.getRecordReader(splits[0], conf, Reporter.NULL);
+    Object key = reader.createKey();
+    Object value = reader.createValue();
+    assertEquals(0.0, reader.getProgress(), 0.00001);
+    assertEquals(0, reader.getPos());
+    assertEquals(false, reader.next(key, value));
+    reader.close();
+    assertEquals(null, serde.getSerDeStats());
+  }
+}

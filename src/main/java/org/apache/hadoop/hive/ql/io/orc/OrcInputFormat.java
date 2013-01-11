@@ -50,6 +50,7 @@ public class OrcInputFormat  extends FileInputFormat<NullWritable, OrcStruct>
     private final long length;
     private final OrcStruct row;
     private boolean firstRow = true;
+    private float progress = 0.0f;
 
     OrcRecordReader(Reader file, Configuration conf,
                     long offset, long length) throws IOException {
@@ -72,6 +73,7 @@ public class OrcInputFormat  extends FileInputFormat<NullWritable, OrcStruct>
         return row != null;
       } else if (reader.hasNext()) {
         Object obj = reader.next(value);
+        progress = reader.getProgress();
         assert obj == value : "Reader returned different object " + obj;
         return true;
       }
@@ -90,7 +92,7 @@ public class OrcInputFormat  extends FileInputFormat<NullWritable, OrcStruct>
 
     @Override
     public long getPos() throws IOException {
-      return offset + (long) (reader.getProgress() * length);
+      return offset + (long) (progress * length);
     }
 
     @Override
@@ -100,7 +102,7 @@ public class OrcInputFormat  extends FileInputFormat<NullWritable, OrcStruct>
 
     @Override
     public float getProgress() throws IOException {
-      return reader.getProgress();
+      return progress;
     }
   }
 

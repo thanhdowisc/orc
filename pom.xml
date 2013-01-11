@@ -173,6 +173,8 @@
           <systemProperties>
             <name>test.tmp.dir</name>
             <value>${project.build.directory}/test/tmp</value>
+            <name>test.resources.dir</name>
+            <value>${basedir}/src/test/resources</value>
           </systemProperties>
         </configuration>
       </plugin>

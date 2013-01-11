@@ -18,7 +18,6 @@
 
 package org.apache.hadoop.hive.ql.io.orc;
 
-import com.sun.jdi.LongType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -165,18 +164,50 @@ public class TestOrcFile {
     fs.delete(p, false);
     Writer writer = OrcFile.createWriter(fs, p, inspector,
         100000, CompressionKind.ZLIB, 10000);
-    writer.addRow(new BigRow(false, (byte) 1, (short) 1024, 65536, -4L,
-        (float) 1.0, -5.0, bytes(0,1,2,3,4), "hi",
+    writer.addRow(new BigRow(false, (byte) 1, (short) 1024, 65536,
+        Long.MAX_VALUE, (float) 1.0, -15.0, bytes(0,1,2,3,4), "hi",
         new MiddleStruct(inner(1, "bye"), inner(2, "sigh")),
         list(inner(3, "good"), inner(4, "bad")),
         map()));
-    writer.addRow(new BigRow(true, (byte) 100, (short) 2048, 65536, 42L,
-        (float) 2.0, -5.0, bytes(), "bye",
+    writer.addRow(new BigRow(true, (byte) 100, (short) 2048, 65536,
+        Long.MAX_VALUE, (float) 2.0, -5.0, bytes(), "bye",
         new MiddleStruct(inner(1, "bye"), inner(2, "sigh")),
         list(inner(100000000, "cat"), inner(-100000, "in"), inner(1234, "hat")),
         map(inner(5,"chani"), inner(1,"mauddib"))));
     writer.close();
     Reader reader = OrcFile.createReader(fs, p);
+
+    // check the stats
+    ColumnStatistics[] stats = reader.getStatistics();
+    assertEquals(2, stats[1].getNumberOfValues());
+    assertEquals(1, ((BooleanColumnStatistics) stats[1]).getFalseCount());
+    assertEquals(1, ((BooleanColumnStatistics) stats[1]).getTrueCount());
+    assertEquals("count: 2 true: 1", stats[1].toString());
+
+    assertEquals(2048, ((IntegerColumnStatistics) stats[3]).getMaximum());
+    assertEquals(1024, ((IntegerColumnStatistics) stats[3]).getMinimum());
+    assertEquals(true, ((IntegerColumnStatistics) stats[3]).isSumDefined());
+    assertEquals(3072, ((IntegerColumnStatistics) stats[3]).getSum());
+    assertEquals("count: 2 min: 1024 max: 2048 sum: 3072",
+        stats[3].toString());
+
+    assertEquals(Long.MAX_VALUE,
+        ((IntegerColumnStatistics) stats[5]).getMaximum());
+    assertEquals(Long.MAX_VALUE,
+        ((IntegerColumnStatistics) stats[5]).getMinimum());
+    assertEquals(false, ((IntegerColumnStatistics) stats[5]).isSumDefined());
+    assertEquals("count: 2 min: 9223372036854775807 max: 9223372036854775807",
+        stats[5].toString());
+
+    assertEquals(-15.0, ((DoubleColumnStatistics) stats[7]).getMinimum());
+    assertEquals(-5.0, ((DoubleColumnStatistics) stats[7]).getMaximum());
+    assertEquals(-20.0, ((DoubleColumnStatistics) stats[7]).getSum(), 0.00001);
+    assertEquals("count: 2 min: -15.0 max: -5.0 sum: -20.0",
+        stats[7].toString());
+
+    assertEquals("count: 2 min: bye max: hi", stats[9].toString());
+
+    // check the inspectors
     StructObjectInspector readerInspector =
         (StructObjectInspector) reader.getObjectInspector();
     assertEquals(ObjectInspector.Category.STRUCT,
@@ -238,11 +269,11 @@ public class TestOrcFile {
         fields.get(2))));
     assertEquals(65536, in.get(readerInspector.getStructFieldData(row,
         fields.get(3))));
-    assertEquals(-4L, lo.get(readerInspector.getStructFieldData(row,
-        fields.get(4))));
+    assertEquals(Long.MAX_VALUE, lo.get(readerInspector.
+        getStructFieldData(row, fields.get(4))));
     assertEquals(1.0, fl.get(readerInspector.getStructFieldData(row,
         fields.get(5))), 0.00001);
-    assertEquals(-5.0, dbl.get(readerInspector.getStructFieldData(row,
+    assertEquals(-15.0, dbl.get(readerInspector.getStructFieldData(row,
         fields.get(6))), 0.00001);
     assertEquals(bytes(0,1,2,3,4), bi.getPrimitiveWritableObject(
         readerInspector.getStructFieldData(row, fields.get(7))));
@@ -286,8 +317,8 @@ public class TestOrcFile {
         fields.get(2))));
     assertEquals(65536, in.get(readerInspector.getStructFieldData(row,
         fields.get(3))));
-    assertEquals(42L, lo.get(readerInspector.getStructFieldData(row,
-        fields.get(4))));
+    assertEquals(Long.MAX_VALUE, lo.get(readerInspector.
+        getStructFieldData(row, fields.get(4))));
     assertEquals(2.0, fl.get(readerInspector.getStructFieldData(row,
         fields.get(5))), 0.00001);
     assertEquals(-5.0, dbl.get(readerInspector.getStructFieldData(row,
@@ -417,6 +448,8 @@ public class TestOrcFile {
     assertEquals(0, types.get(1).getSubtypesCount());
     assertEquals(OrcProto.Type.Kind.STRING, types.get(2).getKind());
     assertEquals(0, types.get(2).getSubtypesCount());
+
+    // read the contents and make sure they match
     RecordReader rows1 = reader.rows(new boolean[]{true, true, false});
     RecordReader rows2 = reader.rows(new boolean[]{true, false, true});
     r1 = new Random(1);

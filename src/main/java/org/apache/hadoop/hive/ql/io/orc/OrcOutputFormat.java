@@ -23,6 +23,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
 import org.apache.hadoop.hive.ql.io.HiveOutputFormat;
 import org.apache.hadoop.hive.ql.io.orc.OrcSerde.OrcSerdeRow;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.FileOutputFormat;
@@ -32,6 +34,7 @@ import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.util.Progressable;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Properties;
 
 public class OrcOutputFormat extends FileOutputFormat<NullWritable, OrcSerdeRow>
@@ -81,16 +84,22 @@ public class OrcOutputFormat extends FileOutputFormat<NullWritable, OrcSerdeRow>
 
     @Override
     public void close(Reporter reporter) throws IOException {
-      if (writer != null) {
-        writer.close();
-      }
+      close(true);
     }
 
     @Override
     public void close(boolean b) throws IOException {
-      if (writer != null) {
-        writer.close();
+      // if we haven't written any rows, we need to create a file with a
+      // generic schema.
+      if (writer == null) {
+        // a row with no columns
+        ObjectInspector inspector = ObjectInspectorFactory.
+            getStandardStructObjectInspector(new ArrayList<String>(),
+                new ArrayList<ObjectInspector>());
+        writer = OrcFile.createWriter(fs, path, inspector, stripeSize,
+            compress, compressionSize);
       }
+      writer.close();
     }
   }
 
