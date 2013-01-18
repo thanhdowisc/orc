@@ -100,7 +100,7 @@ class RecordReaderImpl implements RecordReader {
     void startStripe(Map<StreamName,InStream> streams
                         ) throws IOException {
       InStream in = streams.get(new StreamName(columnId,
-          OrcProto.StripeSection.Kind.PRESENT));
+          OrcProto.Stream.Kind.PRESENT));
       if (in == null) {
         present = null;
         valuePresent = true;
@@ -131,7 +131,7 @@ class RecordReaderImpl implements RecordReader {
                      ) throws IOException {
       super.startStripe(streams);
       reader = new BitFieldReader(streams.get(new StreamName
-          (columnId, OrcProto.StripeSection.Kind.DATA)), 1);
+          (columnId, OrcProto.Stream.Kind.DATA)), 1);
     }
 
     @Override
@@ -167,7 +167,7 @@ class RecordReaderImpl implements RecordReader {
     ) throws IOException {
       super.startStripe(streams);
       reader = new RunLengthByteReader(streams.get(new StreamName
-          (columnId, OrcProto.StripeSection.Kind.DATA)));
+          (columnId, OrcProto.Stream.Kind.DATA)));
     }
 
     @Override
@@ -203,7 +203,7 @@ class RecordReaderImpl implements RecordReader {
     ) throws IOException {
       super.startStripe(streams);
       StreamName name = new StreamName(columnId,
-          OrcProto.StripeSection.Kind.DATA);
+          OrcProto.Stream.Kind.DATA);
       reader = new RunLengthIntegerReader(streams.get(name), true);
     }
 
@@ -240,7 +240,7 @@ class RecordReaderImpl implements RecordReader {
     ) throws IOException {
       super.startStripe(streams);
       StreamName name = new StreamName(columnId,
-          OrcProto.StripeSection.Kind.DATA);
+          OrcProto.Stream.Kind.DATA);
       reader = new RunLengthIntegerReader(streams.get(name), true);
     }
 
@@ -277,7 +277,7 @@ class RecordReaderImpl implements RecordReader {
     ) throws IOException {
       super.startStripe(streams);
       StreamName name = new StreamName(columnId,
-          OrcProto.StripeSection.Kind.DATA);
+          OrcProto.Stream.Kind.DATA);
       reader = new RunLengthIntegerReader(streams.get(name), true);
     }
 
@@ -314,7 +314,7 @@ class RecordReaderImpl implements RecordReader {
                     ) throws IOException {
       super.startStripe(streams);
       StreamName name = new StreamName(columnId,
-          OrcProto.StripeSection.Kind.DATA);
+          OrcProto.Stream.Kind.DATA);
       stream = streams.get(name);
     }
 
@@ -351,7 +351,7 @@ class RecordReaderImpl implements RecordReader {
       super.startStripe(streams);
       StreamName name =
         new StreamName(columnId,
-          OrcProto.StripeSection.Kind.DATA);
+          OrcProto.Stream.Kind.DATA);
       stream = streams.get(name);
     }
 
@@ -389,10 +389,10 @@ class RecordReaderImpl implements RecordReader {
     ) throws IOException {
       super.startStripe(streams);
       StreamName name = new StreamName(columnId,
-          OrcProto.StripeSection.Kind.DATA);
+          OrcProto.Stream.Kind.DATA);
       stream = streams.get(name);
       lengths = new RunLengthIntegerReader(streams.get(new
-          StreamName(columnId, OrcProto.StripeSection.Kind.LENGTH)),
+          StreamName(columnId, OrcProto.Stream.Kind.LENGTH)),
           false);
     }
 
@@ -439,9 +439,9 @@ class RecordReaderImpl implements RecordReader {
     void startStripe(Map<StreamName, InStream> streams) throws IOException {
       super.startStripe(streams);
       data = new RunLengthIntegerReader(streams.get(new StreamName
-          (columnId, OrcProto.StripeSection.Kind.DATA)), true);
+          (columnId, OrcProto.Stream.Kind.DATA)), true);
       nanos = new RunLengthIntegerReader(streams.get(new StreamName
-          (columnId, OrcProto.StripeSection.Kind.NANO_DATA)), false);
+          (columnId, OrcProto.Stream.Kind.NANO_DATA)), false);
     }
 
     @Override
@@ -503,7 +503,7 @@ class RecordReaderImpl implements RecordReader {
 
       // read the dictionary blob
       StreamName name = new StreamName(columnId,
-          OrcProto.StripeSection.Kind.DICTIONARY_DATA);
+          OrcProto.Stream.Kind.DICTIONARY_DATA);
       InStream in = streams.get(name);
       dictionaryBuffer = new DynamicByteArray(64, in.available());
       dictionaryBuffer.readAll(in);
@@ -511,7 +511,7 @@ class RecordReaderImpl implements RecordReader {
 
       // read the lengths
       name = new StreamName(columnId,
-        OrcProto.StripeSection.Kind.LENGTH);
+        OrcProto.Stream.Kind.LENGTH);
       in = streams.get(name);
       RunLengthIntegerReader lenReader = new RunLengthIntegerReader(in, false);
       int offset = 0;
@@ -526,7 +526,7 @@ class RecordReaderImpl implements RecordReader {
       in.close();
 
       // set up the row reader
-      name = new StreamName(columnId, OrcProto.StripeSection.Kind.DATA);
+      name = new StreamName(columnId, OrcProto.Stream.Kind.DATA);
       reader = new RunLengthIntegerReader(streams.get(name), false);
     }
 
@@ -657,7 +657,7 @@ class RecordReaderImpl implements RecordReader {
                      ) throws IOException {
       super.startStripe(streams);
       tags = new RunLengthByteReader(streams.get(new StreamName
-          (columnId, OrcProto.StripeSection.Kind.DATA)));
+          (columnId, OrcProto.Stream.Kind.DATA)));
       for(TreeReader field: fields) {
         if (field != null) {
           field.startStripe(streams);
@@ -718,7 +718,7 @@ class RecordReaderImpl implements RecordReader {
     ) throws IOException {
       super.startStripe(streams);
       lengths = new RunLengthIntegerReader(streams.get(new StreamName
-          (columnId, OrcProto.StripeSection.Kind.LENGTH)), false);
+          (columnId, OrcProto.Stream.Kind.LENGTH)), false);
       if (elementReader != null) {
         elementReader.startStripe(streams);
       }
@@ -781,7 +781,7 @@ class RecordReaderImpl implements RecordReader {
     ) throws IOException {
       super.startStripe(streams);
       lengths = new RunLengthIntegerReader(streams.get(new StreamName
-          (columnId, OrcProto.StripeSection.Kind.LENGTH)), false);
+          (columnId, OrcProto.Stream.Kind.LENGTH)), false);
       if (keyReader != null) {
         keyReader.startStripe(streams);
       }
@@ -833,20 +833,20 @@ class RecordReaderImpl implements RecordReader {
 
   OrcProto.StripeFooter readerStripeFooter(StripeInformation stripe
                                            ) throws IOException {
-    long offset = stripe.getOffset();
-    int length = (int) stripe.getLength();
-    int tailLength = (int) stripe.getTailLength();
+    long offset = stripe.getOffset() + stripe.getIndexLength() +
+        stripe.getDataLength();
+    int tailLength = (int) stripe.getFooterLength();
 
     // read the footer
     ByteBuffer tailBuf = ByteBuffer.allocate(tailLength);
-    file.seek(offset + length - tailLength);
+    file.seek(offset);
     file.readFully(tailBuf.array(), tailBuf.arrayOffset(), tailLength);
     return OrcProto.StripeFooter.parseFrom(InStream.create("footer", tailBuf,
       codec, bufferSize));
   }
 
   private boolean includeColumn(int id) {
-    return id < included.length && included[id];
+    return included[id];
   }
 
   private void readStripe() throws IOException {
@@ -858,34 +858,42 @@ class RecordReaderImpl implements RecordReader {
     // if we aren't projecting columns, just read the whole stripe
     if (included == null) {
       byte[] buffer =
-        new byte[(int) (stripe.getLength() - stripe.getTailLength())];
-      file.seek(offset);
+        new byte[(int) (stripe.getDataLength())];
+      file.seek(offset + stripe.getIndexLength());
       file.readFully(buffer, 0, buffer.length);
       int sectionOffset = 0;
-      for(OrcProto.StripeSection section: footer.getSectionsList()) {
-        int sectionLength = (int) section.getLength();
-        ByteBuffer sectionBuffer = ByteBuffer.wrap(buffer, sectionOffset,
-          sectionLength);
-        StreamName name = new StreamName(section.getColumn(),
-            section.getKind());
-        streams.put(name,
-          InStream.create(name.toString(), sectionBuffer, codec, bufferSize));
-        sectionOffset += sectionLength;
+      for(OrcProto.Stream section: footer.getStreamsList()) {
+        if (StreamName.getArea(section.getKind()) == StreamName.Area.DATA) {
+          int sectionLength = (int) section.getLength();
+          ByteBuffer sectionBuffer = ByteBuffer.wrap(buffer, sectionOffset,
+              sectionLength);
+          StreamName name = new StreamName(section.getColumn(),
+              section.getKind());
+          streams.put(name,
+              InStream.create(name.toString(), sectionBuffer, codec,
+                  bufferSize));
+          sectionOffset += sectionLength;
+        }
       }
     } else {
-      List<OrcProto.StripeSection> sections = footer.getSectionsList();
+      List<OrcProto.Stream> streams = footer.getStreamsList();
       // the index of the current section
       int currentSection = 0;
+      while (currentSection < streams.size() &&
+          StreamName.getArea(streams.get(currentSection).getKind()) !=
+              StreamName.Area.DATA) {
+        currentSection += 1;
+      }
       // byte position of the current section relative to the stripe start
-      long sectionOffset = 0;
-      while (currentSection < sections.size()) {
+      long sectionOffset = stripe.getIndexLength();
+      while (currentSection < streams.size()) {
         int bytes = 0;
 
         // find the first section that shouldn't be read
         int excluded=currentSection;
-        while (excluded < sections.size() &&
-               includeColumn(sections.get(excluded).getColumn())) {
-          bytes += sections.get(excluded).getLength();
+        while (excluded < streams.size() &&
+               includeColumn(streams.get(excluded).getColumn())) {
+          bytes += streams.get(excluded).getLength();
           excluded += 1;
         }
 
@@ -899,22 +907,22 @@ class RecordReaderImpl implements RecordReader {
           // create the streams for the sections we just read
           bytes = 0;
           while (currentSection < excluded) {
-            OrcProto.StripeSection section = sections.get(currentSection);
+            OrcProto.Stream section = streams.get(currentSection);
             StreamName name =
               new StreamName(section.getColumn(), section.getKind());
-            streams.put(name,
-              InStream.create(name.toString(),
-                ByteBuffer.wrap(buffer, bytes,
-                  (int) section.getLength()), codec, bufferSize));
+            this.streams.put(name,
+                InStream.create(name.toString(),
+                    ByteBuffer.wrap(buffer, bytes,
+                        (int) section.getLength()), codec, bufferSize));
             currentSection += 1;
             bytes += section.getLength();
           }
         }
 
         // skip forward until we get back to a section that we need
-        while (currentSection < sections.size() &&
-               !includeColumn(sections.get(currentSection).getColumn())) {
-          sectionOffset += sections.get(currentSection).getLength();
+        while (currentSection < streams.size() &&
+               !includeColumn(streams.get(currentSection).getColumn())) {
+          sectionOffset += streams.get(currentSection).getLength();
           currentSection += 1;
         }
       }

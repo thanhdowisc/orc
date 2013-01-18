@@ -58,6 +58,13 @@ public interface Reader {
   public int getCompressionSize();
 
   /**
+   * Get the number of rows per a entry in the row index
+   * @return the number of rows per an entry in the row index or 0 if there
+   * is no row index.
+   */
+  public int getRowIndexStride();
+
+  /**
    * Get the list of stripes.
    * @return the information about the stripes in order
    */
@@ -73,7 +80,7 @@ public interface Reader {
    * Get the length of the file.
    * @return the number of bytes in the file
    */
-  public long getLength();
+  public long getContentLength();
 
   /**
    * Get the statistics about the columns in the file

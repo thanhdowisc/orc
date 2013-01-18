@@ -135,6 +135,15 @@ class DynamicByteArray {
     }
   }
 
+  /**
+   * Byte compare a set of bytes against the bytes in this dynamic array
+   * @param other source of the other bytes
+   * @param otherOffset start offset in the other array
+   * @param otherLength number of bytes in the other array
+   * @param ourOffset the offset in our array
+   * @param ourLength the number of bytes in our array
+   * @return
+   */
   public int compare(byte[] other, int otherOffset, int otherLength,
                      int ourOffset, int ourLength) {
     int currentChunk = ourOffset / chunkSize;
@@ -161,10 +170,17 @@ class DynamicByteArray {
     }
   }
 
+  /**
+   * Get the size of the array
+   * @return the number of bytes in the array
+   */
   public int size() {
     return length;
   }
 
+  /**
+   * Clear the array to its original pristine state.
+   */
   public void clear() {
     length = 0;
     for(int i=0; i < data.length; ++i) {
@@ -173,6 +189,12 @@ class DynamicByteArray {
     initializedChunks = 0;
   }
 
+  /**
+   * Set a text value from the bytes in this dynamic array.
+   * @param result the value to set
+   * @param offset the start of the bytes to copy
+   * @param length the number of bytes to copy
+   */
   public void setText(Text result, int offset, int length) {
     result.clear();
     int currentChunk = offset / chunkSize;
@@ -187,6 +209,13 @@ class DynamicByteArray {
     }
   }
 
+  /**
+   * Write out a range of this dynamic array to an output stream.
+   * @param out the stream to write to
+   * @param offset the first offset to write
+   * @param length the number of bytes to write
+   * @throws IOException
+   */
   public void write(OutputStream out, int offset,
                     int length) throws IOException {
     int currentChunk = offset / chunkSize;

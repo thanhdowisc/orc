@@ -17,34 +17,20 @@
  */
 package org.apache.hadoop.hive.ql.io.orc;
 
-public interface StripeInformation {
-  /**
-   * Get the byte offset of the start of the stripe.
-   * @return the bytes from the start of the file
-   */
-  long getOffset();
+import org.junit.Test;
 
-  /**
-   * Get the length of the stripe's indexes.
-   * @return the number of bytes in the index
-   */
-  long getIndexLength();
+import static org.junit.Assert.assertEquals;
 
-  /**
-   * Get the length of the stripe's data
-   * @return the number of bytes in the stripe
-   */
-  long getDataLength();
+public class TestDynamicArray {
 
-  /**
-   * Get the length of the stripe's tail section, which contains its index.
-   * @return the number of bytes in the tail
-   */
-  long getFooterLength();
-
-  /**
-   * Get the number of rows in the stripe.
-   * @return a count of the number of rows
-   */
-  long getNumberOfRows();
+  @Test
+  public void testByteArray() throws Exception {
+    DynamicByteArray dba = new DynamicByteArray(3, 10);
+    dba.add((byte) 0);
+    dba.add((byte) 1);
+    dba.set(3, (byte) 3);
+    dba.set(2, (byte) 2);
+    dba.add((byte) 4);
+    assertEquals("{0,1,2,3,4}", dba.toString());
+  }
 }

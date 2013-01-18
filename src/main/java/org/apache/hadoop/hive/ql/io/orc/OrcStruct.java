@@ -335,6 +335,8 @@ final class OrcStruct implements Writable {
             return PrimitiveObjectInspectorFactory.writableBinaryObjectInspector;
           case STRING:
             return PrimitiveObjectInspectorFactory.writableStringObjectInspector;
+          case TIMESTAMP:
+            return PrimitiveObjectInspectorFactory.javaTimestampObjectInspector;
           default:
             throw new IllegalArgumentException("Unknown primitive type " +
               ((PrimitiveTypeInfo) info).getPrimitiveCategory());

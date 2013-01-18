@@ -259,5 +259,12 @@ public class TestStringRedBlackTree {
     test4.test1();
     test4.testMROutput();
     test4.testEmptyFile();
+    test4.testDefaultTypes();
+    TestOrcStruct test5 = new TestOrcStruct();
+    test5.testStruct();
+    test5.testInspectorFromTypeInfo();
+    test5.testUnion();
+    TestDynamicArray test6 = new TestDynamicArray();
+    test6.testByteArray();
   }
 }

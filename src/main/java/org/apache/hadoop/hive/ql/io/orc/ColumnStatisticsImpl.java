@@ -32,8 +32,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
       trueCount = bkt.getCount(1);
     }
 
-    BooleanStatisticsImpl(int columnId) {
-      super(columnId);
+    BooleanStatisticsImpl() {
     }
 
     @Override
@@ -92,8 +91,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
     boolean hasMinimum = false;
     boolean overflow = false;
 
-    IntegerStatisticsImpl(int columnId) {
-      super(columnId);
+    IntegerStatisticsImpl() {
     }
 
     IntegerStatisticsImpl(OrcProto.ColumnStatistics stats) {
@@ -229,8 +227,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
     double maximum = Double.MIN_VALUE;
     double sum = 0;
 
-    DoubleStatisticsImpl(int columnId) {
-      super(columnId);
+    DoubleStatisticsImpl() {
     }
 
     DoubleStatisticsImpl(OrcProto.ColumnStatistics stats) {
@@ -339,8 +336,7 @@ class ColumnStatisticsImpl implements ColumnStatistics {
     String minimum = null;
     String maximum = null;
 
-    StringStatisticsImpl(int columnId) {
-      super(columnId);
+    StringStatisticsImpl() {
     }
 
     StringStatisticsImpl(OrcProto.ColumnStatistics stats) {
@@ -425,22 +421,15 @@ class ColumnStatisticsImpl implements ColumnStatistics {
     }
   }
 
-  private final int columnId;
   protected long count = 0;
 
   ColumnStatisticsImpl(OrcProto.ColumnStatistics stats) {
-    if (stats.hasColumn()) {
-      columnId = stats.getColumn();
-    } else {
-      columnId = 0;
-    }
     if (stats.hasNumberOfValues()) {
       count = stats.getNumberOfValues();
     }
   }
 
-  ColumnStatisticsImpl(int columnId) {
-    this.columnId = columnId;
+  ColumnStatisticsImpl() {
   }
 
   void increment() {
@@ -464,9 +453,6 @@ class ColumnStatisticsImpl implements ColumnStatistics {
   }
 
   void merge(ColumnStatisticsImpl stats) {
-    if (columnId != stats.columnId) {
-      throw new IllegalArgumentException("Unmergeable column statistics");
-    }
     count += stats.count;
   }
 
@@ -487,33 +473,31 @@ class ColumnStatisticsImpl implements ColumnStatistics {
   OrcProto.ColumnStatistics.Builder serialize() {
     OrcProto.ColumnStatistics.Builder builder =
       OrcProto.ColumnStatistics.newBuilder();
-    builder.setColumn(columnId);
     builder.setNumberOfValues(count);
     return builder;
   }
 
-  static ColumnStatisticsImpl create(int columnId,
-                                     ObjectInspector inspector) {
+  static ColumnStatisticsImpl create(ObjectInspector inspector) {
     switch (inspector.getCategory()) {
       case PRIMITIVE:
         switch (((PrimitiveObjectInspector) inspector).getPrimitiveCategory()) {
           case BOOLEAN:
-            return new BooleanStatisticsImpl(columnId);
+            return new BooleanStatisticsImpl();
           case BYTE:
           case SHORT:
           case INT:
           case LONG:
-            return new IntegerStatisticsImpl(columnId);
+            return new IntegerStatisticsImpl();
           case FLOAT:
           case DOUBLE:
-            return new DoubleStatisticsImpl(columnId);
+            return new DoubleStatisticsImpl();
           case STRING:
-            return new StringStatisticsImpl(columnId);
+            return new StringStatisticsImpl();
           default:
-            return new ColumnStatisticsImpl(columnId);
+            return new ColumnStatisticsImpl();
         }
       default:
-        return new ColumnStatisticsImpl(columnId);
+        return new ColumnStatisticsImpl();
     }
   }
 

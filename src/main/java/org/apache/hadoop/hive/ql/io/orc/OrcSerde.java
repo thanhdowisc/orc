@@ -65,8 +65,6 @@ public class OrcSerde implements SerDe {
       for(String name: columnNameProperty.split(",")) {
         columnNames.add(name);
       }
-    } else {
-      columnNames = new ArrayList<String>();
     }
     if (columnTypeProperty == null) {
       // Default type: all string

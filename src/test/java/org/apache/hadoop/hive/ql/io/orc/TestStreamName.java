@@ -26,13 +26,13 @@ public class TestStreamName {
 
   @Test
   public void test1() throws Exception {
-    StreamName s1 = new StreamName(3, OrcProto.StripeSection.Kind.DATA);
+    StreamName s1 = new StreamName(3, OrcProto.Stream.Kind.DATA);
     StreamName s2 = new StreamName(3,
-        OrcProto.StripeSection.Kind.DICTIONARY_DATA);
-    StreamName s3 = new StreamName(5, OrcProto.StripeSection.Kind.DATA);
+        OrcProto.Stream.Kind.DICTIONARY_DATA);
+    StreamName s3 = new StreamName(5, OrcProto.Stream.Kind.DATA);
     StreamName s4 = new StreamName(5,
-        OrcProto.StripeSection.Kind.DICTIONARY_DATA);
-    StreamName s1p = new StreamName(3, OrcProto.StripeSection.Kind.DATA);
+        OrcProto.Stream.Kind.DICTIONARY_DATA);
+    StreamName s1p = new StreamName(3, OrcProto.Stream.Kind.DATA);
     assertEquals(true, s1.equals(s1));
     assertEquals(false, s1.equals(s2));
     assertEquals(false, s1.equals(s3));

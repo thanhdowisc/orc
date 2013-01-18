@@ -52,7 +52,7 @@ import java.util.Random;
 import static junit.framework.Assert.*;
 
 /**
- * Tests for the top level reader/writer of ORC files.
+ * Tests for the top level reader/streamFactory of ORC files.
  */
 public class TestOrcFile {
 
@@ -163,7 +163,7 @@ public class TestOrcFile {
     Path p = new Path(workDir, "file.orc");
     fs.delete(p, false);
     Writer writer = OrcFile.createWriter(fs, p, inspector,
-        100000, CompressionKind.ZLIB, 10000);
+        100000, CompressionKind.ZLIB, 10000, 10000);
     writer.addRow(new BigRow(false, (byte) 1, (short) 1024, 65536,
         Long.MAX_VALUE, (float) 1.0, -15.0, bytes(0,1,2,3,4), "hi",
         new MiddleStruct(inner(1, "bye"), inner(2, "sigh")),
@@ -396,7 +396,7 @@ public class TestOrcFile {
         ObjectInspectorFactory.getReflectionObjectInspector(InnerStruct.class,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
     Writer writer = OrcFile.createWriter(fs, p, inspector,
-        1000, CompressionKind.NONE, 100);
+        1000, CompressionKind.NONE, 100, 1000);
     Random r1 = new Random(1);
     Random r2 = new Random(2);
     int x;
@@ -481,7 +481,7 @@ public class TestOrcFile {
         ObjectInspectorFactory.getReflectionObjectInspector(BigRow.class,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
     Writer writer = OrcFile.createWriter(fs, p, inspector,
-        1000, CompressionKind.NONE, 100);
+        1000, CompressionKind.NONE, 100, 10000);
     writer.close();
     Reader reader = OrcFile.createReader(fs, p);
     assertEquals(false, reader.rows(null).hasNext());
@@ -489,7 +489,7 @@ public class TestOrcFile {
     assertEquals(0, reader.getNumberOfRows());
     assertEquals(0, reader.getCompressionSize());
     assertEquals(false, reader.getMetadataKeys().iterator().hasNext());
-    assertEquals(3, reader.getLength());
+    assertEquals(3, reader.getContentLength());
     assertEquals(false, reader.getStripes().iterator().hasNext());
   }
 
@@ -503,7 +503,7 @@ public class TestOrcFile {
         ObjectInspectorFactory.getReflectionObjectInspector(BigRow.class,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
     Writer writer = OrcFile.createWriter(fs, p, inspector,
-        1000, CompressionKind.NONE, 100);
+        1000, CompressionKind.NONE, 100, 10000);
     writer.addUserMetadata("my.meta", byteBuf(1, 2, 3, 4, 5, 6, 7, -1, -2, 127, -128));
     writer.addUserMetadata("clobber", byteBuf(1,2,3));
     writer.addUserMetadata("clobber", byteBuf(4,3,2,1));
@@ -566,7 +566,7 @@ public class TestOrcFile {
         build());
     ObjectInspector inspector = OrcStruct.createObjectInspector(0, types);
     Writer writer = OrcFile.createWriter(fs, p, inspector,
-        1000, CompressionKind.NONE, 100);
+        1000, CompressionKind.NONE, 100, 10000);
     OrcStruct row = new OrcStruct(2);
     OrcUnion union = new OrcUnion();
     row.setFieldValue(1, union);
@@ -619,15 +619,17 @@ public class TestOrcFile {
       stripeCount += 1;
       rowCount += stripe.getNumberOfRows();
       if (currentOffset < 0) {
-        currentOffset = stripe.getOffset() + stripe.getLength();
+        currentOffset = stripe.getOffset() + stripe.getIndexLength() +
+            stripe.getDataLength() + stripe.getFooterLength();
       } else {
         assertEquals(currentOffset, stripe.getOffset());
-        currentOffset += stripe.getLength();
+        currentOffset += stripe.getIndexLength() +
+            stripe.getDataLength() + stripe.getFooterLength();
       }
     }
     assertEquals(reader.getNumberOfRows(), rowCount);
     assertEquals(2, stripeCount);
-    assertEquals(reader.getLength(), currentOffset);
+    assertEquals(reader.getContentLength(), currentOffset);
     RecordReader rows = reader.rows(null);
     assertEquals(0, rows.getRowNumber());
     assertEquals(0.0, rows.getProgress(), 0.000001);

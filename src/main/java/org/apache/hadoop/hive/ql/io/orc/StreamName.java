@@ -23,9 +23,13 @@ package org.apache.hadoop.hive.ql.io.orc;
  */
 class StreamName implements Comparable<StreamName> {
   private final int column;
-  private final OrcProto.StripeSection.Kind kind;
+  private final OrcProto.Stream.Kind kind;
 
-  public StreamName(int column, OrcProto.StripeSection.Kind kind) {
+  public static enum Area {
+    DATA, INDEX
+  }
+
+  public StreamName(int column, OrcProto.Stream.Kind kind) {
     this.column = column;
     this.kind = kind;
   }
@@ -43,21 +47,38 @@ class StreamName implements Comparable<StreamName> {
   public int compareTo(StreamName streamName) {
     if (streamName == null) {
       return -1;
-    } else if (column > streamName.column) {
-      return 1;
-    } else if (column < streamName.column) {
-      return -1;
-    } else {
-      return kind.compareTo(streamName.kind);
     }
+    Area area = getArea(kind);
+    Area otherArea = streamName.getArea(streamName.kind);
+    if (area != otherArea) {
+      return -area.compareTo(otherArea);
+    }
+    if (column != streamName.column) {
+      return column < streamName.column ? -1 : 1;
+    }
+    return kind.compareTo(streamName.kind);
   }
 
   public int getColumn() {
     return column;
   }
 
-  public OrcProto.StripeSection.Kind getKind() {
+  public OrcProto.Stream.Kind getKind() {
     return kind;
+  }
+
+  public Area getArea() {
+    return getArea(kind);
+  }
+
+  public static Area getArea(OrcProto.Stream.Kind kind) {
+    switch (kind) {
+      case ROW_INDEX:
+      case DICTIONARY_COUNT:
+        return Area.INDEX;
+      default:
+        return Area.DATA;
+    }
   }
 
   @Override

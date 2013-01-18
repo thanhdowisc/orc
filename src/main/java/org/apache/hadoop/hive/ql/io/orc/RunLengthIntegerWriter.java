@@ -20,7 +20,7 @@ package org.apache.hadoop.hive.ql.io.orc;
 import java.io.IOException;
 
 /**
- * A writer that writes a sequence of integers. A control byte is written before
+ * A streamFactory that writes a sequence of integers. A control byte is written before
  * each run with positive values 0 to 127 meaning 3 to 130 repetitions, each
  * repetition is offset by a delta. If the control byte is -1 to -128, 1 to 128
  * literal vint values follow.

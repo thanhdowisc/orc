@@ -77,7 +77,7 @@ public class TestFileDump {
         ObjectInspectorFactory.getReflectionObjectInspector(MyRecord.class,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
     Writer writer = OrcFile.createWriter(fs, p, inspector,
-        100000, CompressionKind.ZLIB, 10000);
+        100000, CompressionKind.ZLIB, 10000, 10000);
     Random r1 = new Random(1);
     for(int i=0; i < 21000; ++i) {
       writer.addRow(new MyRecord(r1.nextFloat(), r1.nextDouble()));

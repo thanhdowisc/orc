@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -44,7 +45,7 @@ class ReaderImpl implements Reader {
   private final ObjectInspector inspector;
 
   private static class StripeInformationImpl
-    implements StripeInformation {
+      implements StripeInformation {
     private final OrcProto.StripeInformation stripe;
 
     StripeInformationImpl(OrcProto.StripeInformation stripe) {
@@ -57,13 +58,18 @@ class ReaderImpl implements Reader {
     }
 
     @Override
-    public long getLength() {
-      return stripe.getLength();
+    public long getDataLength() {
+      return stripe.getDataLength();
     }
 
     @Override
-    public long getTailLength() {
-      return stripe.getTailLength();
+    public long getFooterLength() {
+      return stripe.getFooterLength();
+    }
+
+    @Override
+    public long getIndexLength() {
+      return stripe.getIndexLength();
     }
 
     @Override
@@ -73,8 +79,9 @@ class ReaderImpl implements Reader {
 
     @Override
     public String toString() {
-      return "offset: " + getOffset() + " length: " + getLength() +
-        " rows: " + getNumberOfRows() + " tail: " + getTailLength();
+      return "offset: " + getOffset() + " data: " + getDataLength() +
+        " rows: " + getNumberOfRows() + " tail: " + getFooterLength() +
+        " index: " + getIndexLength();
     }
   }
 
@@ -147,8 +154,8 @@ class ReaderImpl implements Reader {
   }
 
   @Override
-  public long getLength() {
-    return footer.getBodyLength();
+  public long getContentLength() {
+    return footer.getContentLength();
   }
 
   @Override
@@ -157,10 +164,15 @@ class ReaderImpl implements Reader {
   }
 
   @Override
+  public int getRowIndexStride() {
+    return footer.getRowIndexStride();
+  }
+
+  @Override
   public ColumnStatistics[] getStatistics() {
     ColumnStatistics[] result = new ColumnStatistics[footer.getTypesCount()];
-    for(OrcProto.ColumnStatistics stats: footer.getStatisticsList()) {
-      result[stats.getColumn()] = ColumnStatisticsImpl.deserialize(stats);
+    for(int i=0; i < result.length; ++i) {
+      result[i] = ColumnStatisticsImpl.deserialize(footer.getStatistics(i));
     }
     return result;
   }

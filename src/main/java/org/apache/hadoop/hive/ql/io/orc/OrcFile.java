@@ -34,6 +34,8 @@ public class OrcFile {
   static final String DEFAULT_COMPRESSION_BLOCK_SIZE = "262144";
   public static final String STRIPE_SIZE = "orc.stripe.size";
   static final String DEFAULT_STRIPE_SIZE = "268435456";
+  public static final String ROW_INDEX_STRIDE = "orc.row.index.stride";
+  static final String DEFAULT_ROW_INDEX_STRIDE = "10000";
 
   /**
    * Create an ORC file reader.
@@ -48,14 +50,14 @@ public class OrcFile {
   }
 
   /**
-   * Create an ORC file writer.
+   * Create an ORC file streamFactory.
    * @param fs file system
    * @param path filename to write to
    * @param inspector the ObjectInspector that inspects the rows
    * @param stripeSize the number of bytes in a stripe
    * @param compress how to compress the file
    * @param bufferSize the number of bytes to compress at once
-   * @return a new ORC file writer
+   * @return a new ORC file streamFactory
    * @throws IOException
    */
   public static Writer createWriter(FileSystem fs,
@@ -63,9 +65,10 @@ public class OrcFile {
                                     ObjectInspector inspector,
                                     long stripeSize,
                                     CompressionKind compress,
-                                    int bufferSize) throws IOException {
+                                    int bufferSize,
+                                    int rowIndexStride) throws IOException {
     return new WriterImpl(fs, path, inspector, stripeSize, compress,
-      bufferSize);
+      bufferSize, rowIndexStride);
   }
 
 }

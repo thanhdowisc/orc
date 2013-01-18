@@ -48,8 +48,8 @@ public class FileDump {
         System.out.println("  Stripe: " + stripe.toString());
         OrcProto.StripeFooter footer = rows.readerStripeFooter(stripe);
         long sectionStart = stripeStart;
-        for(OrcProto.StripeSection section: footer.getSectionsList()) {
-          System.out.println("    Section: column " + section.getColumn() +
+        for(OrcProto.Stream section: footer.getStreamsList()) {
+          System.out.println("    Stream: column " + section.getColumn() +
             " section " + section.getKind() + " start: " + sectionStart +
             " length " + section.getLength());
           sectionStart += section.getLength();
