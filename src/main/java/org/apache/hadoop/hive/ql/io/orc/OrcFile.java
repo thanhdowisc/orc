@@ -57,6 +57,8 @@ public class OrcFile {
    * @param stripeSize the number of bytes in a stripe
    * @param compress how to compress the file
    * @param bufferSize the number of bytes to compress at once
+   * @param rowIndexStride the number of rows between row index entries or
+   *                       0 to suppress all indexes
    * @return a new ORC file streamFactory
    * @throws IOException
    */

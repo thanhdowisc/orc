@@ -54,6 +54,19 @@
         <option name="CONDITION" value="" />
         <option name="LOG_MESSAGE" value="" />
       </breakpoint>
+      <breakpoint url="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/OrcFile.java" line="71" class="org.apache.hadoop.hive.ql.io.orc.OrcFile" package="org.apache.hadoop.hive.ql.io.orc">
+        <option name="ENABLED" value="true" />
+        <option name="LOG_ENABLED" value="false" />
+        <option name="LOG_EXPRESSION_ENABLED" value="false" />
+        <option name="SUSPEND_POLICY" value="SuspendAll" />
+        <option name="COUNT_FILTER_ENABLED" value="false" />
+        <option name="COUNT_FILTER" value="0" />
+        <option name="CONDITION_ENABLED" value="false" />
+        <option name="CLASS_FILTERS_ENABLED" value="false" />
+        <option name="INSTANCE_FILTERS_ENABLED" value="false" />
+        <option name="CONDITION" value="" />
+        <option name="LOG_MESSAGE" value="" />
+      </breakpoint>
     </line_breakpoints>
     <breakpoint_any>
       <breakpoint>
@@ -125,29 +138,13 @@
       <file leaf-file-name="WriterImpl.java" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/WriterImpl.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="277" column="0" selection-start="9787" selection-end="9787" vertical-scroll-proportion="0.6">
+            <state line="119" column="0" selection-start="4930" selection-end="4930" vertical-scroll-proportion="0.38164252">
               <folding>
-                <element signature="e#3230#3258#0" expanded="true" />
-                <element signature="e#17763#17787#0" expanded="true" />
+                <element signature="imports" expanded="true" />
+                <element signature="e#3291#3319#0" expanded="true" />
+                <element signature="e#3780#3808#0" expanded="true" />
+                <element signature="e#18390#18414#0" expanded="true" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="RunLengthByteReader.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/RunLengthByteReader.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="61" column="0" selection-start="2144" selection-end="2144" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="ReaderImpl.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/ReaderImpl.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="209" column="14" selection-start="6154" selection-end="6154" vertical-scroll-proportion="0.0">
-              <folding />
             </state>
           </provider>
         </entry>
@@ -155,7 +152,7 @@
       <file leaf-file-name="TestOrcFile.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestOrcFile.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="422" column="0" selection-start="17808" selection-end="17808" vertical-scroll-proportion="0.0">
+            <state line="164" column="0" selection-start="5483" selection-end="5483" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -182,7 +179,25 @@
       <file leaf-file-name="OrcFile.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/OrcFile.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="48" column="0" selection-start="1931" selection-end="1931" vertical-scroll-proportion="0.0">
+            <state line="71" column="0" selection-start="2918" selection-end="2918" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="OrcOutputFormat.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/OrcOutputFormat.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="80" column="25" selection-start="3276" selection-end="3276" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="TestFileDump.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestFileDump.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="78" column="28" selection-start="2723" selection-end="2723" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -213,13 +228,13 @@
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/StripeInformation.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/Reader.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/OrcOutputFormat.java" />
-        <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/OrcFile.java" />
         <option value="$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestFileDump.java" />
         <option value="$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestStreamName.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/StreamName.java" />
         <option value="$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestOrcFile.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/RecordReaderImpl.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/ReaderImpl.java" />
+        <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/OrcFile.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/WriterImpl.java" />
       </list>
     </option>
@@ -236,7 +251,7 @@
     <option name="x" value="51" />
     <option name="y" value="22" />
     <option name="width" value="1624" />
-    <option name="height" value="1028" />
+    <option name="height" value="1414" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="false">
     <OptionsSetting value="true" id="Add" />
@@ -770,31 +785,31 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="51" y="22" width="1624" height="1028" extended-state="6" />
+    <frame x="51" y="22" width="1624" height="1414" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info id="Data Sources" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32934782" sideWeight="0.49841017" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.20494974" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.43805668" sideWeight="0.93981296" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.4377417" sideWeight="0.93981296" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="IDEtalk Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3296582" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="IDEtalk" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3222672" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Coverage" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32233503" sideWeight="0.52480704" order="3" side_tool="true" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3217324" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Coverage" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32233503" sideWeight="0.5622583" order="3" side_tool="true" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.25824872" sideWeight="0.30319735" order="1" side_tool="true" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.25824872" sideWeight="0.32559937" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.35135135" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.25824872" sideWeight="0.21389195" order="0" side_tool="false" content_ui="combo" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.47519293" sideWeight="0.99847174" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.25824872" sideWeight="0.23124516" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.47519293" sideWeight="0.99847174" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="JetGradle" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32953826" sideWeight="0.66593164" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32524806" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3995309" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
     </layout>
@@ -858,20 +873,6 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/target/generated-sources/protoc/org/apache/hadoop/hive/ql/io/orc/OrcProto.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="4654" column="0" selection-start="177417" selection-end="177417" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/OutStream.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="47" column="0" selection-start="1658" selection-end="1658" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/InStream.java">
       <provider selected="true" editor-type-id="text-editor">
         <state line="109" column="0" selection-start="3568" selection-end="3568" vertical-scroll-proportion="0.0">
@@ -914,13 +915,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestOrcFile.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="422" column="0" selection-start="17808" selection-end="17808" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestStringRedBlackTree.java">
       <provider selected="true" editor-type-id="text-editor">
         <state line="252" column="0" selection-start="8822" selection-end="8822" vertical-scroll-proportion="0.0">
@@ -931,13 +925,6 @@
     <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/StripeInformation.java">
       <provider selected="true" editor-type-id="text-editor">
         <state line="36" column="7" selection-start="1259" selection-end="1259" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/OrcFile.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="48" column="0" selection-start="1931" selection-end="1931" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
@@ -963,12 +950,42 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/OrcOutputFormat.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="80" column="25" selection-start="3276" selection-end="3276" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestFileDump.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="78" column="28" selection-start="2723" selection-end="2723" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestOrcFile.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="164" column="0" selection-start="5483" selection-end="5483" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/OrcFile.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="71" column="0" selection-start="2918" selection-end="2918" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/WriterImpl.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="277" column="0" selection-start="9787" selection-end="9787" vertical-scroll-proportion="0.6">
+        <state line="119" column="0" selection-start="4930" selection-end="4930" vertical-scroll-proportion="0.38164252">
           <folding>
-            <element signature="e#3230#3258#0" expanded="true" />
-            <element signature="e#17763#17787#0" expanded="true" />
+            <element signature="imports" expanded="true" />
+            <element signature="e#3291#3319#0" expanded="true" />
+            <element signature="e#3780#3808#0" expanded="true" />
+            <element signature="e#18390#18414#0" expanded="true" />
           </folding>
         </state>
       </provider>

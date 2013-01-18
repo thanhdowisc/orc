@@ -53,7 +53,8 @@ import java.util.TreeMap;
 
 class WriterImpl implements Writer {
 
-  private static final int BUFFER_SIZE = 256 * 1024;
+  private static final int HDFS_BUFFER_SIZE = 256 * 1024;
+  private static final int MIN_ROW_INDEX_STRIDE = 1000;
 
   private final FileSystem fs;
   private final Path path;
@@ -86,6 +87,7 @@ class WriterImpl implements Writer {
   private final TreeWriter treeWriter;
   private final OrcProto.RowIndex.Builder rowIndex =
       OrcProto.RowIndex.newBuilder();
+  private final boolean buildIndex;
 
   WriterImpl(FileSystem fs,
              Path path,
@@ -114,7 +116,12 @@ class WriterImpl implements Writer {
     }
     this.bufferSize = bufferSize;
     this.rowIndexStride = rowIndexStride;
+    buildIndex = rowIndexStride > 0;
     treeWriter = createTreeWriter(inspector, StreamFactory, false);
+    if (buildIndex && rowIndexStride < MIN_ROW_INDEX_STRIDE) {
+      throw new IllegalArgumentException("Row stride must be at least " +
+          MIN_ROW_INDEX_STRIDE);
+    }
   }
 
   private class BufferedStream implements OutStream.OutputReceiver {
@@ -224,6 +231,14 @@ class WriterImpl implements Writer {
     public int getRowIndexStride() {
       return rowIndexStride;
     }
+
+    /**
+     * Should be building the row index
+     * @return true if we are building the index
+     */
+    public boolean buildIndex() {
+      return buildIndex;
+    }
   }
 
   private static abstract class TreeWriter {
@@ -257,8 +272,12 @@ class WriterImpl implements Writer {
       rowIndex = OrcProto.RowIndex.newBuilder();
       rowIndexEntry = OrcProto.RowIndexEntry.newBuilder();
       rowIndexPosition = new RowIndexPositionRecorder(rowIndexEntry);
-      rowIndexStream = streamFactory.createStream(id,
-          OrcProto.Stream.Kind.ROW_INDEX);
+      if (streamFactory.buildIndex()) {
+        rowIndexStream = streamFactory.createStream(id,
+            OrcProto.Stream.Kind.ROW_INDEX);
+      } else {
+        rowIndexStream = null;
+      }
     }
 
     void write(Object obj) throws IOException {
@@ -275,8 +294,10 @@ class WriterImpl implements Writer {
         isPresent.flush();
       }
       builder.addColumns(getEncoding());
-      rowIndex.build().writeTo(rowIndexStream);
-      rowIndexStream.flush();
+      if (rowIndexStream != null) {
+        rowIndex.build().writeTo(rowIndexStream);
+        rowIndexStream.flush();
+      }
       rowIndex.clear();
       rowIndexEntry.clear();
     }
@@ -529,6 +550,7 @@ class WriterImpl implements Writer {
     private final List<OrcProto.RowIndexEntry> savedRowIndex =
         new ArrayList<OrcProto.RowIndexEntry>();
     private final int rowIndexStride;
+    private final boolean buildIndex;
 
     StringTreeWriter(int columnId,
                      ObjectInspector inspector,
@@ -541,10 +563,15 @@ class WriterImpl implements Writer {
           OrcProto.Stream.Kind.LENGTH), false);
       rowOutput = new RunLengthIntegerWriter(writer.createStream(id,
           OrcProto.Stream.Kind.DATA), false);
-      countOutput = new RunLengthIntegerWriter(writer.createStream(id,
-          OrcProto.Stream.Kind.DICTIONARY_COUNT), false);
+      if (writer.buildIndex()) {
+        countOutput = new RunLengthIntegerWriter(writer.createStream(id,
+            OrcProto.Stream.Kind.DICTIONARY_COUNT), false);
+      } else {
+        countOutput = null;
+      }
       recordPosition(rowIndexPosition);
       rowIndexStride = writer.getRowIndexStride();
+      buildIndex = writer.buildIndex();
     }
 
     @Override
@@ -569,7 +596,9 @@ class WriterImpl implements Writer {
           context.writeBytes(stringOutput);
           lengthOutput.write(context.getLength());
           dumpOrder[context.getOriginalPosition()] = currentId++;
-          countOutput.write(context.getCount());
+          if (countOutput != null) {
+            countOutput.write(context.getCount());
+          }
         }
       });
       int length = rows.size();
@@ -578,7 +607,7 @@ class WriterImpl implements Writer {
         rowOutput.write(dumpOrder[rows.get(i)]);
         // now that we are writing out the row values, we can finalize the
         // row index
-        if (i % rowIndexStride == 0) {
+        if (buildIndex && i % rowIndexStride == 0) {
           OrcProto.RowIndexEntry.Builder base =
               savedRowIndex.get(rowIndexEntry++).toBuilder();
           rowOutput.getPosition(new RowIndexPositionRecorder(base));
@@ -591,7 +620,9 @@ class WriterImpl implements Writer {
       stringOutput.flush();
       lengthOutput.flush();
       rowOutput.flush();
-      countOutput.flush();
+      if (countOutput != null) {
+        countOutput.flush();
+      }
       dictionary.clear();
       rows.clear();
       savedRowIndex.clear();
@@ -1046,7 +1077,7 @@ class WriterImpl implements Writer {
 
   private void ensureWriter() throws IOException {
     if (rawWriter == null) {
-      rawWriter = fs.create(path, false, BUFFER_SIZE,
+      rawWriter = fs.create(path, false, HDFS_BUFFER_SIZE,
         fs.getDefaultReplication(),
           Math.min(stripeSize * 2L, Integer.MAX_VALUE));
       rawWriter.writeBytes(OrcFile.MAGIC);
@@ -1065,7 +1096,7 @@ class WriterImpl implements Writer {
 
   private void flushStripe() throws IOException {
     ensureWriter();
-    if (rowsInIndex != 0) {
+    if (buildIndex && rowsInIndex != 0) {
       createRowIndexEntry();
     }
     if (rowsInStripe != 0) {
@@ -1182,7 +1213,7 @@ class WriterImpl implements Writer {
   public void addRow(Object row) throws IOException {
     treeWriter.write(row);
     rowsInIndex += 1;
-    if (rowsInIndex >= rowIndexStride) {
+    if (buildIndex && rowsInIndex >= rowIndexStride) {
       createRowIndexEntry();
     }
     if (bytesInStripe >= stripeSize) {
