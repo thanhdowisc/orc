@@ -132,6 +132,9 @@ public class OrcOutputFormat extends FileOutputFormat<NullWritable, OrcSerdeRow>
     String rowIndexStride =
         tableProperties.getProperty(OrcFile.ROW_INDEX_STRIDE,
             OrcFile.DEFAULT_ROW_INDEX_STRIDE);
+    if ("false".equals(tableProperties.getProperty(OrcFile.ENABLE_INDEXES))) {
+      rowIndexStride = "0";
+    }
     return new OrcRecordWriter(path.getFileSystem(conf), path, conf,
       stripeSize, compression, compressionSize, rowIndexStride);
   }

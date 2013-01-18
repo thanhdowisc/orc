@@ -36,6 +36,7 @@ public class OrcFile {
   static final String DEFAULT_STRIPE_SIZE = "268435456";
   public static final String ROW_INDEX_STRIDE = "orc.row.index.stride";
   static final String DEFAULT_ROW_INDEX_STRIDE = "10000";
+  public static final String ENABLE_INDEXES = "orc.create.index";
 
   /**
    * Create an ORC file reader.
