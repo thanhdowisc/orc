@@ -526,6 +526,9 @@ class WriterImpl implements Writer {
     private final RunLengthIntegerWriter countOutput;
     private final StringRedBlackTree dictionary = new StringRedBlackTree();
     private final DynamicIntArray rows = new DynamicIntArray();
+    private final List<OrcProto.RowIndexEntry> savedRowIndex =
+        new ArrayList<OrcProto.RowIndexEntry>();
+    private final int rowIndexStride;
 
     StringTreeWriter(int columnId,
                      ObjectInspector inspector,
@@ -541,6 +544,7 @@ class WriterImpl implements Writer {
       countOutput = new RunLengthIntegerWriter(writer.createStream(id,
           OrcProto.Stream.Kind.DICTIONARY_COUNT), false);
       recordPosition(rowIndexPosition);
+      rowIndexStride = writer.getRowIndexStride();
     }
 
     @Override
@@ -556,7 +560,6 @@ class WriterImpl implements Writer {
 
     @Override
     void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
       final int[] dumpOrder = new int[dictionary.size()];
       dictionary.visit(new StringRedBlackTree.Visitor() {
         int currentId = 0;
@@ -570,21 +573,43 @@ class WriterImpl implements Writer {
         }
       });
       int length = rows.size();
+      int rowIndexEntry = 0;
       for(int i=0; i < length; ++i) {
         rowOutput.write(dumpOrder[rows.get(i)]);
+        // now that we are writing out the row values, we can finalize the
+        // row index
+        if (i % rowIndexStride == 0) {
+          OrcProto.RowIndexEntry.Builder base =
+              savedRowIndex.get(rowIndexEntry++).toBuilder();
+          rowOutput.getPosition(new RowIndexPositionRecorder(base));
+          rowIndex.addEntry(base.build());
+        }
       }
+      // we need to build the rowindex before calling super, since it
+      // writes it out.
+      super.writeStripe(builder);
       stringOutput.flush();
       lengthOutput.flush();
       rowOutput.flush();
       countOutput.flush();
       dictionary.clear();
       rows.clear();
+      savedRowIndex.clear();
       recordPosition(rowIndexPosition);
     }
 
     @Override
     OrcProto.ColumnEncoding getEncoding() {
       return OrcProto.ColumnEncoding.DICTIONARY;
+    }
+
+    void createRowIndexEntry() throws IOException {
+      fileStatistics.merge(stripeStatistics);
+      rowIndexEntry.setStatistics(stripeStatistics.serialize());
+      stripeStatistics.reset();
+      savedRowIndex.add(rowIndexEntry.build());
+      rowIndexEntry.clear();
+      recordPosition(rowIndexPosition);
     }
   }
 
