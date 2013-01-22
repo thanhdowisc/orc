@@ -727,4 +727,51 @@ public class TestOrcFile {
     assertEquals(false, rows.hasNext());
     rows.close();
   }
+
+  /**
+   * Read and write a randomly generated snappy file.
+   * @throws Exception
+   */
+  @Test
+  public void testWithoutIndex() throws Exception {
+    Configuration conf = new Configuration();
+    FileSystem fs = FileSystem.getLocal(conf);
+    Path p = new Path(workDir, "file.orc");
+    fs.delete(p, false);
+    ObjectInspector inspector =
+        ObjectInspectorFactory.getReflectionObjectInspector(InnerStruct.class,
+            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    Writer writer = OrcFile.createWriter(fs, p, inspector,
+        5000, CompressionKind.SNAPPY, 1000, 0);
+    Random rand = new Random(24);
+    for(int i=0; i < 10000; ++i) {
+      InnerStruct row = new InnerStruct(rand.nextInt(),
+          Integer.toBinaryString(rand.nextInt()));
+      for(int j=0; j< 5; ++j) {
+        writer.addRow(row);
+      }
+    }
+    writer.close();
+    Reader reader = OrcFile.createReader(fs, p);
+    assertEquals(50000, reader.getNumberOfRows());
+    assertEquals(0, reader.getRowIndexStride());
+    StripeInformation stripe = reader.getStripes().iterator().next();
+    assertEquals(true, stripe.getDataLength() != 0);
+    assertEquals(0, stripe.getIndexLength());
+    RecordReader rows = reader.rows(null);
+    rand = new Random(24);
+    OrcStruct row = null;
+    for(int i=0; i < 10000; ++i) {
+      int intVal = rand.nextInt();
+      String strVal = Integer.toBinaryString(rand.nextInt());
+      for(int j=0; j < 5; ++j) {
+        assertEquals(true, rows.hasNext());
+        row = (OrcStruct) rows.next(row);
+        assertEquals(intVal, ((IntWritable) row.getFieldValue(0)).get());
+        assertEquals(strVal, row.getFieldValue(1).toString());
+      }
+    }
+    assertEquals(false, rows.hasNext());
+    rows.close();
+  }
 }

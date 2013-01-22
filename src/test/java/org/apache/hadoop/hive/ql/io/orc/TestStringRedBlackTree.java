@@ -252,6 +252,7 @@ public class TestStringRedBlackTree {
     test1.testUnionAndTimestamp();
     test1.columnProjection();
     test1.testSnappy();
+    test1.testWithoutIndex();
     TestFileDump test2 = new TestFileDump();
     test2.testDump();
     TestStreamName test3 = new TestStreamName();
