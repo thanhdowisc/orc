@@ -29,8 +29,8 @@ class SnappyCodec implements CompressionCodec {
   public boolean compress(ByteBuffer in, ByteBuffer out,
                           ByteBuffer overflow) throws IOException {
     int inBytes = in.remaining();
-    // i should work on a patch for Snappy to support an overflow buffer
-    // to prevent the extra buffer copy
+    // I should work on a patch for Snappy to support an overflow buffer
+    // to prevent the extra buffer copy.
     byte[] compressed = new byte[Snappy.maxCompressedLength(inBytes)];
     int outBytes =
         Snappy.compress(in.array(), in.arrayOffset() + in.position(), inBytes,

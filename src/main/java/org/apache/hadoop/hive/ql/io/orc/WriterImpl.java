@@ -1226,9 +1226,13 @@ class WriterImpl implements Writer {
   @Override
   public void addRow(Object row) throws IOException {
     treeWriter.write(row);
-    rowsInIndex += 1;
-    if (buildIndex && rowsInIndex >= rowIndexStride) {
-      createRowIndexEntry();
+    if (buildIndex) {
+      rowsInIndex += 1;
+      if (buildIndex && rowsInIndex >= rowIndexStride) {
+        createRowIndexEntry();
+      }
+    } else {
+      rowsInStripe += 1;
     }
     if (bytesInStripe >= stripeSize) {
       flushStripe();
