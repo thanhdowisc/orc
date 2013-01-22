@@ -197,19 +197,20 @@ class ReaderImpl implements Reader {
     switch (ps.getCompression()) {
       case NONE:
         compressionKind = CompressionKind.NONE;
-        codec = null;
         break;
       case ZLIB:
         compressionKind = CompressionKind.ZLIB;
-        codec = new ZlibCodec();
         break;
       case SNAPPY:
         compressionKind = CompressionKind.SNAPPY;
-        codec = new SnappyCodec();
+        break;
+      case LZO:
+        compressionKind = CompressionKind.LZO;
         break;
       default:
         throw new IllegalArgumentException("Unknown compression");
     }
+    codec = WriterImpl.createCodec(compressionKind);
     int extra = Math.max(0, psLen + 1 + footerSize - readSize);
     if (extra > 0) {
       file.seek(size - readSize - extra);

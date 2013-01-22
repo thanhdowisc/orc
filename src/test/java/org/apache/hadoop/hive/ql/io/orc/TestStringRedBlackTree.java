@@ -251,6 +251,7 @@ public class TestStringRedBlackTree {
     test1.metaData();
     test1.testUnionAndTimestamp();
     test1.columnProjection();
+    test1.testSnappy();
     TestFileDump test2 = new TestFileDump();
     test2.testDump();
     TestStreamName test3 = new TestStreamName();

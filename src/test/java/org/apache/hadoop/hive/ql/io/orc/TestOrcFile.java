@@ -691,4 +691,40 @@ public class TestOrcFile {
     assertEquals(reader.getNumberOfRows(), rows.getRowNumber());
     rows.close();
   }
+
+  /**
+   * Read and write a randomly generated snappy file.
+   * @throws Exception
+   */
+  @Test
+  public void testSnappy() throws Exception {
+    Configuration conf = new Configuration();
+    FileSystem fs = FileSystem.getLocal(conf);
+    Path p = new Path(workDir, "file.orc");
+    fs.delete(p, false);
+    ObjectInspector inspector =
+        ObjectInspectorFactory.getReflectionObjectInspector(InnerStruct.class,
+            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    Writer writer = OrcFile.createWriter(fs, p, inspector,
+        1000, CompressionKind.SNAPPY, 100, 10000);
+    Random rand = new Random(12);
+    for(int i=0; i < 10000; ++i) {
+      writer.addRow(new InnerStruct(rand.nextInt(),
+          Integer.toHexString(rand.nextInt())));
+    }
+    writer.close();
+    Reader reader = OrcFile.createReader(fs, p);
+    RecordReader rows = reader.rows(null);
+    rand = new Random(12);
+    OrcStruct row = null;
+    for(int i=0; i < 10000; ++i) {
+      assertEquals(true, rows.hasNext());
+      row = (OrcStruct) rows.next(row);
+      assertEquals(rand.nextInt(), ((IntWritable) row.getFieldValue(0)).get());
+      assertEquals(Integer.toHexString(rand.nextInt()),
+          row.getFieldValue(1).toString());
+    }
+    assertEquals(false, rows.hasNext());
+    rows.close();
+  }
 }

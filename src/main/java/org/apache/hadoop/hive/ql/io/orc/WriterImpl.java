@@ -100,27 +100,41 @@ class WriterImpl implements Writer {
     this.path = path;
     this.stripeSize = stripeSize;
     this.compress = compress;
-    switch (compress) {
-      case NONE:
-        codec = null;
-        break;
-      case ZLIB:
-        codec = new ZlibCodec();
-        break;
-      case SNAPPY:
-        codec = new SnappyCodec();
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown compression codec: " +
-          compress);
-    }
     this.bufferSize = bufferSize;
     this.rowIndexStride = rowIndexStride;
     buildIndex = rowIndexStride > 0;
+    codec = createCodec(compress);
     treeWriter = createTreeWriter(inspector, StreamFactory, false);
     if (buildIndex && rowIndexStride < MIN_ROW_INDEX_STRIDE) {
       throw new IllegalArgumentException("Row stride must be at least " +
           MIN_ROW_INDEX_STRIDE);
+    }
+  }
+
+  static CompressionCodec createCodec(CompressionKind kind) {
+    switch (kind) {
+      case NONE:
+        return null;
+      case ZLIB:
+        return new ZlibCodec();
+      case SNAPPY:
+        return new SnappyCodec();
+      case LZO:
+        try {
+          Class<? extends CompressionCodec> lzo =
+              (Class<? extends CompressionCodec>)
+                  Class.forName("org.apache.hadoop.hive.ql.io.orc.LzoCodec");
+          return lzo.newInstance();
+        } catch (ClassNotFoundException e) {
+          throw new IllegalArgumentException("LZO is not available.", e);
+        } catch (InstantiationException e) {
+          throw new IllegalArgumentException("Problem initializing LZO", e);
+        } catch (IllegalAccessException e) {
+          throw new IllegalArgumentException("Insufficient access to LZO", e);
+        }
+      default:
+        throw new IllegalArgumentException("Unknown compression codec: " +
+            kind);
     }
   }
 
