@@ -162,8 +162,8 @@ class DynamicByteArray {
     if (maxLength == 0) {
       return otherLength - ourLength;
     }
-    byte otherByte = other[otherOffset];
-    byte ourByte = data[currentChunk][currentOffset];
+    int otherByte = 0xff & other[otherOffset];
+    int ourByte = 0xff & data[currentChunk][currentOffset];
     return otherByte > ourByte ? 1 : -1;
   }
 

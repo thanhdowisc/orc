@@ -268,5 +268,6 @@ public class TestStringRedBlackTree {
     test5.testUnion();
     TestDynamicArray test6 = new TestDynamicArray();
     test6.testByteArray();
+    test6.testIntArray();
   }
 }

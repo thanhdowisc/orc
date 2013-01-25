@@ -32,6 +32,7 @@ public class TestDynamicArray {
     dba.set(2, (byte) 2);
     dba.add((byte) 4);
     assertEquals("{0,1,2,3,4}", dba.toString());
+    assertEquals(5, dba.size());
     byte[] val = new byte[0];
     assertEquals(0, dba.compare(val, 0, 0, 2, 0));
     assertEquals(-1, dba.compare(val, 0, 0, 2, 1));
@@ -41,5 +42,36 @@ public class TestDynamicArray {
     assertEquals(0, dba.compare(val, 0, 1, 3, 1));
     assertEquals(-1, dba.compare(val, 0, 1, 3, 2));
     assertEquals(1, dba.compare(val, 0, 2, 3, 1));
+    val = new byte[256];
+    for(int b=-128; b < 128; ++b) {
+      dba.add((byte) b);
+      val[b+128] = (byte) b;
+    }
+    assertEquals(0, dba.compare(val, 0, 256, 5, 256));
+    assertEquals(1, dba.compare(val, 0, 1, 0, 1));
+    assertEquals(1, dba.compare(val, 254, 1, 0, 1));
+    assertEquals(1, dba.compare(val, 120, 1, 64, 1));
+  }
+
+  @Test
+  public void testIntArray() throws Exception {
+    DynamicIntArray dia = new DynamicIntArray(10);
+    for(int i=0; i < 10000; ++i) {
+      dia.add(2*i);
+    }
+    assertEquals(10000, dia.size());
+    for(int i=0; i < 10000; ++i) {
+      assertEquals(2*i, dia.get(i));
+    }
+    dia.clear();
+    assertEquals(0, dia.size());
+    dia.add(3);
+    dia.add(12);
+    dia.add(65);
+    assertEquals("{3,12,65}", dia.toString());
+    for(int i=0; i < 5; ++i) {
+      dia.increment(i, 3);
+    }
+    assertEquals("{6,15,68,3,3}", dia.toString());
   }
 }
