@@ -150,24 +150,21 @@ class DynamicByteArray {
     int currentOffset = ourOffset % chunkSize;
     int maxLength = Math.min(otherLength, ourLength);
     while (maxLength > 0 &&
-      other[otherOffset++] == data[currentChunk][currentOffset++]) {
+      other[otherOffset] == data[currentChunk][currentOffset]) {
+      otherOffset += 1;
+      currentOffset += 1;
       if (currentOffset == chunkSize) {
         currentChunk += 1;
         currentOffset = 0;
       }
       maxLength -= 1;
     }
-    byte otherByte = other[otherOffset - 1];
-    byte ourByte = data[currentChunk][currentOffset - 1];
-    if (otherByte == ourByte) {
-      if (otherLength == ourLength) {
-        return 0;
-      } else {
-        return otherLength > ourLength ? 1 : -1;
-      }
-    } else {
-      return otherByte > ourByte ? 1 : -1;
+    if (maxLength == 0) {
+      return otherLength - ourLength;
     }
+    byte otherByte = other[otherOffset];
+    byte ourByte = data[currentChunk][currentOffset];
+    return otherByte > ourByte ? 1 : -1;
   }
 
   /**

@@ -32,5 +32,14 @@ public class TestDynamicArray {
     dba.set(2, (byte) 2);
     dba.add((byte) 4);
     assertEquals("{0,1,2,3,4}", dba.toString());
+    byte[] val = new byte[0];
+    assertEquals(0, dba.compare(val, 0, 0, 2, 0));
+    assertEquals(-1, dba.compare(val, 0, 0, 2, 1));
+    val = new byte[]{3,42};
+    assertEquals(1, dba.compare(val, 0, 1, 2, 0));
+    assertEquals(1, dba.compare(val, 0, 1, 2, 1));
+    assertEquals(0, dba.compare(val, 0, 1, 3, 1));
+    assertEquals(-1, dba.compare(val, 0, 1, 3, 2));
+    assertEquals(1, dba.compare(val, 0, 2, 3, 1));
   }
 }
