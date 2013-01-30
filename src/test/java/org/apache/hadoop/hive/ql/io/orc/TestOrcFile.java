@@ -212,11 +212,11 @@ public class TestOrcFile {
         (StructObjectInspector) reader.getObjectInspector();
     assertEquals(ObjectInspector.Category.STRUCT,
         readerInspector.getCategory());
-    assertEquals("struct{boolean1: boolean, byte1: tinyint, short1: smallint, "
-        + "int1: int, long1: bigint, float1: float, double1: double, bytes1: "
-        + "binary, string1: string, middle: struct{list: list<struct{int1: int,"
-        + " string1: string}>}, list: list<struct{int1: int, string1: string}>,"
-        + " map: map<string, struct{int1: int, string1: string}>}",
+    assertEquals("struct<boolean1:boolean,byte1:tinyint,short1:smallint,"
+        + "int1:int,long1:bigint,float1:float,double1:double,bytes1:"
+        + "binary,string1:string,middle:struct<list:list<struct<int1:int,"
+        + "string1:string>>>,list:list<struct<int1:int,string1:string>>,"
+        + "map:map<string,struct<int1:int,string1:string>>>",
         readerInspector.getTypeName());
     List<? extends StructField> fields =
         readerInspector.getAllStructFieldRefs();
@@ -636,7 +636,7 @@ public class TestOrcFile {
     assertEquals(true, rows.hasNext());
     row = (OrcStruct) rows.next(null);
     inspector = reader.getObjectInspector();
-    assertEquals("struct{time: timestamp, union: union{int, string}}",
+    assertEquals("struct<time:timestamp,union:union{int, string}>",
         inspector.getTypeName());
     assertEquals(Timestamp.valueOf("2000-03-12 15:00:00"),
         row.getFieldValue(0));

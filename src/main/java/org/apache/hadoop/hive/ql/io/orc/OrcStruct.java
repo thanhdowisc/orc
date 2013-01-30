@@ -197,17 +197,17 @@ final class OrcStruct implements Writable {
     @Override
     public String getTypeName() {
       StringBuilder buffer = new StringBuilder();
-      buffer.append("struct{");
+      buffer.append("struct<");
       for(int i=0; i < fields.size(); ++i) {
         StructField field = fields.get(i);
         if (i != 0) {
-          buffer.append(", ");
+          buffer.append(",");
         }
         buffer.append(field.getFieldName());
-        buffer.append(": ");
+        buffer.append(":");
         buffer.append(field.getFieldObjectInspector().getTypeName());
       }
-      buffer.append("}");
+      buffer.append(">");
       return buffer.toString();
     }
 
@@ -260,7 +260,7 @@ final class OrcStruct implements Writable {
 
     @Override
     public String getTypeName() {
-      return "map<" + key.getTypeName() + ", " + value.getTypeName() + ">";
+      return "map<" + key.getTypeName() + "," + value.getTypeName() + ">";
     }
 
     @Override

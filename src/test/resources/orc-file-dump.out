@@ -2,7 +2,7 @@ Structure for target/test/tmp/file.orc
 Rows: 21000
 Compression: ZLIB
 Compression size: 10000
-Type: struct{f: float, d: double}
+Type: struct<f:float,d:double>
 
 Statistics:
   Column 0: count: 21000

@@ -75,9 +75,9 @@ public class TestOrcStruct {
             ",c13:array<timestamp>>");
     StructObjectInspector inspector = (StructObjectInspector)
         OrcStruct.createObjectInspector(typeInfo);
-    assertEquals("struct{c1: boolean, c2: tinyint, c3: smallint, c4: int, c5:" +
-        " bigint, c6: float, c7: double, c8: binary, c9: string, c10: struct{" +
-        "c1: int}, c11: map<int, int>, c12: union{int}, c13: list<timestamp>}",
+    assertEquals("struct<c1:boolean,c2:tinyint,c3:smallint,c4:int,c5:" +
+        "bigint,c6:float,c7:double,c8:binary,c9:string,c10:struct<" +
+        "c1:int>,c11:map<int,int>,c12:union{int},c13:list<timestamp>>",
         inspector.getTypeName());
     assertEquals(null,
         inspector.getAllStructFieldRefs().get(0).getFieldComment());

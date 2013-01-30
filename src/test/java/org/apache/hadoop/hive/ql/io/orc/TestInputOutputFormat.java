@@ -99,7 +99,7 @@ public class TestInputOutputFormat {
     serde.initialize(conf, properties);
     assertEquals(OrcSerde.OrcSerdeRow.class, serde.getSerializedClass());
     inspector = (StructObjectInspector) serde.getObjectInspector();
-    assertEquals("struct{x: int, y: int}", inspector.getTypeName());
+    assertEquals("struct<x:int,y:int>", inspector.getTypeName());
     InputFormat<?,?> in = new OrcInputFormat();
     FileInputFormat.setInputPaths(conf, p.toString());
     InputSplit[] splits = in.getSplits(conf, 1);
@@ -310,7 +310,7 @@ public class TestInputOutputFormat {
     properties.setProperty("columns", "str,str2");
     serde.initialize(conf, properties);
     inspector = (StructObjectInspector) serde.getObjectInspector();
-    assertEquals("struct{str: string, str2: string}", inspector.getTypeName());
+    assertEquals("struct<str:string,str2:string>", inspector.getTypeName());
     InputFormat<?,?> in = new OrcInputFormat();
     FileInputFormat.setInputPaths(conf, p.toString());
     InputSplit[] splits = in.getSplits(conf, 1);
