@@ -57,6 +57,19 @@
         <option name="CONDITION" value="" />
         <option name="LOG_MESSAGE" value="" />
       </breakpoint>
+      <breakpoint url="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestDynamicArray.java" line="60" class="org.apache.hadoop.hive.ql.io.orc.TestDynamicArray" package="org.apache.hadoop.hive.ql.io.orc">
+        <option name="ENABLED" value="true" />
+        <option name="LOG_ENABLED" value="false" />
+        <option name="LOG_EXPRESSION_ENABLED" value="false" />
+        <option name="SUSPEND_POLICY" value="SuspendAll" />
+        <option name="COUNT_FILTER_ENABLED" value="false" />
+        <option name="COUNT_FILTER" value="0" />
+        <option name="CONDITION_ENABLED" value="false" />
+        <option name="CLASS_FILTERS_ENABLED" value="false" />
+        <option name="INSTANCE_FILTERS_ENABLED" value="false" />
+        <option name="CONDITION" value="" />
+        <option name="LOG_MESSAGE" value="" />
+      </breakpoint>
     </line_breakpoints>
     <breakpoint_any>
       <breakpoint>
@@ -98,22 +111,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="DynamicIntArray.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/DynamicIntArray.java">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="34" column="6" selection-start="1538" selection-end="1538" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="TestFileDump.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestFileDump.java">
           <provider selected="true" editor-type-id="text-editor">
             <state line="17" column="0" selection-start="0" selection-end="807" vertical-scroll-proportion="0.0">
-              <folding>
-                <element signature="n#!!doc" expanded="true" />
-              </folding>
+              <folding />
             </state>
           </provider>
         </entry>
@@ -122,10 +124,7 @@
         <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestSerializationUtils.java">
           <provider selected="true" editor-type-id="text-editor">
             <state line="37" column="0" selection-start="1361" selection-end="1361" vertical-scroll-proportion="0.0">
-              <folding>
-                <element signature="n#!!doc" expanded="true" />
-                <element signature="imports" expanded="true" />
-              </folding>
+              <folding />
             </state>
           </provider>
         </entry>
@@ -142,7 +141,7 @@
       <file leaf-file-name="TestDynamicArray.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestDynamicArray.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="74" column="23" selection-start="2542" selection-end="2542" vertical-scroll-proportion="0.0">
+            <state line="63" column="0" selection-start="2313" selection-end="2313" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -151,7 +150,16 @@
       <file leaf-file-name="TestStringRedBlackTree.java" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestStringRedBlackTree.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="248" column="27" selection-start="8775" selection-end="8775" vertical-scroll-proportion="0.6262058">
+            <state line="250" column="0" selection-start="8829" selection-end="8829" vertical-scroll-proportion="0.41947564">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="DynamicByteArray.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/DynamicByteArray.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="102" column="27" selection-start="3119" selection-end="3119" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -222,10 +230,10 @@
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/SnappyCodec.java" />
         <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/WriterImpl.java" />
         <option value="$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestOrcFile.java" />
-        <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/DynamicByteArray.java" />
         <option value="$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestDynamicArray.java" />
         <option value="$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestSerializationUtils.java" />
         <option value="$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestStringRedBlackTree.java" />
+        <option value="$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/DynamicByteArray.java" />
       </list>
     </option>
   </component>
@@ -423,16 +431,6 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="Scope">
-        <subPane subId="Project Files">
-          <PATH>
-            <PATH_ELEMENT USER_OBJECT="Root">
-              <option name="myItemId" value="" />
-              <option name="myItemType" value="" />
-            </PATH_ELEMENT>
-          </PATH>
-        </subPane>
-      </pane>
       <pane id="PackagesPane">
         <subPane>
           <PATH>
@@ -443,6 +441,16 @@
             <PATH_ELEMENT>
               <option name="myItemId" value="orc" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewModuleNode" />
+            </PATH_ELEMENT>
+          </PATH>
+        </subPane>
+      </pane>
+      <pane id="Scope">
+        <subPane subId="Project Files">
+          <PATH>
+            <PATH_ELEMENT USER_OBJECT="Root">
+              <option name="myItemId" value="" />
+              <option name="myItemType" value="" />
             </PATH_ELEMENT>
           </PATH>
         </subPane>
@@ -463,12 +471,12 @@
     <property name="MemberChooser.copyJavadoc" value="false" />
     <property name="GoToClass.toSaveIncludeLibraries" value="false" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="MemberChooser.showClasses" value="true" />
     <property name="FullScreen" value="false" />
+    <property name="MemberChooser.showClasses" value="true" />
     <property name="GoToClass.includeLibraries" value="false" />
-    <property name="options.splitter.details.proportions" value="0.2" />
-    <property name="options.searchVisible" value="true" />
     <property name="dynamic.classpath" value="false" />
+    <property name="options.searchVisible" value="true" />
+    <property name="options.splitter.details.proportions" value="0.2" />
   </component>
   <component name="RecentsManager">
     <key name="CopyClassDialog.RECENTS_KEY">
@@ -551,24 +559,6 @@
         <option name="Maven.BeforeRunTask" enabled="false" />
       </method>
     </configuration>
-    <configuration default="true" type="Applet" factoryName="Applet">
-      <module name="" />
-      <option name="MAIN_CLASS_NAME" />
-      <option name="HTML_FILE_NAME" />
-      <option name="HTML_USED" value="false" />
-      <option name="WIDTH" value="400" />
-      <option name="HEIGHT" value="300" />
-      <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
-      <option name="VM_PARAMETERS" />
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" />
-      <method>
-        <option name="AntTarget" enabled="false" />
-        <option name="BuildArtifacts" enabled="false" />
-        <option name="Make" enabled="true" />
-        <option name="Maven.BeforeRunTask" enabled="false" />
-      </method>
-    </configuration>
     <configuration default="true" type="TestNG" factoryName="TestNG">
       <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
       <module name="" />
@@ -595,6 +585,24 @@
       <envs />
       <properties />
       <listeners />
+      <method>
+        <option name="AntTarget" enabled="false" />
+        <option name="BuildArtifacts" enabled="false" />
+        <option name="Make" enabled="true" />
+        <option name="Maven.BeforeRunTask" enabled="false" />
+      </method>
+    </configuration>
+    <configuration default="true" type="Applet" factoryName="Applet">
+      <module name="" />
+      <option name="MAIN_CLASS_NAME" />
+      <option name="HTML_FILE_NAME" />
+      <option name="HTML_USED" value="false" />
+      <option name="WIDTH" value="400" />
+      <option name="HEIGHT" value="300" />
+      <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
+      <option name="VM_PARAMETERS" />
+      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
+      <option name="ALTERNATIVE_JRE_PATH" />
       <method>
         <option name="AntTarget" enabled="false" />
         <option name="BuildArtifacts" enabled="false" />
@@ -782,23 +790,23 @@
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.34288865" sideWeight="0.93981296" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.34261408" sideWeight="0.93981296" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="IDEtalk Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3296582" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="IDEtalk" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3201856" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.23689197" sideWeight="0.76720804" order="1" side_tool="true" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.23626027" sideWeight="0.5042537" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.35135135" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.23689197" sideWeight="0.22737819" order="0" side_tool="false" content_ui="combo" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.28433478" sideWeight="0.99847174" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.23626027" sideWeight="0.14771849" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.28383604" sideWeight="0.99847174" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="JetGradle" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32953826" sideWeight="0.66593164" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.20326531" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32076985" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Coverage" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.34535104" sideWeight="0.7155458" order="3" side_tool="true" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3995309" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
@@ -885,24 +893,29 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestOrcFile.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="759" column="44" selection-start="31409" selection-end="31409" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
+        <state line="759" column="44" selection-start="31409" selection-end="31409" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/DynamicByteArray.java">
+    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/DynamicIntArray.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="165" column="25" selection-start="5133" selection-end="5133" vertical-scroll-proportion="0.0" />
+        <state line="34" column="6" selection-start="1538" selection-end="1538" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestFileDump.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="17" column="0" selection-start="0" selection-end="807" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestSerializationUtils.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="37" column="0" selection-start="1361" selection-end="1361" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/BitFieldReader.java">
       <provider selected="true" editor-type-id="text-editor">
         <state line="21" column="6" selection-start="885" selection-end="885" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestDynamicArray.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="74" column="23" selection-start="2542" selection-end="2542" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/InStream.java">
@@ -925,35 +938,23 @@
         <state line="208" column="14" selection-start="6127" selection-end="6127" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/DynamicIntArray.java">
+    <entry file="file://$PROJECT_DIR$/src/main/java/org/apache/hadoop/hive/ql/io/orc/DynamicByteArray.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="34" column="6" selection-start="1538" selection-end="1538" vertical-scroll-proportion="0.0">
+        <state line="102" column="27" selection-start="3119" selection-end="3119" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestFileDump.java">
+    <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestDynamicArray.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="17" column="0" selection-start="0" selection-end="807" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="n#!!doc" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestSerializationUtils.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="37" column="0" selection-start="1361" selection-end="1361" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="n#!!doc" expanded="true" />
-            <element signature="imports" expanded="true" />
-          </folding>
+        <state line="63" column="0" selection-start="2313" selection-end="2313" vertical-scroll-proportion="0.0">
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/test/java/org/apache/hadoop/hive/ql/io/orc/TestStringRedBlackTree.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="248" column="27" selection-start="8775" selection-end="8775" vertical-scroll-proportion="0.6262058">
+        <state line="250" column="0" selection-start="8829" selection-end="8829" vertical-scroll-proportion="0.41947564">
           <folding />
         </state>
       </provider>
