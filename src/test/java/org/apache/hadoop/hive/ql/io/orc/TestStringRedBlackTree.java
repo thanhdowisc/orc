@@ -245,6 +245,8 @@ public class TestStringRedBlackTree {
     test.test1();
     test.test2();
     test.test3();
+    TestSerializationUtils serUtils = new TestSerializationUtils();
+    serUtils.TestDoubles();
     TestOrcFile test1 = new TestOrcFile();
     test1.test1();
     test1.emptyFile();

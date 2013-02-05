@@ -78,9 +78,14 @@ class SerializationUtils {
   }
 
   static double readDouble(InputStream in) throws IOException {
-    long ser = in.read() | (in.read() << 8) | (in.read() << 16) |
-      (in.read() << 24) | ((long) in.read() << 32) | ((long) in.read() << 40) |
-      ((long) in.read() << 48) | ((long) in.read() << 56);
+  long ser = (long) in.read() |
+             ((long) in.read() << 8) |
+             ((long) in.read() << 16) |
+             ((long) in.read() << 24) |
+             ((long) in.read() << 32) |
+             ((long) in.read() << 40) |
+             ((long) in.read() << 48) |
+             ((long) in.read() << 56); 
     return Double.longBitsToDouble(ser);
   }
 
