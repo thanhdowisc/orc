@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hive.ql.io.orc;
 
+import java.util.Random;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -33,7 +34,8 @@ public class TestDynamicArray {
     dba.add((byte) 4);
     assertEquals("{0,1,2,3,4}", dba.toString());
     assertEquals(5, dba.size());
-    byte[] val = new byte[0];
+    byte[] val;
+    val = new byte[0];
     assertEquals(0, dba.compare(val, 0, 0, 2, 0));
     assertEquals(-1, dba.compare(val, 0, 0, 2, 1));
     val = new byte[]{3,42};
@@ -51,6 +53,14 @@ public class TestDynamicArray {
     assertEquals(1, dba.compare(val, 0, 1, 0, 1));
     assertEquals(1, dba.compare(val, 254, 1, 0, 1));
     assertEquals(1, dba.compare(val, 120, 1, 64, 1));
+    val = new byte[1024];
+    Random rand = new Random(1701);
+    for(int i = 0; i < val.length; ++i) {
+      rand.nextBytes(val);
+    }
+    dba.add(val, 0, 1024);
+    assertEquals(1285, dba.size());
+    assertEquals(0, dba.compare(val, 0, 1024, 261, 1024));
   }
 
   @Test

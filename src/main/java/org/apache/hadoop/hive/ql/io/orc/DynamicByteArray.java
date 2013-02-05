@@ -52,7 +52,7 @@ class DynamicByteArray {
   private void grow(int chunkIndex) {
     if (chunkIndex >= initializedChunks) {
       if (chunkIndex >= data.length) {
-        int new_size = Math.max(chunkIndex, 2 * data.length);
+        int new_size = Math.max(chunkIndex+1, 2 * data.length);
         byte[][] newChunk = new byte[new_size][];
         System.arraycopy(data, 0, newChunk, 0, data.length);
         data = newChunk;
@@ -103,7 +103,8 @@ class DynamicByteArray {
     while (remaining > 0) {
       int size = Math.min(remaining, chunkSize - j);
       System.arraycopy(value, offset, data[i], j, size);
-      remaining -= chunkSize - size;
+      remaining -= size;
+      offset += size;
       i += 1;
       j = 0;
     }

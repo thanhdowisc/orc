@@ -247,6 +247,9 @@ public class TestStringRedBlackTree {
     test.test3();
     TestSerializationUtils serUtils = new TestSerializationUtils();
     serUtils.TestDoubles();
+    TestDynamicArray test6 = new TestDynamicArray();
+    test6.testByteArray();
+    test6.testIntArray();
     TestOrcFile test1 = new TestOrcFile();
     test1.test1();
     test1.emptyFile();
@@ -268,8 +271,5 @@ public class TestStringRedBlackTree {
     test5.testStruct();
     test5.testInspectorFromTypeInfo();
     test5.testUnion();
-    TestDynamicArray test6 = new TestDynamicArray();
-    test6.testByteArray();
-    test6.testIntArray();
   }
 }
