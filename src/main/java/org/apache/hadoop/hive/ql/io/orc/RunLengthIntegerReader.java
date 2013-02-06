@@ -31,26 +31,24 @@ class RunLengthIntegerReader {
   private int numLiterals = 0;
   private int delta = 0;
   private int used = 0;
-  private boolean done = false;
   private boolean repeat = false;
 
   RunLengthIntegerReader(InStream input, boolean signed) throws IOException {
     this.input = input;
     this.signed = signed;
-    readValues();
   }
 
   private void readValues() throws IOException {
     int control = input.read();
     if (control == -1) {
-      done = true;
+      throw new EOFException("Read past end of RLE integer from " + input);
     } else if (control < 0x80) {
       numLiterals = control + RunLengthIntegerWriter.MIN_REPEAT_SIZE;
       used = 0;
       repeat = true;
       delta = input.read();
       if (delta == -1) {
-        throw new EOFException("End of stream in RLE Integer");
+        throw new EOFException("End of stream in RLE Integer from " + input);
       }
       // convert from 0 to 255 to -128 to 127 by converting to a signed byte
       delta = (byte) (0+delta);
@@ -73,21 +71,47 @@ class RunLengthIntegerReader {
     }
   }
 
-  boolean hasNext() {
-    return !done && used != numLiterals;
+  boolean hasNext() throws IOException {
+    return used != numLiterals || input.available() > 0;
   }
 
   long next() throws IOException {
     long result;
+    if (used == numLiterals) {
+      readValues();
+    }
     if (repeat) {
       result = literals[0] + (used++) * delta;
     } else {
       result = literals[used++];
     }
-    if (used == numLiterals) {
-      readValues();
-    }
     return result;
   }
 
+  void seek(PositionProvider index) throws IOException {
+    input.seek(index);
+    int consumed = (int) index.getNext();
+    if (consumed != 0) {
+      // a loop is required for cases where we break the run into two parts
+      while (consumed > 0) {
+        readValues();
+        used = consumed;
+        consumed -= numLiterals;
+      }
+    } else {
+      used = 0;
+      numLiterals = 0;
+    }
+  }
+
+  void skip(long numValues) throws IOException {
+    while (numValues > 0) {
+      if (used == numLiterals) {
+        readValues();
+      }
+      long consume = Math.min(numValues, numLiterals - used);
+      used += consume;
+      numValues -= consume;
+    }
+  }
 }

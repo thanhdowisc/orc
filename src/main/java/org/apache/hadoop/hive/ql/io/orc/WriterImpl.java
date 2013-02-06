@@ -63,8 +63,6 @@ class WriterImpl implements Writer {
   private final CompressionKind compress;
   private final CompressionCodec codec;
   private final int bufferSize;
-  // how many compressed bytes in the current stripe so far
-  private long bytesInStripe = 0;
   // the streams that make up the current stripe
   private final Map<StreamName,BufferedStream> streams =
     new TreeMap<StreamName, BufferedStream>();
@@ -150,7 +148,6 @@ class WriterImpl implements Writer {
     @Override
     public void output(ByteBuffer buffer) throws IOException {
       output.add(buffer);
-      bytesInStripe += buffer.remaining();
     }
 
     public void flush() throws IOException {
@@ -162,20 +159,15 @@ class WriterImpl implements Writer {
       output.clear();
     }
 
-    @Override
-    public long getPosition() {
-      long result = 0;
-      for(ByteBuffer buffer: output) {
-        result += buffer.remaining();
-      }
-      return result;
-    }
-
     void spillTo(OutputStream out) throws IOException {
       for(ByteBuffer buffer: output) {
         out.write(buffer.array(), buffer.arrayOffset() + buffer.position(),
           buffer.remaining());
       }
+    }
+
+    long getSize() {
+      return outStream.getSize();
     }
   }
 
@@ -190,11 +182,6 @@ class WriterImpl implements Writer {
     public void output(ByteBuffer buffer) throws IOException {
       output.write(buffer.array(), buffer.arrayOffset() + buffer.position(),
         buffer.remaining());
-    }
-
-    @Override
-    public long getPosition() throws IOException {
-      return output.getPos();
     }
   }
 
@@ -299,16 +286,22 @@ class WriterImpl implements Writer {
         stripeStatistics.increment();
       }
       if (isPresent != null) {
-        isPresent.append(obj == null ? 0: 1);
+        isPresent.write(obj == null ? 0: 1);
       }
     }
 
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
       if (isPresent != null) {
         isPresent.flush();
       }
       builder.addColumns(getEncoding());
       if (rowIndexStream != null) {
+        if (rowIndex.getEntryCount() != requiredIndexEntries) {
+          throw new IllegalArgumentException("Column has wrong number of " +
+               "index entries found: " + rowIndexEntry + " expected: " +
+               requiredIndexEntries);
+        }
         rowIndex.build().writeTo(rowIndexStream);
         rowIndexStream.flush();
       }
@@ -363,13 +356,14 @@ class WriterImpl implements Writer {
       if (obj != null) {
         boolean val = ((BooleanObjectInspector) inspector).get(obj);
         stripeStatistics.updateBoolean(val);
-        writer.append(val ? 1 : 0);
+        writer.write(val ? 1 : 0);
       }
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
+      super.writeStripe(builder, requiredIndexEntries);
       writer.flush();
       recordPosition(rowIndexPosition);
     }
@@ -405,8 +399,9 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
+      super.writeStripe(builder, requiredIndexEntries);
       writer.flush();
       recordPosition(rowIndexPosition);
     }
@@ -467,8 +462,9 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
+      super.writeStripe(builder, requiredIndexEntries);
       writer.flush();
       recordPosition(rowIndexPosition);
     }
@@ -504,8 +500,9 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
+      super.writeStripe(builder, requiredIndexEntries);
       stream.flush();
       recordPosition(rowIndexPosition);
     }
@@ -541,8 +538,9 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
+      super.writeStripe(builder, requiredIndexEntries);
       stream.flush();
       recordPosition(rowIndexPosition);
     }
@@ -563,8 +561,8 @@ class WriterImpl implements Writer {
     private final DynamicIntArray rows = new DynamicIntArray();
     private final List<OrcProto.RowIndexEntry> savedRowIndex =
         new ArrayList<OrcProto.RowIndexEntry>();
-    private final int rowIndexStride;
     private final boolean buildIndex;
+    private final List<Long> rowIndexValueCount = new ArrayList<Long>();
 
     StringTreeWriter(int columnId,
                      ObjectInspector inspector,
@@ -584,7 +582,7 @@ class WriterImpl implements Writer {
         countOutput = null;
       }
       recordPosition(rowIndexPosition);
-      rowIndexStride = writer.getRowIndexStride();
+      rowIndexValueCount.add(0L);
       buildIndex = writer.buildIndex();
     }
 
@@ -600,7 +598,8 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
       final int[] dumpOrder = new int[dictionary.size()];
       dictionary.visit(new StringRedBlackTree.Visitor() {
         int currentId = 0;
@@ -617,20 +616,35 @@ class WriterImpl implements Writer {
       });
       int length = rows.size();
       int rowIndexEntry = 0;
-      for(int i=0; i < length; ++i) {
-        rowOutput.write(dumpOrder[rows.get(i)]);
-        // now that we are writing out the row values, we can finalize the
-        // row index
-        if (buildIndex && i % rowIndexStride == 0) {
+      // need to build the first index entry out here, to handle the case of
+      // not having any values.
+      if (buildIndex) {
+        while (0 == rowIndexValueCount.get(rowIndexEntry) &&
+            rowIndexEntry < savedRowIndex.size()) {
           OrcProto.RowIndexEntry.Builder base =
               savedRowIndex.get(rowIndexEntry++).toBuilder();
           rowOutput.getPosition(new RowIndexPositionRecorder(base));
           rowIndex.addEntry(base.build());
         }
       }
+      // write the values
+      for(int i = 0; i < length; ++i) {
+        // now that we are writing out the row values, we can finalize the
+        // row index
+        if (buildIndex) {
+          while (i == rowIndexValueCount.get(rowIndexEntry) &&
+              rowIndexEntry < savedRowIndex.size()) {
+            OrcProto.RowIndexEntry.Builder base =
+                savedRowIndex.get(rowIndexEntry++).toBuilder();
+            rowOutput.getPosition(new RowIndexPositionRecorder(base));
+            rowIndex.addEntry(base.build());
+          }
+        }
+        rowOutput.write(dumpOrder[rows.get(i)]);
+      }
       // we need to build the rowindex before calling super, since it
       // writes it out.
-      super.writeStripe(builder);
+      super.writeStripe(builder, requiredIndexEntries);
       stringOutput.flush();
       lengthOutput.flush();
       rowOutput.flush();
@@ -640,7 +654,9 @@ class WriterImpl implements Writer {
       dictionary.clear();
       rows.clear();
       savedRowIndex.clear();
+      rowIndexValueCount.clear();
       recordPosition(rowIndexPosition);
+      rowIndexValueCount.add(0L);
     }
 
     @Override
@@ -655,6 +671,7 @@ class WriterImpl implements Writer {
       savedRowIndex.add(rowIndexEntry.build());
       rowIndexEntry.clear();
       recordPosition(rowIndexPosition);
+      rowIndexValueCount.add(Long.valueOf(rows.size()));
     }
   }
 
@@ -686,8 +703,9 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
+      super.writeStripe(builder, requiredIndexEntries);
       stream.flush();
       length.flush();
       recordPosition(rowIndexPosition);
@@ -734,8 +752,9 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
+      super.writeStripe(builder, requiredIndexEntries);
       seconds.flush();
       nanos.flush();
       recordPosition(rowIndexPosition);
@@ -797,10 +816,11 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
+      super.writeStripe(builder, requiredIndexEntries);
       for(TreeWriter child: childrenWriters) {
-        child.writeStripe(builder);
+        child.writeStripe(builder, requiredIndexEntries);
       }
       recordPosition(rowIndexPosition);
     }
@@ -839,11 +859,12 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
+      super.writeStripe(builder, requiredIndexEntries);
       lengths.flush();
       for(TreeWriter child: childrenWriters) {
-        child.writeStripe(builder);
+        child.writeStripe(builder, requiredIndexEntries);
       }
       recordPosition(rowIndexPosition);
     }
@@ -893,11 +914,12 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
+      super.writeStripe(builder, requiredIndexEntries);
       lengths.flush();
       for(TreeWriter child: childrenWriters) {
-        child.writeStripe(builder);
+        child.writeStripe(builder, requiredIndexEntries);
       }
       recordPosition(rowIndexPosition);
     }
@@ -941,11 +963,12 @@ class WriterImpl implements Writer {
     }
 
     @Override
-    void writeStripe(OrcProto.StripeFooter.Builder builder) throws IOException {
-      super.writeStripe(builder);
+    void writeStripe(OrcProto.StripeFooter.Builder builder,
+                     int requiredIndexEntries) throws IOException {
+      super.writeStripe(builder, requiredIndexEntries);
       tags.flush();
       for(TreeWriter child: childrenWriters) {
-        child.writeStripe(builder);
+        child.writeStripe(builder, requiredIndexEntries);
       }
       recordPosition(rowIndexPosition);
     }
@@ -1104,7 +1127,6 @@ class WriterImpl implements Writer {
 
   private void createRowIndexEntry() throws IOException {
     treeWriter.createRowIndexEntry();
-    rowsInStripe += rowsInIndex;
     rowsInIndex = 0;
   }
 
@@ -1114,8 +1136,11 @@ class WriterImpl implements Writer {
       createRowIndexEntry();
     }
     if (rowsInStripe != 0) {
-      OrcProto.StripeFooter.Builder builder = OrcProto.StripeFooter.newBuilder();
-      treeWriter.writeStripe(builder);
+      int requiredIndexEntries = rowIndexStride == 0 ? 0 :
+          (int) ((rowsInStripe + rowIndexStride - 1) / rowIndexStride);
+      OrcProto.StripeFooter.Builder builder =
+          OrcProto.StripeFooter.newBuilder();
+      treeWriter.writeStripe(builder, requiredIndexEntries);
       long start = rawWriter.getPos();
       long section = start;
       long indexEnd = start;
@@ -1149,7 +1174,6 @@ class WriterImpl implements Writer {
       stripes.add(dirEntry);
       rowCount += rowsInStripe;
       rowsInStripe = 0;
-      bytesInStripe = 0;
     }
   }
 
@@ -1218,6 +1242,14 @@ class WriterImpl implements Writer {
     return (int) length;
   }
 
+  private long estimateStripeSize() {
+    long result = 0;
+    for(BufferedStream stream: streams.values()) {
+      result += stream.getSize();
+    }
+    return result;
+  }
+
   @Override
   public void addUserMetadata(String name, ByteBuffer value) {
     userMetadata.put(name, ByteString.copyFrom(value));
@@ -1226,15 +1258,15 @@ class WriterImpl implements Writer {
   @Override
   public void addRow(Object row) throws IOException {
     treeWriter.write(row);
+    rowsInStripe += 1;
     if (buildIndex) {
       rowsInIndex += 1;
-      if (buildIndex && rowsInIndex >= rowIndexStride) {
+
+      if (rowsInIndex >= rowIndexStride) {
         createRowIndexEntry();
       }
-    } else {
-      rowsInStripe += 1;
     }
-    if (bytesInStripe >= stripeSize) {
+    if (rowsInStripe % 1000 == 0 && estimateStripeSize() > stripeSize) {
       flushStripe();
     }
   }

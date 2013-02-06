@@ -15,12 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.hadoop.hive.ql.io.orc;
 
-import java.io.IOException;
-import java.io.OutputStream;
-
-abstract class PositionedOutputStream extends OutputStream {
-  abstract void getPosition(PositionRecorder recorder) throws IOException;
-  abstract long getSize();
+/**
+ * An interface used for seeking to a row index
+ */
+interface PositionProvider {
+  long getNext();
 }

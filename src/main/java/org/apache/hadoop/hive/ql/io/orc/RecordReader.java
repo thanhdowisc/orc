@@ -55,4 +55,9 @@ public interface RecordReader {
    * @throws java.io.IOException
    */
   void close() throws IOException;
+
+  /**
+   * Seek to a particular row number.
+   */
+  void seekToRow(long rowCount) throws IOException;
 }

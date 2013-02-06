@@ -17,24 +17,29 @@
  */
 package org.apache.hadoop.hive.ql.io.orc;
 
+import java.io.EOFException;
 import java.io.IOException;
 
 class BitFieldReader {
   private RunLengthByteReader input;
   private final int bitSize;
-  private int current = 0;
-  private int bitsLeft = 0;
+  private int current;
+  private int bitsLeft;
+  private final int mask;
 
   BitFieldReader(InStream input,
                  int bitSize) throws IOException {
     this.input = new RunLengthByteReader(input);
     this.bitSize = bitSize;
+    mask = (1 << bitSize) - 1;
   }
 
   private void readByte() throws IOException {
     if (input.hasNext()) {
       current = 0xff & input.next();
       bitsLeft = 8;
+    } else {
+      throw new EOFException("Read past end of bit field from " + input);
     }
   }
 
@@ -43,16 +48,41 @@ class BitFieldReader {
     int bitsLeftToRead = bitSize;
     while (bitsLeftToRead > bitsLeft) {
       result <<= bitsLeft;
-      result |= current >> (8 - bitsLeft);
+      result |= current & ((1 << bitsLeft) - 1);
       bitsLeftToRead -= bitsLeft;
       readByte();
     }
     if (bitsLeftToRead > 0) {
       result <<= bitsLeftToRead;
       bitsLeft -= bitsLeftToRead;
-      result |= current >>> bitsLeft;
-      current &= (1 << bitsLeft) - 1;
+      result |= (current >>> bitsLeft) & ((1 << bitsLeftToRead) - 1);
     }
-    return result;
+    return result & mask;
+  }
+
+  void seek(PositionProvider index) throws IOException {
+    input.seek(index);
+    int consumed = (int) index.getNext();
+    if (consumed > 8) {
+      throw new IllegalArgumentException("Seek past end of byte at " + consumed+
+          " in " + input);
+    } else if (consumed != 0) {
+      readByte();
+      bitsLeft = 8 - consumed;
+    } else {
+      bitsLeft = 0;
+    }
+  }
+
+  void skip(long items) throws IOException {
+    long totalBits = bitSize * items;
+    if (bitsLeft >= totalBits) {
+      bitsLeft -= totalBits;
+    } else {
+      totalBits -= bitsLeft;
+      input.skip(totalBits / 8);
+      current = input.next();
+      bitsLeft = (int) (8 - (totalBits % 8));
+    }
   }
 }

@@ -21,6 +21,9 @@ package org.apache.hadoop.hive.ql.io.orc;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.serde2.io.ByteWritable;
+import org.apache.hadoop.hive.serde2.io.DoubleWritable;
+import org.apache.hadoop.hive.serde2.io.ShortWritable;
 import org.apache.hadoop.hive.serde2.objectinspector.ListObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.MapObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
@@ -36,8 +39,11 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.IntObjectInspecto
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.LongObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.ShortObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspector;
+import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.junit.Test;
 
@@ -50,6 +56,7 @@ import java.util.Map;
 import java.util.Random;
 
 import static junit.framework.Assert.*;
+import static junit.framework.Assert.assertEquals;
 
 /**
  * Tests for the top level reader/streamFactory of ORC files.
@@ -773,5 +780,108 @@ public class TestOrcFile {
     }
     assertEquals(false, rows.hasNext());
     rows.close();
+  }
+
+  @Test
+  public void testSeek() throws Exception {
+    Configuration conf = new Configuration();
+    FileSystem fs = FileSystem.getLocal(conf);
+    ObjectInspector inspector =
+        ObjectInspectorFactory.getReflectionObjectInspector(BigRow.class,
+            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    Path p = new Path(workDir, "file.orc");
+    fs.delete(p, false);
+    Writer writer = OrcFile.createWriter(fs, p, inspector,
+        200000, CompressionKind.ZLIB, 65536, 1000);
+    Random rand = new Random(42);
+    final int COUNT=32768;
+    long[] intValues= new long[COUNT];
+    double[] doubleValues = new double[COUNT];
+    String[] stringValues = new String[COUNT];
+    BytesWritable[] byteValues = new BytesWritable[COUNT];
+    String[] words = new String[128];
+    for(int i=0; i < words.length; ++i) {
+      words[i] = Integer.toHexString(rand.nextInt());
+    }
+    for(int i=0; i < COUNT/2; ++i) {
+      intValues[2*i] = rand.nextLong();
+      intValues[2*i+1] = intValues[2*i];
+      stringValues[2*i] = words[rand.nextInt(words.length)];
+      stringValues[2*i+1] = stringValues[2*i];
+    }
+    for(int i=0; i < COUNT; ++i) {
+      doubleValues[i] = rand.nextDouble();
+      byte[] buf = new byte[20];
+      rand.nextBytes(buf);
+      byteValues[i] = new BytesWritable(buf);
+    }
+    for(int i=0; i < COUNT; ++i) {
+      writer.addRow(createRandomRow(intValues, doubleValues, stringValues,
+          byteValues, words, i));
+    }
+    writer.close();
+    writer = null;
+    Reader reader = OrcFile.createReader(fs, p);
+    assertEquals(COUNT, reader.getNumberOfRows());
+    RecordReader rows = reader.rows(null);
+    OrcStruct row = null;
+    for(int i=COUNT-1; i >= 0; --i) {
+      rows.seekToRow(i);
+      row = (OrcStruct) rows.next(row);
+      BigRow expected = createRandomRow(intValues, doubleValues,
+          stringValues, byteValues, words, i);
+      assertEquals(expected.boolean1.booleanValue(),
+          ((BooleanWritable) row.getFieldValue(0)).get());
+      assertEquals(expected.byte1.byteValue(),
+          ((ByteWritable) row.getFieldValue(1)).get());
+      assertEquals(expected.short1.shortValue(),
+          ((ShortWritable) row.getFieldValue(2)).get());
+      assertEquals(expected.int1.intValue(),
+          ((IntWritable) row.getFieldValue(3)).get());
+      assertEquals(expected.long1.longValue(),
+          ((LongWritable) row.getFieldValue(4)).get());
+      assertEquals(expected.float1.floatValue(),
+          ((FloatWritable) row.getFieldValue(5)).get(), 0.0001);
+      assertEquals(expected.double1.doubleValue(),
+          ((DoubleWritable) row.getFieldValue(6)).get(), 0.0001);
+      assertEquals(expected.bytes1, row.getFieldValue(7));
+      assertEquals(expected.string1, row.getFieldValue(8));
+      List<InnerStruct> expectedList = expected.middle.list;
+      List<OrcStruct> actualList =
+          (List) ((OrcStruct) row.getFieldValue(9)).getFieldValue(0);
+      compareList(expectedList, actualList);
+      compareList(expected.list, (List) row.getFieldValue(10));
+    }
+  }
+
+  private void compareInner(InnerStruct expect,
+                            OrcStruct actual) throws Exception {
+    if (expect == null || actual == null) {
+      assertEquals(expect, actual);
+    } else {
+      assertEquals(expect.int1, ((IntWritable) actual.getFieldValue(0)).get());
+      assertEquals(expect.string1, actual.getFieldValue(1));
+    }
+  }
+
+  private void compareList(List<InnerStruct> expect,
+                           List<OrcStruct> actual) throws Exception {
+    assertEquals(expect.size(), actual.size());
+    for(int j=0; j < expect.size(); ++j) {
+      compareInner(expect.get(j), actual.get(j));
+    }
+  }
+
+  private BigRow createRandomRow(long[] intValues, double[] doubleValues,
+                                 String[] stringValues,
+                                 BytesWritable[] byteValues,
+                                 String[] words, int i) {
+    InnerStruct inner = new InnerStruct((int) intValues[i], stringValues[i]);
+    InnerStruct inner2 = new InnerStruct((int) (intValues[i] >> 32),
+        words[i % words.length] + "-x");
+    return new BigRow((intValues[i] & 1) == 0, (byte) intValues[i],
+        (short) intValues[i], (int) intValues[i], intValues[i],
+        (float) doubleValues[i], doubleValues[i], byteValues[i],stringValues[i],
+        new MiddleStruct(inner, inner2), list(), map(inner,inner2));
   }
 }

@@ -15,12 +15,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.hadoop.hive.ql.io.orc;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import org.junit.Test;
 
-abstract class PositionedOutputStream extends OutputStream {
-  abstract void getPosition(PositionRecorder recorder) throws IOException;
-  abstract long getSize();
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.fail;
+
+public class TestZlib {
+
+  @Test
+  public void testNoOverflow() throws Exception {
+    ByteBuffer in = ByteBuffer.allocate(10);
+    ByteBuffer out = ByteBuffer.allocate(10);
+    in.put(new byte[]{1,2,3,4,5,6,7,10});
+    in.flip();
+    CompressionCodec codec = new ZlibCodec();
+    assertEquals(false, codec.compress(in, out, null));
+  }
+
+  @Test
+  public void testCorrupt() throws Exception {
+    ByteBuffer buf = ByteBuffer.allocate(1000);
+    buf.put(new byte[]{127,-128,0,99,98,-1});
+    buf.flip();
+    CompressionCodec codec = new ZlibCodec();
+    ByteBuffer out = ByteBuffer.allocate(1000);
+    try {
+      codec.decompress(buf, out);
+      fail();
+    } catch (IOException ioe) {
+      // EXPECTED
+    }
+  }
 }

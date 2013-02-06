@@ -44,24 +44,21 @@ class BitFieldWriter {
     output.flush();
   }
 
-  void append(int value) throws IOException {
-    if (bitSize > bitsLeft) {
-      int bitsToWrite = bitSize;
-      while (bitsToWrite > 0) {
-        // add the bits to the bottom of the current word
-        current |= value >>> (bitsToWrite - bitsLeft);
-        // subtract out the bits we just added
-        bitsToWrite -= bitsLeft;
-        // zero out the bits above bitsToWrite
-        value &= (1 << bitsToWrite) - 1;
-        writeByte();
-      }
-    } else {
-      bitsLeft -= bitSize;
-      current |= value << bitsLeft;
-      if (bitsLeft == 0) {
-        writeByte();
-      }
+  void write(int value) throws IOException {
+    int bitsToWrite = bitSize;
+    while (bitsToWrite > bitsLeft) {
+      // add the bits to the bottom of the current word
+      current |= value >>> (bitsToWrite - bitsLeft);
+      // subtract out the bits we just added
+      bitsToWrite -= bitsLeft;
+      // zero out the bits above bitsToWrite
+      value &= (1 << bitsToWrite) - 1;
+      writeByte();
+    }
+    bitsLeft -= bitsToWrite;
+    current |= value << bitsLeft;
+    if (bitsLeft == 0) {
+      writeByte();
     }
   }
 

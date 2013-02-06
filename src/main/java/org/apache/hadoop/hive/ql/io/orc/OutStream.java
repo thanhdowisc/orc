@@ -24,7 +24,6 @@ class OutStream extends PositionedOutputStream {
 
   interface OutputReceiver {
     void output(ByteBuffer buffer) throws IOException;
-    long getPosition() throws IOException;
   }
 
   static final int HEADER_SIZE = 3;
@@ -35,6 +34,8 @@ class OutStream extends PositionedOutputStream {
   private ByteBuffer current;
   private final int bufferSize;
   private final CompressionCodec codec;
+  private long compressedBytes = 0;
+  private long uncompressedBytes = 0;
 
   OutStream(String name,
             int bufferSize,
@@ -102,6 +103,7 @@ class OutStream extends PositionedOutputStream {
     if (current.remaining() < 1) {
       spill();
     }
+    uncompressedBytes += 1;
     current.put((byte) i);
   }
 
@@ -109,12 +111,14 @@ class OutStream extends PositionedOutputStream {
   public void write(byte[] bytes, int offset, int length) throws IOException {
     int remaining = Math.min(current.remaining(), length);
     current.put(bytes, offset, remaining);
+    uncompressedBytes += remaining;
     length -= remaining;
     while (length != 0) {
       spill();
       offset += remaining;
       remaining = Math.min(current.remaining(), length);
       current.put(bytes, offset, remaining);
+      uncompressedBytes += remaining;
       length -= remaining;
     }
   }
@@ -137,6 +141,7 @@ class OutStream extends PositionedOutputStream {
       int sizePosn = compressed.position();
       compressed.position(compressed.position()+HEADER_SIZE);
       if (codec.compress(current, compressed, overflow)) {
+        uncompressedBytes = 0;
         // move position back to after the header
         current.position(HEADER_SIZE);
         current.limit(current.capacity());
@@ -145,6 +150,7 @@ class OutStream extends PositionedOutputStream {
         if (overflow != null) {
           totalBytes += overflow.position();
         }
+        compressedBytes += totalBytes + HEADER_SIZE;
         writeHeader(compressed, sizePosn, totalBytes, false);
         // if we have less than the next header left, spill it.
         if (compressed.remaining() < HEADER_SIZE) {
@@ -154,6 +160,8 @@ class OutStream extends PositionedOutputStream {
           overflow = null;
         }
       } else {
+        compressedBytes += uncompressedBytes + HEADER_SIZE;
+        uncompressedBytes = 0;
         // we are using the original, but need to spill the current
         // compressed buffer first. So back up to where we started,
         // flip it and add it to done.
@@ -187,12 +195,11 @@ class OutStream extends PositionedOutputStream {
   }
 
   void getPosition(PositionRecorder recorder) throws IOException {
-    long doneBytes = receiver.getPosition();
     if (codec == null) {
-      recorder.addPosition(doneBytes + current.position());
+      recorder.addPosition(uncompressedBytes);
     } else {
-      recorder.addPosition(doneBytes);
-      recorder.addPosition(current.position() - HEADER_SIZE);
+      recorder.addPosition(compressedBytes);
+      recorder.addPosition(uncompressedBytes);
     }
   }
 
@@ -204,16 +211,18 @@ class OutStream extends PositionedOutputStream {
       receiver.output(compressed);
       compressed = null;
     }
-    if (overflow != null && overflow.position() != 0) {
-      overflow.flip();
-      receiver.output(overflow);
-      overflow = null;
-    }
+    uncompressedBytes = 0;
+    compressedBytes = 0;
   }
 
   @Override
   public String toString() {
     return name;
+  }
+
+  @Override
+  public long getSize() {
+    return uncompressedBytes + compressedBytes;
   }
 }
 

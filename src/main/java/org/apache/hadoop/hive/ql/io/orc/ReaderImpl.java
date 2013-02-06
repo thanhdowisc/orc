@@ -242,7 +242,7 @@ class ReaderImpl implements Reader {
                            ) throws IOException {
     return new RecordReaderImpl(this.getStripes(), fileSystem,  path, offset,
       length, footer.getTypesList(), codec, bufferSize,
-      include);
+      include, footer.getRowIndexStride());
   }
 
 }

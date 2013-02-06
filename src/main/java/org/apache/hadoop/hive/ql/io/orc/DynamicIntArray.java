@@ -57,7 +57,7 @@ class DynamicIntArray {
   private void grow(int chunkIndex) {
     if (chunkIndex >= initializedChunks) {
       if (chunkIndex >= data.length) {
-        int new_size = Math.max(chunkIndex, 2 * data.length);
+        int new_size = Math.max(chunkIndex+1, 2 * data.length);
         int[][] newChunk = new int[new_size][];
         System.arraycopy(data, 0, newChunk, 0, data.length);
         data = newChunk;

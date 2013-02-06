@@ -22,6 +22,7 @@ import org.apache.hadoop.io.Text;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 /**
  * A class that is a growable array of bytes. Growth is managed in terms of
@@ -41,8 +42,10 @@ class DynamicByteArray {
   }
 
   public DynamicByteArray(int numChunks, int chunkSize) {
+    if (chunkSize == 0) {
+      throw new IllegalArgumentException("bad chunksize");
+    }
     this.chunkSize = chunkSize;
-
     data = new byte[numChunks][];
   }
 
@@ -95,21 +98,28 @@ class DynamicByteArray {
     return result;
   }
 
-  public int add(byte[] value, int offset, int newLength) {
+  /**
+   * Copy a slice of a byte array into our buffer.
+   * @param value the array to copy from
+   * @param valueOffset the first location to copy from value
+   * @param valueLength the number of bytes to copy from value
+   * @return
+   */
+  public int add(byte[] value, int valueOffset, int valueLength) {
     int i = length / chunkSize;
     int j = length % chunkSize;
-    grow((length + newLength) / chunkSize);
-    int remaining = newLength;
+    grow((length + valueLength) / chunkSize);
+    int remaining = valueLength;
     while (remaining > 0) {
       int size = Math.min(remaining, chunkSize - j);
-      System.arraycopy(value, offset, data[i], j, size);
+      System.arraycopy(value, valueOffset, data[i], j, size);
       remaining -= size;
-      offset += size;
+      valueOffset += size;
       i += 1;
       j = 0;
     }
     int result = length;
-    length += newLength;
+    length += valueLength;
     return result;
   }
 
@@ -243,5 +253,18 @@ class DynamicByteArray {
     return sb.toString();
   }
 
+  public void setByteBuffer(ByteBuffer result, int offset, int length) {
+    result.clear();
+    int currentChunk = offset / chunkSize;
+    int currentOffset = offset % chunkSize;
+    int currentLength = Math.min(length, chunkSize - currentOffset);
+    while (length > 0) {
+      result.put(data[currentChunk], currentOffset, currentLength);
+      length -= currentLength;
+      currentChunk += 1;
+      currentOffset = 0;
+      currentLength = Math.min(length, chunkSize - currentOffset);
+    }
+  }
 }
 

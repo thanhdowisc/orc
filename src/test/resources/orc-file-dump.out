@@ -7,30 +7,30 @@ Type: struct<f:float,d:double>
 Statistics:
   Column 0: count: 21000
   Column 1: count: 21000 min: 8.881092071533203E-6 max: 0.9999387264251709 sum: 10551.349509894848
-  Column 2: count: 21000 min: 2.3379546596924428E-5 max: 0.9999973837551178 sum: 10486.848248849014
+  Column 2: count: 21000 min: 2.3379546596924428E-5 max: 0.9999973837551178 sum: 10486.848248848992
 
 Stripes:
-  Stripe: offset: 3 data: 111528 rows: 10001 tail: 52 index: 166
-    Stream: column 0 section ROW_INDEX start: 3 length 16
-    Stream: column 1 section ROW_INDEX start: 19 length 70
-    Stream: column 2 section ROW_INDEX start: 89 length 80
-    Stream: column 1 section PRESENT start: 169 length 14
-    Stream: column 1 section DATA start: 183 length 35917
-    Stream: column 2 section PRESENT start: 36100 length 14
-    Stream: column 2 section DATA start: 36114 length 75583
-  Stripe: offset: 111749 data: 111478 rows: 10001 tail: 52 index: 180
-    Stream: column 0 section ROW_INDEX start: 111749 length 16
-    Stream: column 1 section ROW_INDEX start: 111765 length 79
-    Stream: column 2 section ROW_INDEX start: 111844 length 85
-    Stream: column 1 section PRESENT start: 111929 length 14
-    Stream: column 1 section DATA start: 111943 length 35862
-    Stream: column 2 section PRESENT start: 147805 length 14
-    Stream: column 2 section DATA start: 147819 length 75588
-  Stripe: offset: 223459 data: 11174 rows: 998 tail: 50 index: 107
-    Stream: column 0 section ROW_INDEX start: 223459 length 10
-    Stream: column 1 section ROW_INDEX start: 223469 length 48
-    Stream: column 2 section ROW_INDEX start: 223517 length 49
-    Stream: column 1 section PRESENT start: 223566 length 7
-    Stream: column 1 section DATA start: 223573 length 3607
-    Stream: column 2 section PRESENT start: 227180 length 7
-    Stream: column 2 section DATA start: 227187 length 7553
+  Stripe: offset: 3 data: 100425 rows: 9000 tail: 52 index: 98
+    Stream: column 0 section ROW_INDEX start: 3 length 10
+    Stream: column 1 section ROW_INDEX start: 13 length 41
+    Stream: column 2 section ROW_INDEX start: 54 length 47
+    Stream: column 1 section PRESENT start: 101 length 12
+    Stream: column 1 section DATA start: 113 length 32344
+    Stream: column 2 section PRESENT start: 32457 length 12
+    Stream: column 2 section DATA start: 32469 length 68057
+  Stripe: offset: 100578 data: 100381 rows: 9000 tail: 52 index: 98
+    Stream: column 0 section ROW_INDEX start: 100578 length 10
+    Stream: column 1 section ROW_INDEX start: 100588 length 42
+    Stream: column 2 section ROW_INDEX start: 100630 length 46
+    Stream: column 1 section PRESENT start: 100676 length 12
+    Stream: column 1 section DATA start: 100688 length 32299
+    Stream: column 2 section PRESENT start: 132987 length 12
+    Stream: column 2 section DATA start: 132999 length 68058
+  Stripe: offset: 201109 data: 33511 rows: 3000 tail: 54 index: 98
+    Stream: column 0 section ROW_INDEX start: 201109 length 10
+    Stream: column 1 section ROW_INDEX start: 201119 length 41
+    Stream: column 2 section ROW_INDEX start: 201160 length 47
+    Stream: column 1 section PRESENT start: 201207 length 9
+    Stream: column 1 section DATA start: 201216 length 10797
+    Stream: column 2 section PRESENT start: 212013 length 9
+    Stream: column 2 section DATA start: 212022 length 22696

@@ -46,7 +46,7 @@ public class FileDump {
       for(StripeInformation stripe: reader.getStripes()) {
         long stripeStart = stripe.getOffset();
         System.out.println("  Stripe: " + stripe.toString());
-        OrcProto.StripeFooter footer = rows.readerStripeFooter(stripe);
+        OrcProto.StripeFooter footer = rows.readStripeFooter(stripe);
         long sectionStart = stripeStart;
         for(OrcProto.Stream section: footer.getStreamsList()) {
           System.out.println("    Stream: column " + section.getColumn() +

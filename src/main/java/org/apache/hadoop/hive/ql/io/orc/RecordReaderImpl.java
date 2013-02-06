@@ -44,10 +44,12 @@ class RecordReaderImpl implements RecordReader {
   private final long firstRow;
   private final List<StripeInformation> stripes =
     new ArrayList<StripeInformation>();
+  private OrcProto.StripeFooter stripeFooter;
   private final long totalRowCount;
   private final CompressionCodec codec;
   private final int bufferSize;
   private final boolean[] included;
+  private final long rowIndexStride;
   private long rowInStripe = 0;
   private int currentStripe = 0;
   private long rowBaseInStripe = 0;
@@ -55,6 +57,7 @@ class RecordReaderImpl implements RecordReader {
   private final Map<StreamName, InStream> streams =
       new HashMap<StreamName, InStream>();
   private final TreeReader reader;
+  private final OrcProto.RowIndex[] indexes;
 
   RecordReaderImpl(Iterable<StripeInformation> stripes,
                    FileSystem fileSystem,
@@ -63,7 +66,8 @@ class RecordReaderImpl implements RecordReader {
                    List<OrcProto.Type> types,
                    CompressionCodec codec,
                    int bufferSize,
-                   boolean[] included
+                   boolean[] included,
+                   long strideRate
                   ) throws IOException {
     this.file = fileSystem.open(path);
     this.codec = codec;
@@ -83,8 +87,24 @@ class RecordReaderImpl implements RecordReader {
     firstRow = skippedRows;
     totalRowCount = rows;
     reader = createTreeReader(0, types, included);
+    indexes = new OrcProto.RowIndex[types.size()];
+    rowIndexStride = strideRate;
     if (this.stripes.size() > 0) {
       readStripe();
+    }
+  }
+
+  private final static class PositionProviderImpl implements PositionProvider {
+    private final OrcProto.RowIndexEntry entry;
+    private int index = 0;
+
+    PositionProviderImpl(OrcProto.RowIndexEntry entry) {
+      this.entry = entry;
+    }
+
+    @Override
+    public long getNext() {
+      return entry.getPositions(index++);
     }
   }
 
@@ -109,7 +129,32 @@ class RecordReaderImpl implements RecordReader {
       }
     }
 
-    abstract void seekToRow(long row) throws IOException;
+    /**
+     * Seek to the given position
+     * @param index the indexes loaded from the file
+     * @throws IOException
+     */
+    void seek(PositionProvider[] index) throws IOException {
+      if (present != null) {
+        present.seek(index[columnId]);
+      }
+    }
+
+    protected long countNonNulls(long rows) throws IOException {
+      if (present != null) {
+        long result = 0;
+        for(long c=0; c < rows; ++c) {
+          if (present.next() == 1) {
+            result += 1;
+          }
+        }
+        return result;
+      } else {
+        return rows;
+      }
+    }
+
+    abstract void skipRows(long rows) throws IOException;
 
     Object next(Object previous) throws IOException {
       if (present != null) {
@@ -135,8 +180,14 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      reader.seek(index[columnId]);
+    }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      reader.skip(countNonNulls(items));
     }
 
     @Override
@@ -171,8 +222,9 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      reader.seek(index[columnId]);
     }
 
     @Override
@@ -188,6 +240,11 @@ class RecordReaderImpl implements RecordReader {
         result.set(reader.next());
       }
       return result;
+    }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      reader.skip(countNonNulls(items));
     }
   }
 
@@ -208,8 +265,9 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      reader.seek(index[columnId]);
     }
 
     @Override
@@ -225,6 +283,11 @@ class RecordReaderImpl implements RecordReader {
         result.set((short) reader.next());
       }
       return result;
+    }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      reader.skip(countNonNulls(items));
     }
   }
 
@@ -245,8 +308,9 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      reader.seek(index[columnId]);
     }
 
     @Override
@@ -262,6 +326,11 @@ class RecordReaderImpl implements RecordReader {
         result.set((int) reader.next());
       }
       return result;
+    }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      reader.skip(countNonNulls(items));
     }
   }
 
@@ -282,8 +351,9 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      reader.seek(index[columnId]);
     }
 
     @Override
@@ -299,6 +369,11 @@ class RecordReaderImpl implements RecordReader {
         result.set(reader.next());
       }
       return result;
+    }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      reader.skip(countNonNulls(items));
     }
   }
 
@@ -319,8 +394,9 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      stream.seek(index[columnId]);
     }
 
     @Override
@@ -336,6 +412,14 @@ class RecordReaderImpl implements RecordReader {
         result.set(SerializationUtils.readFloat(stream));
       }
       return result;
+    }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      items = countNonNulls(items);
+      for(int i=0; i < items; ++i) {
+        SerializationUtils.readFloat(stream);
+      }
     }
   }
 
@@ -356,8 +440,9 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      stream.seek(index[columnId]);
     }
 
     @Override
@@ -373,6 +458,12 @@ class RecordReaderImpl implements RecordReader {
         result.set(SerializationUtils.readDouble(stream));
       }
       return result;
+    }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      items = countNonNulls(items);
+      stream.skip(items*8);
     }
   }
 
@@ -397,8 +488,10 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      stream.seek(index[columnId]);
+      lengths.seek(index[columnId]);
     }
 
     @Override
@@ -425,6 +518,16 @@ class RecordReaderImpl implements RecordReader {
       }
       return result;
     }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      items = countNonNulls(items);
+      long lengthToSkip = 0;
+      for(int i=0; i < items; ++i) {
+        lengthToSkip += lengths.next();
+      }
+      stream.skip(lengthToSkip);
+    }
   }
 
   private static class TimestampTreeReader extends TreeReader{
@@ -445,8 +548,10 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      data.seek(index[columnId]);
+      nanos.seek(index[columnId]);
     }
 
     @Override
@@ -484,12 +589,18 @@ class RecordReaderImpl implements RecordReader {
       }
       return result;
     }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      items = countNonNulls(items);
+      data.skip(items);
+      nanos.skip(items);
+    }
   }
 
   private static class StringTreeReader extends TreeReader {
     private DynamicByteArray dictionaryBuffer = null;
     private final DynamicIntArray dictionaryOffsets = new DynamicIntArray();
-    private final DynamicIntArray dictionaryLengths = new DynamicIntArray();
     private RunLengthIntegerReader reader;
 
     StringTreeReader(int columnId) {
@@ -505,8 +616,12 @@ class RecordReaderImpl implements RecordReader {
       StreamName name = new StreamName(columnId,
           OrcProto.Stream.Kind.DICTIONARY_DATA);
       InStream in = streams.get(name);
-      dictionaryBuffer = new DynamicByteArray(64, in.available());
-      dictionaryBuffer.readAll(in);
+      if (in.available() > 0) {
+        dictionaryBuffer = new DynamicByteArray(64, in.available());
+        dictionaryBuffer.readAll(in);
+      } else {
+        dictionaryBuffer = null;
+      }
       in.close();
 
       // read the lengths
@@ -516,11 +631,9 @@ class RecordReaderImpl implements RecordReader {
       RunLengthIntegerReader lenReader = new RunLengthIntegerReader(in, false);
       int offset = 0;
       dictionaryOffsets.clear();
-      dictionaryLengths.clear();
       while (lenReader.hasNext()) {
         dictionaryOffsets.add(offset);
         int len = (int) lenReader.next();
-        dictionaryLengths.add(len);
         offset += len;
       }
       in.close();
@@ -531,8 +644,9 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      reader.seek(index[columnId]);
     }
 
     @Override
@@ -547,10 +661,22 @@ class RecordReaderImpl implements RecordReader {
           result = (Text) previous;
         }
         int offset = dictionaryOffsets.get(entry);
-        int length = dictionaryLengths.get(entry);
+        int length;
+        // if it isn't the last entry, subtract the offsets otherwise use
+        // the buffer length.
+        if (entry < dictionaryOffsets.length - 1) {
+          length = dictionaryOffsets.get(entry+1) - offset;
+        } else {
+          length = dictionaryBuffer.size() - offset;
+        }
         dictionaryBuffer.setText(result, offset, length);
       }
       return result;
+    }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      reader.skip(countNonNulls(items));
     }
   }
 
@@ -576,8 +702,11 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      for(TreeReader kid: fields) {
+        kid.seek(index);
+      }
     }
 
     @Override
@@ -608,6 +737,14 @@ class RecordReaderImpl implements RecordReader {
         }
       }
     }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      items = countNonNulls(items);
+      for(TreeReader field: fields) {
+        field.skipRows(items);
+      }
+    }
   }
 
   private static class UnionTreeReader extends TreeReader {
@@ -630,8 +767,12 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      tags.seek(index[columnId]);
+      for(TreeReader kid: fields) {
+        kid.seek(index);
+      }
     }
 
     @Override
@@ -644,7 +785,7 @@ class RecordReaderImpl implements RecordReader {
         } else {
           result = (OrcUnion) previous;
         }
-        byte tag = (byte) tags.next();
+        byte tag = tags.next();
         Object previousVal = result.getObject();
         result.set(tag, fields[tag].next(tag == result.getTag() ?
             previousVal : null));
@@ -664,6 +805,18 @@ class RecordReaderImpl implements RecordReader {
         }
       }
     }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      items = countNonNulls(items);
+      long[] counts = new long[fields.length];
+      for(int i=0; i < items; ++i) {
+        counts[tags.next()] += 1;
+      }
+      for(int i=0; i < counts.length; ++i) {
+        fields[i].skipRows(counts[i]);
+      }
+    }
   }
 
   private static class ListTreeReader extends TreeReader {
@@ -679,8 +832,10 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      lengths.seek(index[columnId]);
+      elementReader.seek(index);
     }
 
     @Override
@@ -714,14 +869,23 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void startStripe(Map<StreamName, InStream> streams
-    ) throws IOException {
+    void startStripe(Map<StreamName, InStream> streams) throws IOException {
       super.startStripe(streams);
       lengths = new RunLengthIntegerReader(streams.get(new StreamName
           (columnId, OrcProto.Stream.Kind.LENGTH)), false);
       if (elementReader != null) {
         elementReader.startStripe(streams);
       }
+    }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      items = countNonNulls(items);
+      long childSkip = 0;
+      for(long i=0; i < items; ++i) {
+        childSkip += lengths.next();
+      }
+      elementReader.skipRows(childSkip);
     }
   }
 
@@ -750,8 +914,11 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void seekToRow(long row) throws IOException {
-      //To change body of implemented methods use File | Settings | File Templates.
+    void seek(PositionProvider[] index) throws IOException {
+      super.seek(index);
+      lengths.seek(index[columnId]);
+      keyReader.seek(index);
+      valueReader.seek(index);
     }
 
     @Override
@@ -777,8 +944,7 @@ class RecordReaderImpl implements RecordReader {
     }
 
     @Override
-    void startStripe(Map<StreamName, InStream> streams
-    ) throws IOException {
+    void startStripe(Map<StreamName, InStream> streams) throws IOException {
       super.startStripe(streams);
       lengths = new RunLengthIntegerReader(streams.get(new StreamName
           (columnId, OrcProto.Stream.Kind.LENGTH)), false);
@@ -788,6 +954,17 @@ class RecordReaderImpl implements RecordReader {
       if (valueReader != null) {
         valueReader.startStripe(streams);
       }
+    }
+
+    @Override
+    void skipRows(long items) throws IOException {
+      items = countNonNulls(items);
+      long childSkip = 0;
+      for(long i=0; i < items; ++i) {
+        childSkip += lengths.next();
+      }
+      keyReader.skipRows(childSkip);
+      valueReader.skipRows(childSkip);
     }
   }
 
@@ -831,8 +1008,8 @@ class RecordReaderImpl implements RecordReader {
     }
   }
 
-  OrcProto.StripeFooter readerStripeFooter(StripeInformation stripe
-                                           ) throws IOException {
+  OrcProto.StripeFooter readStripeFooter(StripeInformation stripe
+                                         ) throws IOException {
     long offset = stripe.getOffset() + stripe.getIndexLength() +
         stripe.getDataLength();
     int tailLength = (int) stripe.getFooterLength();
@@ -845,13 +1022,9 @@ class RecordReaderImpl implements RecordReader {
       codec, bufferSize));
   }
 
-  private boolean includeColumn(int id) {
-    return included[id];
-  }
-
   private void readStripe() throws IOException {
     StripeInformation stripe = stripes.get(currentStripe);
-    OrcProto.StripeFooter footer = readerStripeFooter(stripe);
+    stripeFooter = readStripeFooter(stripe);
     long offset = stripe.getOffset();
     streams.clear();
 
@@ -862,7 +1035,7 @@ class RecordReaderImpl implements RecordReader {
       file.seek(offset + stripe.getIndexLength());
       file.readFully(buffer, 0, buffer.length);
       int sectionOffset = 0;
-      for(OrcProto.Stream section: footer.getStreamsList()) {
+      for(OrcProto.Stream section: stripeFooter.getStreamsList()) {
         if (StreamName.getArea(section.getKind()) == StreamName.Area.DATA) {
           int sectionLength = (int) section.getLength();
           ByteBuffer sectionBuffer = ByteBuffer.wrap(buffer, sectionOffset,
@@ -876,7 +1049,7 @@ class RecordReaderImpl implements RecordReader {
         }
       }
     } else {
-      List<OrcProto.Stream> streams = footer.getStreamsList();
+      List<OrcProto.Stream> streams = stripeFooter.getStreamsList();
       // the index of the current section
       int currentSection = 0;
       while (currentSection < streams.size() &&
@@ -892,7 +1065,7 @@ class RecordReaderImpl implements RecordReader {
         // find the first section that shouldn't be read
         int excluded=currentSection;
         while (excluded < streams.size() &&
-               includeColumn(streams.get(excluded).getColumn())) {
+               included[streams.get(excluded).getColumn()]) {
           bytes += streams.get(excluded).getLength();
           excluded += 1;
         }
@@ -921,7 +1094,7 @@ class RecordReaderImpl implements RecordReader {
 
         // skip forward until we get back to a section that we need
         while (currentSection < streams.size() &&
-               !includeColumn(streams.get(currentSection).getColumn())) {
+               !included[streams.get(currentSection).getColumn()]) {
           sectionOffset += streams.get(currentSection).getLength();
           currentSection += 1;
         }
@@ -933,6 +1106,9 @@ class RecordReaderImpl implements RecordReader {
     rowBaseInStripe = 0;
     for(int i=0; i < currentStripe; ++i) {
       rowBaseInStripe += stripes.get(i).getNumberOfRows();
+    }
+    for(int i=0; i < indexes.length; ++i) {
+      indexes[i] = null;
     }
   }
 
@@ -969,5 +1145,70 @@ class RecordReaderImpl implements RecordReader {
   @Override
   public float getProgress() {
     return ((float) rowBaseInStripe + rowInStripe)/totalRowCount;
+  }
+
+  private int findStripe(long rowNumber) {
+    if (rowNumber < 0) {
+      throw new IllegalArgumentException("Seek to a negative row number " +
+          rowNumber);
+    } else if (rowNumber < firstRow) {
+      throw new IllegalArgumentException("Seek before reader range " +
+          rowNumber);
+    }
+    rowNumber -= firstRow;
+    for(int i=0; i < stripes.size(); i++) {
+      StripeInformation stripe = stripes.get(i);
+      if (stripe.getNumberOfRows() > rowNumber) {
+        return i;
+      }
+      rowNumber -= stripe.getNumberOfRows();
+    }
+    throw new IllegalArgumentException("Seek after the end of reader range");
+  }
+
+  private void readRowIndex() throws IOException {
+    long offset = stripes.get(currentStripe).getOffset();
+    for(OrcProto.Stream stream: stripeFooter.getStreamsList()) {
+      if (stream.getKind() == OrcProto.Stream.Kind.ROW_INDEX) {
+        int col = stream.getColumn();
+        if ((included == null || included[col]) && indexes[col] == null) {
+          byte[] buffer = new byte[(int) stream.getLength()];
+          file.seek(offset);
+          file.readFully(buffer);
+          indexes[col] = OrcProto.RowIndex.parseFrom(InStream.create("index",
+              ByteBuffer.wrap(buffer), codec, bufferSize));
+        }
+      }
+      offset += stream.getLength();
+    }
+  }
+
+  private void seekToRowEntry(int rowEntry) throws IOException {
+    PositionProvider[] index = new PositionProvider[indexes.length];
+    for(int i=0; i < indexes.length; ++i) {
+      if (indexes[i] != null) {
+        index[i]=
+            new PositionProviderImpl(indexes[i].getEntry(rowEntry));
+      }
+    }
+    reader.seek(index);
+  }
+
+  @Override
+  public void seekToRow(long rowNumber) throws IOException {
+    int rightStripe = findStripe(rowNumber);
+    if (rightStripe != currentStripe) {
+      currentStripe = rightStripe;
+      readStripe();
+    }
+    readRowIndex();
+    rowInStripe = rowNumber - rowBaseInStripe;
+    if (rowIndexStride != 0) {
+      long entry = rowInStripe / rowIndexStride;
+      seekToRowEntry((int) entry);
+      reader.skipRows(rowInStripe - entry * rowIndexStride);
+    } else {
+      reader.skipRows(rowInStripe);
+    }
   }
 }

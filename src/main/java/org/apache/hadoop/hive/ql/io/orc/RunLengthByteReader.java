@@ -32,18 +32,16 @@ class RunLengthByteReader {
   private int numLiterals = 0;
   private int used = 0;
   private boolean repeat = false;
-  private boolean done = false;
 
   RunLengthByteReader(InStream input) throws IOException {
     this.input = input;
-    readValues();
   }
 
   private void readValues() throws IOException {
     int control = input.read();
     used = 0;
     if (control == -1) {
-      done = true;
+      throw new EOFException("Read past end of buffer RLE byte from " + input);
     } else if (control < 0x80) {
       repeat = true;
       numLiterals = control + RunLengthByteWriter.MIN_REPEAT_SIZE;
@@ -66,22 +64,48 @@ class RunLengthByteReader {
     }
   }
 
-  boolean hasNext() {
-    return !done && used != numLiterals;
+  boolean hasNext() throws IOException {
+    return used != numLiterals || input.available() > 0;
   }
 
   byte next() throws IOException {
     byte result;
+    if (used == numLiterals) {
+      readValues();
+    }
     if (repeat) {
       used += 1;
       result = literals[0];
     } else {
       result = literals[used++];
     }
-    if (used == numLiterals) {
-      readValues();
-    }
     return result;
   }
 
+  void seek(PositionProvider index) throws IOException {
+    input.seek(index);
+    int consumed = (int) index.getNext();
+    if (consumed != 0) {
+      // a loop is required for cases where we break the run into two parts
+      while (consumed > 0) {
+        readValues();
+        used = consumed;
+        consumed -= numLiterals;
+      }
+    } else {
+      used = 0;
+      numLiterals = 0;
+    }
+  }
+
+  void skip(long items) throws IOException {
+    while (items > 0) {
+      if (used == numLiterals) {
+        readValues();
+      }
+      long consume = Math.min(items, numLiterals - used);
+      used += consume;
+      items -= consume;
+    }
+  }
 }

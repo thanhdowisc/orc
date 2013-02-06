@@ -27,12 +27,14 @@ abstract class InStream extends InputStream {
     private final String name;
     private byte[] array;
     private int offset;
-    private int limit;
+    private final int base;
+    private final int limit;
 
     public UncompressedStream(String name, ByteBuffer input) {
       this.name = name;
       this.array = input.array();
-      offset = input.arrayOffset() + input.position();
+      base = input.arrayOffset() + input.position();
+      offset = base;
       limit = input.arrayOffset() + input.limit();
     }
 
@@ -64,7 +66,17 @@ abstract class InStream extends InputStream {
     public void close() {
       array = null;
       offset = 0;
-      limit = 0;
+    }
+
+    @Override
+    public void seek(PositionProvider index) throws IOException {
+      offset = base + (int) index.getNext();
+    }
+
+    @Override
+    public String toString() {
+      return "uncompressed stream " + name + " base: " + base +
+         " offset: " + offset + " limit: " + limit;
     }
   }
 
@@ -75,7 +87,8 @@ abstract class InStream extends InputStream {
     private ByteBuffer uncompressed = null;
     private final CompressionCodec codec;
     private int offset;
-    private int limit;
+    private final int base;
+    private final int limit;
     private boolean isUncompressedOriginal;
 
     public CompressedStream(String name, ByteBuffer input,
@@ -85,7 +98,8 @@ abstract class InStream extends InputStream {
       this.name = name;
       this.codec = codec;
       this.bufferSize = bufferSize;
-      offset = input.arrayOffset() + input.position();
+      base = input.arrayOffset() + input.position();
+      offset = base;
       limit = input.arrayOffset() + input.limit();
     }
 
@@ -93,6 +107,10 @@ abstract class InStream extends InputStream {
       if (limit - offset > OutStream.HEADER_SIZE) {
         int chunkLength = ((0xff & array[offset+2]) << 15) |
           ((0xff & array[offset+1]) << 7) | ((0xff & array[offset]) >> 1);
+        if (chunkLength > bufferSize) {
+          throw new IllegalArgumentException("Buffer size too small. size = " +
+              bufferSize + " needed = " + chunkLength);
+        }
         boolean isOriginal = (array[offset] & 0x01) == 1;
         offset += OutStream.HEADER_SIZE;
         if (isOriginal) {
@@ -158,10 +176,32 @@ abstract class InStream extends InputStream {
     public void close() {
       array = null;
       uncompressed = null;
-      limit = 0;
       offset = 0;
     }
+
+    @Override
+    public void seek(PositionProvider index) throws IOException {
+      offset = base + (int) index.getNext();
+      int uncompBytes = (int) index.getNext();
+      if (uncompBytes != 0) {
+        readHeader();
+        uncompressed.position(uncompressed.position() + uncompBytes);
+      } else if (uncompressed != null) {
+        uncompressed.position(uncompressed.limit());
+      }
+    }
+
+    @Override
+    public String toString() {
+      return "compressed stream " + name + " base: " + base +
+          " offset: " + offset + " limit: " + limit +
+          (uncompressed == null ? "" :
+              " uncompressed: " + uncompressed.position() + " to " +
+                  uncompressed.limit());
+    }
   }
+
+  public abstract void seek(PositionProvider index) throws IOException;
 
   public static InStream create(String name,
                                 ByteBuffer input,
