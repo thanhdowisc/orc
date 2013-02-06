@@ -284,7 +284,7 @@ public class TestStringRedBlackTree {
     TestStreamName test3 = new TestStreamName();
     test3.test1();
     TestInputOutputFormat test4 = new TestInputOutputFormat();
-    test4.test1();
+    test4.testInOutFormat();
     test4.testMROutput();
     test4.testEmptyFile();
     test4.testDefaultTypes();

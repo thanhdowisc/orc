@@ -23,9 +23,13 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.PrintStream;
@@ -37,9 +41,25 @@ import static org.junit.Assert.assertNull;
 public class TestFileDump {
 
   Path workDir = new Path(System.getProperty("test.tmp.dir",
-      "target/test/tmp"));
+      "target" + File.separator + "test" + File.separator + "tmp"));
   Path resourceDir = new Path(System.getProperty("test.resources.dir",
-      "src/test/resources"));
+      "src" + File.separator + "test" + File.separator + "resources"));
+
+  Configuration conf;
+  FileSystem fs;
+  Path testFilePath;
+
+  @Rule
+  public TestName testCaseName = new TestName();
+
+  @Before
+  public void openFileSystem () throws Exception {
+    conf = new Configuration();
+    fs = FileSystem.getLocal(conf);
+    testFilePath = new Path(workDir, "TestFileDump." +
+        testCaseName.getMethodName() + ".orc");
+    fs.delete(testFilePath, false);
+  }
 
   static class MyRecord {
     float f;
@@ -50,7 +70,8 @@ public class TestFileDump {
     }
   }
 
-  private static final String outputFilename = "/orc-file-dump.out";
+  private static final String outputFilename =
+      File.separator + "orc-file-dump.out";
 
   private static void checkOutput(String expected,
                                   String actual) throws Exception {
@@ -69,14 +90,12 @@ public class TestFileDump {
 
   @Test
   public void testDump() throws Exception {
-    Configuration conf = new Configuration();
-    FileSystem fs = FileSystem.getLocal(conf);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
-    ObjectInspector inspector =
-        ObjectInspectorFactory.getReflectionObjectInspector(MyRecord.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Writer writer = OrcFile.createWriter(fs, p, inspector,
+    ObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = ObjectInspectorFactory.getReflectionObjectInspector
+          (MyRecord.class, ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    }
+    Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         100000, CompressionKind.ZLIB, 10000, 10000);
     Random r1 = new Random(1);
     for(int i=0; i < 21000; ++i) {
@@ -84,12 +103,12 @@ public class TestFileDump {
     }
     writer.close();
     PrintStream origOut = System.out;
-    FileOutputStream myOut = new FileOutputStream(workDir +
-        "/orc-file-dump.out");
+    FileOutputStream myOut = new FileOutputStream(workDir + File.separator +
+        "orc-file-dump.out");
 
     // replace stdout and run command
     System.setOut(new PrintStream(myOut));
-    FileDump.main(new String[]{p.toString()});
+    FileDump.main(new String[]{testFilePath.toString()});
     System.out.flush();
     System.setOut(origOut);
 

@@ -45,13 +45,12 @@ import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.junit.Test;
 import org.junit.Before;
-import org.junit.After;
 import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TestName;
 
-
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -163,35 +162,31 @@ public class TestOrcFile {
   }
 
   Path workDir = new Path(System.getProperty("test.tmp.dir",
-      "target/test/tmp"));
+      "target" + File.separator + "test" + File.separator + "tmp"));
 
   Configuration conf;
   FileSystem fs;
   Path testFilePath;
 
-  @Rule public TestName testCaseName = new TestName();
- 
-  @Before 
+  @Rule
+  public TestName testCaseName = new TestName();
+
+  @Before
   public void openFileSystem () throws Exception {
-	  conf = new Configuration();
-	  fs = FileSystem.getLocal(conf);
-
-	  testFilePath = new Path(workDir, testCaseName + ".orc");
+    conf = new Configuration();
+    fs = FileSystem.getLocal(conf);
+    testFilePath = new Path(workDir, "TestOrcFile." +
+        testCaseName.getMethodName() + ".orc");
+    fs.delete(testFilePath, false);
   }
-
-  @After
-  public void closeFileSystem () throws Exception {
-  	fs.delete(testFilePath, false);
-	fs.close ();
-  }
-  	
 
   @Test
   public void test1() throws Exception {
-    ObjectInspector inspector =
-        ObjectInspectorFactory.getReflectionObjectInspector(BigRow.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    fs.delete(testFilePath, false);
+    ObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = ObjectInspectorFactory.getReflectionObjectInspector
+          (BigRow.class, ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    }
     Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         100000, CompressionKind.ZLIB, 10000, 10000);
     writer.addRow(new BigRow(false, (byte) 1, (short) 1024, 65536,
@@ -418,10 +413,12 @@ public class TestOrcFile {
 
   @Test
   public void columnProjection() throws Exception {
-	fs.delete(testFilePath, false);
-    ObjectInspector inspector =
-        ObjectInspectorFactory.getReflectionObjectInspector(InnerStruct.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    ObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = ObjectInspectorFactory.getReflectionObjectInspector
+          (InnerStruct.class,
+              ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    }
     Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         1000, CompressionKind.NONE, 100, 1000);
     Random r1 = new Random(1);
@@ -500,10 +497,11 @@ public class TestOrcFile {
 
   @Test
   public void emptyFile() throws Exception {
-    fs.delete(testFilePath, false);
-    ObjectInspector inspector =
-        ObjectInspectorFactory.getReflectionObjectInspector(BigRow.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    ObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = ObjectInspectorFactory.getReflectionObjectInspector
+          (BigRow.class, ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    }
     Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         1000, CompressionKind.NONE, 100, 10000);
     writer.close();
@@ -519,10 +517,11 @@ public class TestOrcFile {
 
   @Test
   public void metaData() throws Exception {
-    fs.delete(testFilePath, false);
-    ObjectInspector inspector =
-        ObjectInspectorFactory.getReflectionObjectInspector(BigRow.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    ObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = ObjectInspectorFactory.getReflectionObjectInspector
+          (BigRow.class, ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    }
     Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         1000, CompressionKind.NONE, 100, 10000);
     writer.addUserMetadata("my.meta", byteBuf(1, 2, 3, 4, 5, 6, 7, -1, -2, 127, -128));
@@ -569,7 +568,6 @@ public class TestOrcFile {
    */
   @Test
   public void testUnionAndTimestamp() throws Exception {
-    fs.delete(testFilePath, false);
     List<OrcProto.Type> types = new ArrayList<OrcProto.Type>();
     types.add(OrcProto.Type.newBuilder().setKind(OrcProto.Type.Kind.STRUCT).
         addFieldNames("time").addFieldNames("union").
@@ -582,7 +580,11 @@ public class TestOrcFile {
         build());
     types.add(OrcProto.Type.newBuilder().setKind(OrcProto.Type.Kind.STRING).
         build());
-    ObjectInspector inspector = OrcStruct.createObjectInspector(0, types);
+
+    ObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = OrcStruct.createObjectInspector(0, types);
+    }
     Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         1000, CompressionKind.NONE, 100, 10000);
     OrcStruct row = new OrcStruct(2);
@@ -716,10 +718,12 @@ public class TestOrcFile {
    */
   @Test
   public void testSnappy() throws Exception {
-    fs.delete(testFilePath, false);
-    ObjectInspector inspector =
-        ObjectInspectorFactory.getReflectionObjectInspector(InnerStruct.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    ObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = ObjectInspectorFactory.getReflectionObjectInspector
+          (InnerStruct.class,
+              ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    }
     Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         1000, CompressionKind.SNAPPY, 100, 10000);
     Random rand = new Random(12);
@@ -749,10 +753,12 @@ public class TestOrcFile {
    */
   @Test
   public void testWithoutIndex() throws Exception {
-    fs.delete(testFilePath, false);
-    ObjectInspector inspector =
-        ObjectInspectorFactory.getReflectionObjectInspector(InnerStruct.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    ObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = ObjectInspectorFactory.getReflectionObjectInspector
+          (InnerStruct.class,
+              ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    }
     Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         5000, CompressionKind.SNAPPY, 1000, 0);
     Random rand = new Random(24);
@@ -789,10 +795,11 @@ public class TestOrcFile {
 
   @Test
   public void testSeek() throws Exception {
-    ObjectInspector inspector =
-        ObjectInspectorFactory.getReflectionObjectInspector(BigRow.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    fs.delete(testFilePath, false);
+    ObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = ObjectInspectorFactory.getReflectionObjectInspector
+          (BigRow.class, ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    }
     Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         200000, CompressionKind.ZLIB, 65536, 1000);
     Random rand = new Random(42);

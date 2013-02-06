@@ -175,6 +175,7 @@
             <value>${basedir}/src/test/resources</value>
           </systemProperties>
           <argLine>-Xms256m -Xmx512m</argLine>
+          <parallel>methods</parallel>
         </configuration>
       </plugin>
     </plugins>

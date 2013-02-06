@@ -40,7 +40,10 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputFormat;
 import org.apache.hadoop.mapred.RecordWriter;
 import org.apache.hadoop.mapred.Reporter;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -74,20 +77,34 @@ public class TestInputOutputFormat {
     }
   }
 
+  @Rule
+  public TestName testCaseName = new TestName();
+  JobConf conf;
+  FileSystem fs;
+  Path testFilePath;
+
+  @Before
+  public void openFileSystem () throws Exception {
+    conf = new JobConf();
+    fs = FileSystem.getLocal(conf);
+    testFilePath = new Path(workDir, "TestInputOutputFormat." +
+        testCaseName.getMethodName() + ".orc");
+    fs.delete(testFilePath, false);
+  }
+
   @Test
-  public void test1() throws Exception {
-    JobConf conf = new JobConf();
+  public void testInOutFormat() throws Exception {
     Properties properties = new Properties();
-    FileSystem fs = FileSystem.getLocal(conf);
-    StructObjectInspector inspector = (StructObjectInspector)
-        ObjectInspectorFactory.getReflectionObjectInspector(MyRow.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
+    StructObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = (StructObjectInspector)
+          ObjectInspectorFactory.getReflectionObjectInspector(MyRow.class,
+              ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    }
     SerDe serde = new OrcSerde();
     HiveOutputFormat<?, ?> outFormat = new OrcOutputFormat();
     FileSinkOperator.RecordWriter writer =
-        outFormat.getHiveRecordWriter(conf, p, MyRow.class, true,
+        outFormat.getHiveRecordWriter(conf, testFilePath, MyRow.class, true,
             properties, Reporter.NULL);
     writer.write(serde.serialize(new MyRow(1,2), inspector));
     writer.write(serde.serialize(new MyRow(2,2), inspector));
@@ -101,7 +118,7 @@ public class TestInputOutputFormat {
     inspector = (StructObjectInspector) serde.getObjectInspector();
     assertEquals("struct<x:int,y:int>", inspector.getTypeName());
     InputFormat<?,?> in = new OrcInputFormat();
-    FileInputFormat.setInputPaths(conf, p.toString());
+    FileInputFormat.setInputPaths(conf, testFilePath.toString());
     InputSplit[] splits = in.getSplits(conf, 1);
     assertEquals(1, splits.length);
 
@@ -109,7 +126,7 @@ public class TestInputOutputFormat {
     ArrayList<FileStatus> fileList = new ArrayList<FileStatus>();
     assertEquals(false,
         ((InputFormatChecker) in).validateInput(fs, new HiveConf(), fileList));
-    fileList.add(fs.getFileStatus(p));
+    fileList.add(fs.getFileStatus(testFilePath));
     assertEquals(true,
         ((InputFormatChecker) in).validateInput(fs, new HiveConf(), fileList));
     fileList.add(fs.getFileStatus(workDir));
@@ -175,18 +192,19 @@ public class TestInputOutputFormat {
 
   @Test
   public void testMROutput() throws Exception {
-    JobConf conf = new JobConf();
+    JobConf job = new JobConf(conf);
     Properties properties = new Properties();
-    FileSystem fs = FileSystem.getLocal(conf);
-    StructObjectInspector inspector = (StructObjectInspector)
-        ObjectInspectorFactory.getReflectionObjectInspector(NestedRow.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
+    StructObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = (StructObjectInspector)
+          ObjectInspectorFactory.getReflectionObjectInspector(NestedRow.class,
+              ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    }
     SerDe serde = new OrcSerde();
     OutputFormat<?, ?> outFormat = new OrcOutputFormat();
     RecordWriter writer =
-        outFormat.getRecordWriter(fs, conf, p.toString(), Reporter.NULL);
+        outFormat.getRecordWriter(fs, conf, testFilePath.toString(),
+            Reporter.NULL);
     writer.write(NullWritable.get(),
         serde.serialize(new NestedRow(1,2,3), inspector));
     writer.write(NullWritable.get(),
@@ -200,7 +218,7 @@ public class TestInputOutputFormat {
     serde.initialize(conf, properties);
     inspector = (StructObjectInspector) serde.getObjectInspector();
     InputFormat<?,?> in = new OrcInputFormat();
-    FileInputFormat.setInputPaths(conf, p.toString());
+    FileInputFormat.setInputPaths(conf, testFilePath.toString());
     InputSplit[] splits = in.getSplits(conf, 1);
     assertEquals(1, splits.length);
     conf.set("hive.io.file.readcolumn.ids", "1");
@@ -231,17 +249,11 @@ public class TestInputOutputFormat {
 
   @Test
   public void testEmptyFile() throws Exception {
-    JobConf conf = new JobConf();
+    JobConf job = new JobConf(conf);
     Properties properties = new Properties();
-    FileSystem fs = FileSystem.getLocal(conf);
-    ObjectInspector inspector =
-        ObjectInspectorFactory.getReflectionObjectInspector(MyRow.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
     HiveOutputFormat<?, ?> outFormat = new OrcOutputFormat();
     FileSinkOperator.RecordWriter writer =
-        outFormat.getHiveRecordWriter(conf, p, MyRow.class, true,
+        outFormat.getHiveRecordWriter(conf, testFilePath, MyRow.class, true,
             properties, Reporter.NULL);
     writer.close(true);
     properties.setProperty("columns", "x,y");
@@ -249,7 +261,7 @@ public class TestInputOutputFormat {
     SerDe serde = new OrcSerde();
     serde.initialize(conf, properties);
     InputFormat<?,?> in = new OrcInputFormat();
-    FileInputFormat.setInputPaths(conf, p.toString());
+    FileInputFormat.setInputPaths(conf, testFilePath.toString());
     InputSplit[] splits = in.getSplits(conf, 1);
     assertEquals(1, splits.length);
 
@@ -286,19 +298,19 @@ public class TestInputOutputFormat {
 
   @Test
   public void testDefaultTypes() throws Exception {
-    JobConf conf = new JobConf();
+    JobConf job = new JobConf(conf);
     Properties properties = new Properties();
-    FileSystem fs = FileSystem.getLocal(conf);
-    StructObjectInspector inspector = (StructObjectInspector)
-        ObjectInspectorFactory.getReflectionObjectInspector(StringRow.class,
-            ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
+    StructObjectInspector inspector;
+    synchronized (TestOrcFile.class) {
+      inspector = (StructObjectInspector)
+          ObjectInspectorFactory.getReflectionObjectInspector(StringRow.class,
+              ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+    }
     SerDe serde = new OrcSerde();
     HiveOutputFormat<?, ?> outFormat = new OrcOutputFormat();
     FileSinkOperator.RecordWriter writer =
-        outFormat.getHiveRecordWriter(conf, p, StringRow.class, true,
-            properties, Reporter.NULL);
+        outFormat.getHiveRecordWriter(conf, testFilePath, StringRow.class,
+            true, properties, Reporter.NULL);
     writer.write(serde.serialize(new StringRow("owen"), inspector));
     writer.write(serde.serialize(new StringRow("beth"), inspector));
     writer.write(serde.serialize(new StringRow("laurel"), inspector));
@@ -312,7 +324,7 @@ public class TestInputOutputFormat {
     inspector = (StructObjectInspector) serde.getObjectInspector();
     assertEquals("struct<str:string,str2:string>", inspector.getTypeName());
     InputFormat<?,?> in = new OrcInputFormat();
-    FileInputFormat.setInputPaths(conf, p.toString());
+    FileInputFormat.setInputPaths(conf, testFilePath.toString());
     InputSplit[] splits = in.getSplits(conf, 1);
     assertEquals(1, splits.length);
 
