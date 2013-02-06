@@ -54,6 +54,20 @@ public class FileDump {
             " length " + section.getLength());
           sectionStart += section.getLength();
         }
+        for(int i=0; i < footer.getColumnsCount(); ++i) {
+          OrcProto.ColumnEncoding encoding = footer.getColumns(i);
+          StringBuilder buf = new StringBuilder();
+          buf.append("    Encoding column ");
+          buf.append(i);
+          buf.append(": ");
+          buf.append(encoding.getKind());
+          if (encoding.getKind() == OrcProto.ColumnEncoding.Kind.DICTIONARY) {
+            buf.append("[");
+            buf.append(encoding.getDictionarySize());
+            buf.append("]");
+          }
+          System.out.println(buf);
+        }
       }
     }
   }

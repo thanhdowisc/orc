@@ -55,14 +55,18 @@ message Stream {
   optional uint64 length = 3;
 }
 
-enum ColumnEncoding {
-  DIRECT = 0;
-  DICTIONARY = 1;
+message ColumnEncoding {
+  enum Kind {
+    DIRECT = 0;
+    DICTIONARY = 1;
+  }
+  required Kind kind = 1;
+  optional uint32 dictionarySize = 2;
 }
 
 message StripeFooter {
   repeated Stream streams = 1;
-  repeated ColumnEncoding columns = 2 [packed = true];
+  repeated ColumnEncoding columns = 2;
 }
 
 message Type {

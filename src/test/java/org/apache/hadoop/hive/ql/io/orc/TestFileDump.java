@@ -64,9 +64,11 @@ public class TestFileDump {
   static class MyRecord {
     float f;
     double d;
-    MyRecord(float f, double d) {
+    String s;
+    MyRecord(float f, double d, String s) {
       this.f = f;
       this.d = d;
+      this.s = s;
     }
   }
 
@@ -98,8 +100,20 @@ public class TestFileDump {
     Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         100000, CompressionKind.ZLIB, 10000, 10000);
     Random r1 = new Random(1);
+    String[] words = new String[]{"It", "was", "the", "best", "of", "times,",
+        "it", "was", "the", "worst", "of", "times,", "it", "was", "the", "age",
+        "of", "wisdom,", "it", "was", "the", "age", "of", "foolishness,", "it",
+        "was", "the", "epoch", "of", "belief,", "it", "was", "the", "epoch",
+        "of", "incredulity,", "it", "was", "the", "season", "of", "Light,",
+        "it", "was", "the", "season", "of", "Darkness,", "it", "was", "the",
+        "spring", "of", "hope,", "it", "was", "the", "winter", "of", "despair,",
+        "we", "had", "everything", "before", "us,", "we", "had", "nothing",
+        "before", "us,", "we", "were", "all", "going", "direct", "to",
+        "Heaven,", "we", "were", "all", "going", "direct", "the", "other",
+        "way"};
     for(int i=0; i < 21000; ++i) {
-      writer.addRow(new MyRecord(r1.nextFloat(), r1.nextDouble()));
+      writer.addRow(new MyRecord(r1.nextFloat(), r1.nextDouble(),
+          words[r1.nextInt(words.length)]));
     }
     writer.close();
     PrintStream origOut = System.out;

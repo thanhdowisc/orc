@@ -314,7 +314,8 @@ class WriterImpl implements Writer {
     }
 
     OrcProto.ColumnEncoding getEncoding() {
-      return OrcProto.ColumnEncoding.DIRECT;
+      return OrcProto.ColumnEncoding.newBuilder().setKind(
+          OrcProto.ColumnEncoding.Kind.DIRECT).build();
     }
 
     void createRowIndexEntry() throws IOException {
@@ -661,7 +662,9 @@ class WriterImpl implements Writer {
 
     @Override
     OrcProto.ColumnEncoding getEncoding() {
-      return OrcProto.ColumnEncoding.DICTIONARY;
+      return OrcProto.ColumnEncoding.newBuilder().setKind(
+          OrcProto.ColumnEncoding.Kind.DICTIONARY).
+          setDictionarySize(dictionary.size()).build();
     }
 
     void createRowIndexEntry() throws IOException {
