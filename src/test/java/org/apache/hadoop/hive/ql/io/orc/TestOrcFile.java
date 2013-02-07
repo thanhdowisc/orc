@@ -46,6 +46,11 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.junit.Test;
+import org.junit.Before;
+import org.junit.After;
+import org.junit.Rule;
+import org.junit.rules.TestName;
+
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -160,16 +165,34 @@ public class TestOrcFile {
   Path workDir = new Path(System.getProperty("test.tmp.dir",
       "target/test/tmp"));
 
+  Configuration conf;
+  FileSystem fs;
+  Path testFilePath;
+
+  @Rule public TestName testCaseName = new TestName();
+ 
+  @Before 
+  public void openFileSystem () throws Exception {
+	  conf = new Configuration();
+	  fs = FileSystem.getLocal(conf);
+
+	  testFilePath = new Path(workDir, testCaseName + ".orc");
+  }
+
+  @After
+  public void closeFileSystem () throws Exception {
+  	fs.delete(testFilePath, false);
+	fs.close ();
+  }
+  	
+
   @Test
   public void test1() throws Exception {
-    Configuration conf = new Configuration();
-    FileSystem fs = FileSystem.getLocal(conf);
     ObjectInspector inspector =
         ObjectInspectorFactory.getReflectionObjectInspector(BigRow.class,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
-    Writer writer = OrcFile.createWriter(fs, p, inspector,
+    fs.delete(testFilePath, false);
+    Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         100000, CompressionKind.ZLIB, 10000, 10000);
     writer.addRow(new BigRow(false, (byte) 1, (short) 1024, 65536,
         Long.MAX_VALUE, (float) 1.0, -15.0, bytes(0,1,2,3,4), "hi",
@@ -182,7 +205,7 @@ public class TestOrcFile {
         list(inner(100000000, "cat"), inner(-100000, "in"), inner(1234, "hat")),
         map(inner(5,"chani"), inner(1,"mauddib"))));
     writer.close();
-    Reader reader = OrcFile.createReader(fs, p);
+    Reader reader = OrcFile.createReader(fs, testFilePath);
 
     // check the stats
     ColumnStatistics[] stats = reader.getStatistics();
@@ -395,14 +418,11 @@ public class TestOrcFile {
 
   @Test
   public void columnProjection() throws Exception {
-    Configuration conf = new Configuration();
-    FileSystem fs = FileSystem.getLocal(conf);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
+	fs.delete(testFilePath, false);
     ObjectInspector inspector =
         ObjectInspectorFactory.getReflectionObjectInspector(InnerStruct.class,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Writer writer = OrcFile.createWriter(fs, p, inspector,
+    Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         1000, CompressionKind.NONE, 100, 1000);
     Random r1 = new Random(1);
     Random r2 = new Random(2);
@@ -428,7 +448,7 @@ public class TestOrcFile {
       writer.addRow(inner(x, y));
     }
     writer.close();
-    Reader reader = OrcFile.createReader(fs, p);
+    Reader reader = OrcFile.createReader(fs, testFilePath);
 
     // check out the statistics
     ColumnStatistics[] stats = reader.getStatistics();
@@ -480,17 +500,14 @@ public class TestOrcFile {
 
   @Test
   public void emptyFile() throws Exception {
-    Configuration conf = new Configuration();
-    FileSystem fs = FileSystem.getLocal(conf);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
+    fs.delete(testFilePath, false);
     ObjectInspector inspector =
         ObjectInspectorFactory.getReflectionObjectInspector(BigRow.class,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Writer writer = OrcFile.createWriter(fs, p, inspector,
+    Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         1000, CompressionKind.NONE, 100, 10000);
     writer.close();
-    Reader reader = OrcFile.createReader(fs, p);
+    Reader reader = OrcFile.createReader(fs, testFilePath);
     assertEquals(false, reader.rows(null).hasNext());
     assertEquals(CompressionKind.NONE, reader.getCompression());
     assertEquals(0, reader.getNumberOfRows());
@@ -502,14 +519,11 @@ public class TestOrcFile {
 
   @Test
   public void metaData() throws Exception {
-    Configuration conf = new Configuration();
-    FileSystem fs = FileSystem.getLocal(conf);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
+    fs.delete(testFilePath, false);
     ObjectInspector inspector =
         ObjectInspectorFactory.getReflectionObjectInspector(BigRow.class,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Writer writer = OrcFile.createWriter(fs, p, inspector,
+    Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         1000, CompressionKind.NONE, 100, 10000);
     writer.addUserMetadata("my.meta", byteBuf(1, 2, 3, 4, 5, 6, 7, -1, -2, 127, -128));
     writer.addUserMetadata("clobber", byteBuf(1,2,3));
@@ -524,7 +538,7 @@ public class TestOrcFile {
         null, null, null, null));
     writer.addUserMetadata("clobber", byteBuf(5,7,11,13,17,19));
     writer.close();
-    Reader reader = OrcFile.createReader(fs, p);
+    Reader reader = OrcFile.createReader(fs, testFilePath);
     assertEquals(byteBuf(5,7,11,13,17,19), reader.getMetadataValue("clobber"));
     assertEquals(byteBuf(1,2,3,4,5,6,7,-1,-2,127,-128),
         reader.getMetadataValue("my.meta"));
@@ -555,10 +569,7 @@ public class TestOrcFile {
    */
   @Test
   public void testUnionAndTimestamp() throws Exception {
-    Configuration conf = new Configuration();
-    FileSystem fs = FileSystem.getLocal(conf);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
+    fs.delete(testFilePath, false);
     List<OrcProto.Type> types = new ArrayList<OrcProto.Type>();
     types.add(OrcProto.Type.newBuilder().setKind(OrcProto.Type.Kind.STRUCT).
         addFieldNames("time").addFieldNames("union").
@@ -572,7 +583,7 @@ public class TestOrcFile {
     types.add(OrcProto.Type.newBuilder().setKind(OrcProto.Type.Kind.STRING).
         build());
     ObjectInspector inspector = OrcStruct.createObjectInspector(0, types);
-    Writer writer = OrcFile.createWriter(fs, p, inspector,
+    Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         1000, CompressionKind.NONE, 100, 10000);
     OrcStruct row = new OrcStruct(2);
     OrcUnion union = new OrcUnion();
@@ -616,7 +627,7 @@ public class TestOrcFile {
     union.set((byte) 0, new IntWritable(138));
     writer.addRow(row);
     writer.close();
-    Reader reader = OrcFile.createReader(fs, p);
+    Reader reader = OrcFile.createReader(fs, testFilePath);
     assertEquals(false, reader.getMetadataKeys().iterator().hasNext());
     assertEquals(1309, reader.getNumberOfRows());
     int stripeCount = 0;
@@ -705,14 +716,11 @@ public class TestOrcFile {
    */
   @Test
   public void testSnappy() throws Exception {
-    Configuration conf = new Configuration();
-    FileSystem fs = FileSystem.getLocal(conf);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
+    fs.delete(testFilePath, false);
     ObjectInspector inspector =
         ObjectInspectorFactory.getReflectionObjectInspector(InnerStruct.class,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Writer writer = OrcFile.createWriter(fs, p, inspector,
+    Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         1000, CompressionKind.SNAPPY, 100, 10000);
     Random rand = new Random(12);
     for(int i=0; i < 10000; ++i) {
@@ -720,7 +728,7 @@ public class TestOrcFile {
           Integer.toHexString(rand.nextInt())));
     }
     writer.close();
-    Reader reader = OrcFile.createReader(fs, p);
+    Reader reader = OrcFile.createReader(fs, testFilePath);
     RecordReader rows = reader.rows(null);
     rand = new Random(12);
     OrcStruct row = null;
@@ -741,14 +749,11 @@ public class TestOrcFile {
    */
   @Test
   public void testWithoutIndex() throws Exception {
-    Configuration conf = new Configuration();
-    FileSystem fs = FileSystem.getLocal(conf);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
+    fs.delete(testFilePath, false);
     ObjectInspector inspector =
         ObjectInspectorFactory.getReflectionObjectInspector(InnerStruct.class,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Writer writer = OrcFile.createWriter(fs, p, inspector,
+    Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         5000, CompressionKind.SNAPPY, 1000, 0);
     Random rand = new Random(24);
     for(int i=0; i < 10000; ++i) {
@@ -759,7 +764,7 @@ public class TestOrcFile {
       }
     }
     writer.close();
-    Reader reader = OrcFile.createReader(fs, p);
+    Reader reader = OrcFile.createReader(fs, testFilePath);
     assertEquals(50000, reader.getNumberOfRows());
     assertEquals(0, reader.getRowIndexStride());
     StripeInformation stripe = reader.getStripes().iterator().next();
@@ -784,14 +789,11 @@ public class TestOrcFile {
 
   @Test
   public void testSeek() throws Exception {
-    Configuration conf = new Configuration();
-    FileSystem fs = FileSystem.getLocal(conf);
     ObjectInspector inspector =
         ObjectInspectorFactory.getReflectionObjectInspector(BigRow.class,
             ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-    Path p = new Path(workDir, "file.orc");
-    fs.delete(p, false);
-    Writer writer = OrcFile.createWriter(fs, p, inspector,
+    fs.delete(testFilePath, false);
+    Writer writer = OrcFile.createWriter(fs, testFilePath, inspector,
         200000, CompressionKind.ZLIB, 65536, 1000);
     Random rand = new Random(42);
     final int COUNT=32768;
@@ -821,7 +823,7 @@ public class TestOrcFile {
     }
     writer.close();
     writer = null;
-    Reader reader = OrcFile.createReader(fs, p);
+    Reader reader = OrcFile.createReader(fs, testFilePath);
     assertEquals(COUNT, reader.getNumberOfRows());
     RecordReader rows = reader.rows(null);
     OrcStruct row = null;
