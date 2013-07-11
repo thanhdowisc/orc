@@ -58,13 +58,6 @@ public class BitPackReader {
 
 		// output unpacked array
 		long[] unpacked = new long[n];
-		long mask = (1L << numBits) - 1;
-
-		// if number of bits is 64 then mask creation will overflow
-		if (numBits == Long.SIZE) {
-			mask = Long.MAX_VALUE;
-		}
-
 		if (inp.length > 0) {
 			readByte();
 		}
@@ -86,7 +79,7 @@ public class BitPackReader {
 				result |= (current >> bitsLeft) & ((1 << bitsLeftToRead) - 1);
 			}
 
-			unpacked[i] = result & mask;
+			unpacked[i] = result;
 		}
 		return unpacked;
 	}

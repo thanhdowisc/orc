@@ -87,7 +87,7 @@ public class TestNewIntegerEncoding {
 		List<Long> input = Lists.newArrayList(Longs.asList(inp));
 
 		Writer writer = OrcFile.createWriter(fs, testFilePath, inspector, 100000,
-		    CompressionKind.NONE, 10000, 10000);
+		    CompressionKind.ZLIB, 10000, 10000);
 		for (Long l : input) {
 			writer.addRow(l);
 		}
@@ -114,7 +114,7 @@ public class TestNewIntegerEncoding {
 		input.add((long) Integer.MIN_VALUE);
 
 		Writer writer = OrcFile.createWriter(fs, testFilePath, inspector, 100000,
-		    CompressionKind.NONE, 10000, 10000);
+		    CompressionKind.ZLIB, 10000, 10000);
 		for (Long l : input) {
 			writer.addRow(l);
 		}
@@ -241,6 +241,36 @@ public class TestNewIntegerEncoding {
 	}
 
 	@Test
+	public void testRandomLong() throws Exception {
+		ObjectInspector inspector;
+		synchronized (TestOrcFile.class) {
+			inspector = ObjectInspectorFactory.getReflectionObjectInspector(
+			    Long.class, ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+		}
+
+		List<Long> input = Lists.newArrayList();
+		Random rand = new Random();
+		for (int i = 0; i < 100000; i++) {
+			input.add(rand.nextLong());
+		}
+
+		Writer writer = OrcFile.createWriter(fs, testFilePath, inspector, 100000,
+		    CompressionKind.NONE, 10000, 10000);
+		for (Long l : input) {
+			writer.addRow(l);
+		}
+		writer.close();
+
+		Reader reader = OrcFile.createReader(fs, testFilePath);
+		RecordReader rows = reader.rows(null);
+		int idx = 0;
+		while (rows.hasNext()) {
+			Object row = rows.next(null);
+			assertEquals(input.get(idx++).longValue(), ((LongWritable) row).get());
+		}
+	}
+
+	@Test
 	public void testPatchedBaseAt0() throws Exception {
 		ObjectInspector inspector;
 		synchronized (TestOrcFile.class) {
@@ -318,7 +348,7 @@ public class TestNewIntegerEncoding {
 		input.set(255, 20000L);
 
 		Writer writer = OrcFile.createWriter(fs, testFilePath, inspector, 100000,
-		    CompressionKind.NONE, 10000, 10000);
+		    CompressionKind.ZLIB, 10000, 10000);
 		for (Long l : input) {
 			writer.addRow(l);
 		}
@@ -349,7 +379,7 @@ public class TestNewIntegerEncoding {
 		input.set(256, 20000L);
 
 		Writer writer = OrcFile.createWriter(fs, testFilePath, inspector, 100000,
-		    CompressionKind.NONE, 10000, 10000);
+		    CompressionKind.ZLIB, 10000, 10000);
 		for (Long l : input) {
 			writer.addRow(l);
 		}
@@ -380,7 +410,7 @@ public class TestNewIntegerEncoding {
 		input.set(510, 20000L);
 
 		Writer writer = OrcFile.createWriter(fs, testFilePath, inspector, 100000,
-		    CompressionKind.NONE, 10000, 10000);
+		    CompressionKind.ZLIB, 10000, 10000);
 		for (Long l : input) {
 			writer.addRow(l);
 		}
@@ -411,7 +441,7 @@ public class TestNewIntegerEncoding {
 		input.set(511, 20000L);
 
 		Writer writer = OrcFile.createWriter(fs, testFilePath, inspector, 100000,
-		    CompressionKind.NONE, 10000, 10000);
+		    CompressionKind.ZLIB, 10000, 10000);
 		for (Long l : input) {
 			writer.addRow(l);
 		}
@@ -429,78 +459,78 @@ public class TestNewIntegerEncoding {
 	// NOTE: Following test cases needs github archive data in test resources
 	// directory
 
-	// @Test
-	// public void testFromFile() throws Exception {
-	// ObjectInspector inspector;
-	// synchronized (TestOrcFile.class) {
-	// inspector = ObjectInspectorFactory.getReflectionObjectInspector(
-	// Long.class, ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-	// }
-	//
-	// String path = resDir + File.separator + "github" + File.separator
-	// + "root.payload.id.txt";
-	//
-	// List<Long> input = fetchData(path);
-	// Writer writer = OrcFile.createWriter(fs, testFilePath, inspector, 100000,
-	// CompressionKind.NONE, 10000, 10000);
-	// for (Long l : input) {
-	// writer.addRow(l);
-	// }
-	// writer.close();
-	//
-	// Reader reader = OrcFile.createReader(fs, testFilePath);
-	// RecordReader rows = reader.rows(null);
-	// int idx = 0;
-	// while (rows.hasNext()) {
-	// Object row = rows.next(null);
-	// assertEquals(input.get(idx++).longValue(), ((LongWritable) row).get());
-	// }
-	// }
-	//
-	// private void runTest(String path) throws Exception {
-	// ObjectInspector inspector;
-	// synchronized (TestOrcFile.class) {
-	// inspector = ObjectInspectorFactory.getReflectionObjectInspector(
-	// Long.class, ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
-	// }
-	//
-	// String fullPath = resDir + File.separator + "github" + File.separator
-	// + path;
-	// Path tfp = new Path(System.getProperty("test.tmp.dir", "target"
-	// + File.separator + "test" + File.separator + "tmp" + File.separator
-	// + path));
-	// List<Long> input = fetchData(fullPath);
-	//
-	// System.out.println("Running compression on " + path);
-	// Writer writer = OrcFile.createWriter(fs, tfp, inspector, 100000,
-	// CompressionKind.NONE, 10000, 10000);
-	// for (Long l : input) {
-	// writer.addRow(l);
-	// }
-	// writer.close();
-	//
-	// System.out.println("Running decompression on " + path);
-	// Reader reader = OrcFile.createReader(fs, tfp);
-	// RecordReader rows = reader.rows(null);
-	// int idx = 0;
-	// while (rows.hasNext()) {
-	// Object row = rows.next(null);
-	// assertEquals(input.get(idx++).longValue(), ((LongWritable) row).get());
-	// }
-	// }
-	//
-	// @Test
-	// public void testGithubArchive() throws Exception {
-	// File folder = new File(resDir + File.separator + "github");
-	//
-	// if (folder.exists()) {
-	// File[] files = folder.listFiles();
-	//
-	// for (File file : files) {
-	// runTest(file.getName());
-	// }
-	// } else {
-	// System.out.println(folder.getCanonicalPath() + " folder doesn't exist.");
-	// }
-	// }
+//	@Test
+//	public void testFromFile() throws Exception {
+//		ObjectInspector inspector;
+//		synchronized (TestOrcFile.class) {
+//			inspector = ObjectInspectorFactory.getReflectionObjectInspector(
+//			    Long.class, ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+//		}
+//
+//		String path = resDir + File.separator + "github" + File.separator
+//		    + "root.payload.id.txt";
+//
+//		List<Long> input = fetchData(path);
+//		Writer writer = OrcFile.createWriter(fs, testFilePath, inspector, 100000,
+//		    CompressionKind.ZLIB, 10000, 10000);
+//		for (Long l : input) {
+//			writer.addRow(l);
+//		}
+//		writer.close();
+//
+//		Reader reader = OrcFile.createReader(fs, testFilePath);
+//		RecordReader rows = reader.rows(null);
+//		int idx = 0;
+//		while (rows.hasNext()) {
+//			Object row = rows.next(null);
+//			assertEquals(input.get(idx++).longValue(), ((LongWritable) row).get());
+//		}
+//	}
+//
+//	private void runTest(String path) throws Exception {
+//		ObjectInspector inspector;
+//		synchronized (TestOrcFile.class) {
+//			inspector = ObjectInspectorFactory.getReflectionObjectInspector(
+//			    Long.class, ObjectInspectorFactory.ObjectInspectorOptions.JAVA);
+//		}
+//
+//		String fullPath = resDir + File.separator + "github" + File.separator
+//		    + path;
+//		Path tfp = new Path(System.getProperty("test.tmp.dir", "target"
+//		    + File.separator + "test" + File.separator + "tmp" + File.separator
+//		    + path));
+//		List<Long> input = fetchData(fullPath);
+//
+//		System.out.println("Running compression on " + path);
+//		Writer writer = OrcFile.createWriter(fs, tfp, inspector, 100000,
+//		    CompressionKind.ZLIB, 10000, 10000);
+//		for (Long l : input) {
+//			writer.addRow(l);
+//		}
+//		writer.close();
+//
+//		System.out.println("Running decompression on " + path);
+//		Reader reader = OrcFile.createReader(fs, tfp);
+//		RecordReader rows = reader.rows(null);
+//		int idx = 0;
+//		while (rows.hasNext()) {
+//			Object row = rows.next(null);
+//			assertEquals(input.get(idx++).longValue(), ((LongWritable) row).get());
+//		}
+//	}
+//
+//	@Test
+//	public void testGithubArchive() throws Exception {
+//		File folder = new File(resDir + File.separator + "github");
+//
+//		if (folder.exists()) {
+//			File[] files = folder.listFiles();
+//
+//			for (File file : files) {
+//				runTest(file.getName());
+//			}
+//		} else {
+//			System.out.println(folder.getCanonicalPath() + " folder doesn't exist.");
+//		}
+//	}
 }
