@@ -1,12 +1,12 @@
 package org.apache.hadoop.hive.ql.io.orc;
 
+import java.util.Arrays;
 import java.util.Random;
 
 public class Utils {
 
 	/**
 	 * Count the number of bits required to encode the given value
-	 * 
 	 * @param value
 	 * @return bits required to store value
 	 */
@@ -19,9 +19,17 @@ public class Utils {
 		return count;
 	}
 
+	// this is used only for testing
+	public static long[] deltaEncode(long[] inp) {
+		long[] output = new long[inp.length];
+		for (int i = 0; i < inp.length; i++) {
+			output[i] = zigzagEncode(inp[i]);
+		}
+		return output;
+	}
+
 	/**
 	 * zigzag encode the given value
-	 * 
 	 * @param val
 	 * @return zigzag encoded value
 	 */
@@ -31,7 +39,6 @@ public class Utils {
 
 	/**
 	 * zigzag decode the given value
-	 * 
 	 * @param val
 	 * @return zizag decoded value
 	 */
@@ -41,7 +48,6 @@ public class Utils {
 
 	/**
 	 * Next random long value
-	 * 
 	 * @param rng
 	 * @param n
 	 * @return random long value
@@ -55,55 +61,57 @@ public class Utils {
 		return val;
 	}
 
-	// this is used only for testing
-	public static long[] deltaEncode(long[] inp) {
-		long[] output = new long[inp.length];
-		for (int i = 0; i < inp.length; i++) {
-			output[i] = zigzagEncode(inp[i]);
+	public static double percentile(long[] data, double p, boolean sorted) {
+		if ((p > 1.0) || (p <= 0.0)) {
+			throw new IllegalArgumentException("invalid percentile value: " + p);
 		}
-		return output;
-	}
-	
-	public static long readSignedLong(OutputBuffer inp)
-			throws IllegalAccessException {
-		long val = readUnsignedLong(inp);
-		return (val >>> 1) ^ -(val & 1);
-	}
 
-	// read varint encoded value
-	public static long readUnsignedLong(OutputBuffer inp)
-			throws IllegalAccessException {
-		long result = 0;
-	    long b;
-	    int offset = 0;
-	    do {
-	      b = inp.read();
-	      result |= (0x7f & b) << offset;
-	      offset += 7;
-	    } while (b >= 0x80);
-	    
-		return result;
-	}
+		long[] input = data;
 
-	public static void writeSignedLong(OutputBuffer output, long currentVal) {
-		// if it is signed long then use zigzag encoding, refer protobuf
-		// encoding
-		writeUnsignedLong(output, (currentVal << 1) ^ (currentVal >> 63));
-	}
-
-	// variable length encoding
-	public static void writeUnsignedLong(OutputBuffer output, long currentVal) {
-		while (true) {
-			// if val is less than 128 then we can store it directly
-			if ((currentVal & ~0x7f) == 0) {
-				output.writeByte((byte) currentVal);
-				return;
-			} else {
-				output.writeByte((byte) ((currentVal & 0x7f) | 0x80));
-				// unsigned right shift
-				currentVal = currentVal >>> 7;
-			}
+		if (sorted == false) {
+			input = Arrays.copyOf(data, data.length);
+			Arrays.sort(input);
 		}
+
+		int n = input.length;
+		int idx = (int) Math.floor((n + 1) * p);
+		if (idx >= n) {
+			return input[n - 1];
+		}
+
+		if (idx < 1) {
+			return input[0];
+		}
+		long lower = input[idx - 1];
+		long upper = input[idx];
+		double diff = ((n + 1) * p) - idx;
+		return lower + diff * (upper - lower);
 	}
 
+	public static long[] copyRangeAndZigzagEncode(long[] literals, int start,
+	    int end) {
+		if (end < start) {
+			return null;
+		}
+		long[] out = new long[end - start];
+		int idx = 0;
+		for (int i = start; i < end; i++) {
+			out[idx++] = zigzagEncode(literals[i]);
+		}
+
+		return out;
+	}
+
+	public static long bytesToLongBE(byte[] b) {
+		long out = 0;
+
+		int offset = b.length - 1;
+		for (int i = 0; i < b.length; i++) {
+			long val = 0xff & b[i];
+			out |= (val << (offset * 8));
+			offset -= 1;
+		}
+
+		return out;
+	}
 }

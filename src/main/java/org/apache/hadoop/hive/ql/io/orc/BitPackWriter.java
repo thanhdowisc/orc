@@ -1,5 +1,9 @@
 package org.apache.hadoop.hive.ql.io.orc;
 
+/**
+ * Writer which bit packs integer values.
+ */
+
 public class BitPackWriter {
 	static int bytesInLong = Long.SIZE / 8;
 	static byte[] packed;
@@ -7,7 +11,10 @@ public class BitPackWriter {
 	static byte current = 0;
 	static int bitsLeft = 8;
 
-	public static void flush() {
+	/**
+	 * If there are any left over bits then flush the final byte
+	 */
+	private static void flush() {
 		if (bitsLeft != 8) {
 			writeByte();
 		}
@@ -19,11 +26,39 @@ public class BitPackWriter {
 		bitsLeft = 8;
 	}
 
-	public static byte[] pack(long[] inp, int n, int numBits) {
-		
-		if (numBits == 0) {
-			throw new RuntimeException("Number of fixed bits cannot be 0.");
+	/**
+	 * Bit packs the input array for array length of values
+	 * @param inp
+	 *          - input array
+	 * @param n
+	 *          - number of elements in the array to bit pack
+	 * @param numBits
+	 *          - bit width
+	 * @return bit packed byte array, null returned for any illegal argument
+	 */
+	public static byte[] pack(long[] inp, int numBits) {
+		if (inp == null || inp.length == 0 || numBits < 1) {
+			return null;
 		}
+
+		return pack(inp, inp.length, numBits);
+	}
+
+	/**
+	 * Bit packs the input array for specified length
+	 * @param inp
+	 *          - input array
+	 * @param n
+	 *          - number of elements in the array to bit pack
+	 * @param numBits
+	 *          - bit width
+	 * @return bit packed byte array, null returned for any illegal argument
+	 */
+	public static byte[] pack(long[] inp, int n, int numBits) {
+		if (inp == null || n < 1 || inp.length == 0 || numBits < 1) {
+			return null;
+		}
+
 		numPacked = 0;
 		int totalBytes = getTotalBytesRequired(n, numBits);
 		packed = new byte[totalBytes];
@@ -47,14 +82,20 @@ public class BitPackWriter {
 			}
 		}
 
+		// flush the left over bytes
 		flush();
 		return packed;
 	}
 
+	/**
+	 * Calculate the number of bytes required
+	 * @param n
+	 *          - number of values
+	 * @param numBits
+	 *          - bit width
+	 * @return number of bytes required
+	 */
 	public static int getTotalBytesRequired(int n, int numBits) {
-		if (numBits == 0) {
-			throw new RuntimeException("Number of fixed bits cannot be 0.");
-		}
 		return (int) Math.ceil((double) (n * numBits) / 8.0);
 	}
 

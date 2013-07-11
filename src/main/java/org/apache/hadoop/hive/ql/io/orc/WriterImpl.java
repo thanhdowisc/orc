@@ -415,7 +415,7 @@ class WriterImpl implements Writer {
   }
 
   private static class IntegerTreeWriter extends TreeWriter {
-    private final RunLengthIntegerWriter writer;
+    private final NewRunLengthIntegerWriter writer;
     private final ShortObjectInspector shortInspector;
     private final IntObjectInspector intInspector;
     private final LongObjectInspector longInspector;
@@ -427,7 +427,7 @@ class WriterImpl implements Writer {
       super(columnId, inspector, writer, nullable);
       PositionedOutputStream out = writer.createStream(id,
           OrcProto.Stream.Kind.DATA);
-      this.writer = new RunLengthIntegerWriter(out, true);
+      this.writer = new NewRunLengthIntegerWriter(out, true);
       if (inspector instanceof IntObjectInspector) {
         intInspector = (IntObjectInspector) inspector;
         shortInspector = null;

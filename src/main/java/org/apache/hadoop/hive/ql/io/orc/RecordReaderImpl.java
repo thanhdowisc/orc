@@ -296,7 +296,7 @@ class RecordReaderImpl implements RecordReader {
   }
 
   private static class IntTreeReader extends TreeReader{
-    private RunLengthIntegerReader reader = null;
+    private NewRunLengthIntegerReader reader = null;
 
     IntTreeReader(int columnId) {
       super(columnId);
@@ -309,7 +309,7 @@ class RecordReaderImpl implements RecordReader {
       super.startStripe(streams, encodings);
       StreamName name = new StreamName(columnId,
           OrcProto.Stream.Kind.DATA);
-      reader = new RunLengthIntegerReader(streams.get(name), true);
+      reader = new NewRunLengthIntegerReader(streams.get(name), true);
     }
 
     @Override
@@ -340,7 +340,7 @@ class RecordReaderImpl implements RecordReader {
   }
 
   private static class LongTreeReader extends TreeReader{
-    private RunLengthIntegerReader reader = null;
+    private NewRunLengthIntegerReader reader = null;
 
     LongTreeReader(int columnId) {
       super(columnId);
@@ -353,7 +353,7 @@ class RecordReaderImpl implements RecordReader {
       super.startStripe(streams, encodings);
       StreamName name = new StreamName(columnId,
           OrcProto.Stream.Kind.DATA);
-      reader = new RunLengthIntegerReader(streams.get(name), true);
+      reader = new NewRunLengthIntegerReader(streams.get(name), true);
     }
 
     @Override
