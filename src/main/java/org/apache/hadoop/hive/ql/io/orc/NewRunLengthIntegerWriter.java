@@ -30,31 +30,31 @@ class NewRunLengthIntegerWriter {
 	static final int MIN_REPEAT = 3;
 	private static final int MAX_SHORT_REPEAT_LENGTH = 10;
 	private static final int MAX_SHORT_REPEAT_SIZE = 8;
-	private static long prevDelta = 0;
-	private static int fixedRunLength = 0;
-	private static int variableRunLength = 0;
-	private static long[] literals = new long[MAX_SCOPE];
+	private long prevDelta = 0;
+	private int fixedRunLength = 0;
+	private int variableRunLength = 0;
+	private long[] literals = new long[MAX_SCOPE];
 	private final PositionedOutputStream output;
 	private final boolean signed;
-	private static EncodingType encoding = null;
-	private static int numLiterals = 0;
-	private static long min = 0;
-	private static long max = 0;
-	private static long[] zigzagLiterals = null;
-	private static long[] zzBaseReduced = null;
-	private static long[] zzAdjDeltas = null;
-	private static long fixedDelta = 0;
-	private static int zzBits90p = 0;
-	private static int zzBits100p = 0;
-	private static int zzBRBits95p = 0;
-	private static int zzBRBits100p = 0;
-	private static int bitsDeltaMax = 0;
-	private static int patchWidth = 0;
-	private static int patchGapWidth = 0;
-	private static int patchLength = 0;
-	private static long[] gapVsPatchList = null;
-	private static long zzMin = 0;
-	private static boolean isFixedDelta = false;
+	private EncodingType encoding = null;
+	private int numLiterals = 0;
+	private long min = 0;
+	private long max = 0;
+	private long[] zigzagLiterals = null;
+	private long[] zzBaseReduced = null;
+	private long[] zzAdjDeltas = null;
+	private long fixedDelta = 0;
+	private int zzBits90p = 0;
+	private int zzBits100p = 0;
+	private int zzBRBits95p = 0;
+	private int zzBRBits100p = 0;
+	private int bitsDeltaMax = 0;
+	private int patchWidth = 0;
+	private int patchGapWidth = 0;
+	private int patchLength = 0;
+	private long[] gapVsPatchList = null;
+	private long zzMin = 0;
+	private boolean isFixedDelta = false;
 
 	NewRunLengthIntegerWriter(PositionedOutputStream output, boolean signed) {
 		this.output = output;
@@ -569,9 +569,9 @@ class NewRunLengthIntegerWriter {
 	}
 
 	/**
-	 * clears all the static variables
+	 * clears all the variables
 	 */
-	private static void clear() {
+	private void clear() {
 		numLiterals = 0;
 		min = 0;
 		max = 0;
@@ -595,8 +595,7 @@ class NewRunLengthIntegerWriter {
 	}
 
 	void flush() throws IOException {
-		// if only one element is left in buffer then use direct encoding
-		// FIXME: Merge it with the next batch?
+		// if only one element is left in buffer then use short repeat encoding
 		if (numLiterals == 1) {
 			encoding = EncodingType.SHORT_REPEAT;
 			fixedRunLength = 1;

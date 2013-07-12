@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hive.ql.io.orc;
 
+import java.io.EOFException;
 import java.io.IOException;
 
 import org.apache.hadoop.hive.ql.io.orc.NewRunLengthIntegerWriter.EncodingType;
@@ -39,15 +40,19 @@ class NewRunLengthIntegerReader {
 	private void readValues() throws IOException {
 		// read the first 2 bits and determine the encoding type
 		int firstByte = input.read();
-		int enc = (firstByte >>> 6) & 0x03;
-		if (EncodingType.SHORT_REPEAT.ordinal() == enc) {
-			readShortRepeatValues(firstByte);
-		} else if (EncodingType.DIRECT.ordinal() == enc) {
-			readDirectValues(firstByte);
-		} else if (EncodingType.PATCHED_BASE.ordinal() == enc) {
-			readPatchedBaseValues(firstByte);
+		if (firstByte < 0) {
+			throw new EOFException("Read past end of RLE integer from " + input);
 		} else {
-			readDeltaValues(firstByte);
+			int enc = (firstByte >>> 6) & 0x03;
+			if (EncodingType.SHORT_REPEAT.ordinal() == enc) {
+				readShortRepeatValues(firstByte);
+			} else if (EncodingType.DIRECT.ordinal() == enc) {
+				readDirectValues(firstByte);
+			} else if (EncodingType.PATCHED_BASE.ordinal() == enc) {
+				readPatchedBaseValues(firstByte);
+			} else {
+				readDeltaValues(firstByte);
+			}
 		}
 	}
 
@@ -301,6 +306,7 @@ class NewRunLengthIntegerReader {
 			// a loop is required for cases where we break the run into two
 			// parts
 			while (consumed > 0) {
+				numLiterals = 0;
 				readValues();
 				used = consumed;
 				consumed -= numLiterals;
@@ -314,6 +320,8 @@ class NewRunLengthIntegerReader {
 	void skip(long numValues) throws IOException {
 		while (numValues > 0) {
 			if (used == numLiterals) {
+				numLiterals = 0;
+				used = 0;
 				readValues();
 			}
 			long consume = Math.min(numValues, numLiterals - used);

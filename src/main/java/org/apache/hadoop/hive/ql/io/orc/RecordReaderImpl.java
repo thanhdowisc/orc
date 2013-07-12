@@ -252,7 +252,7 @@ class RecordReaderImpl implements RecordReader {
   }
 
   private static class ShortTreeReader extends TreeReader{
-    private RunLengthIntegerReader reader = null;
+    private NewRunLengthIntegerReader reader = null;
 
     ShortTreeReader(int columnId) {
       super(columnId);
@@ -265,7 +265,7 @@ class RecordReaderImpl implements RecordReader {
       super.startStripe(streams, encodings);
       StreamName name = new StreamName(columnId,
           OrcProto.Stream.Kind.DATA);
-      reader = new RunLengthIntegerReader(streams.get(name), true);
+      reader = new NewRunLengthIntegerReader(streams.get(name), true);
     }
 
     @Override
@@ -478,7 +478,7 @@ class RecordReaderImpl implements RecordReader {
 
   private static class BinaryTreeReader extends TreeReader{
     private InStream stream;
-    private RunLengthIntegerReader lengths;
+    private NewRunLengthIntegerReader lengths;
 
     BinaryTreeReader(int columnId) {
       super(columnId);
@@ -492,7 +492,7 @@ class RecordReaderImpl implements RecordReader {
       StreamName name = new StreamName(columnId,
           OrcProto.Stream.Kind.DATA);
       stream = streams.get(name);
-      lengths = new RunLengthIntegerReader(streams.get(new
+      lengths = new NewRunLengthIntegerReader(streams.get(new
           StreamName(columnId, OrcProto.Stream.Kind.LENGTH)),
           false);
     }
@@ -541,8 +541,8 @@ class RecordReaderImpl implements RecordReader {
   }
 
   private static class TimestampTreeReader extends TreeReader{
-    private RunLengthIntegerReader data;
-    private RunLengthIntegerReader nanos;
+    private NewRunLengthIntegerReader data;
+    private NewRunLengthIntegerReader nanos;
 
     TimestampTreeReader(int columnId) {
       super(columnId);
@@ -553,9 +553,9 @@ class RecordReaderImpl implements RecordReader {
                      List<OrcProto.ColumnEncoding> encodings
                     ) throws IOException {
       super.startStripe(streams, encodings);
-      data = new RunLengthIntegerReader(streams.get(new StreamName
+      data = new NewRunLengthIntegerReader(streams.get(new StreamName
           (columnId, OrcProto.Stream.Kind.DATA)), true);
-      nanos = new RunLengthIntegerReader(streams.get(new StreamName
+      nanos = new NewRunLengthIntegerReader(streams.get(new StreamName
           (columnId, OrcProto.Stream.Kind.NANO_DATA)), false);
     }
 
@@ -614,7 +614,7 @@ class RecordReaderImpl implements RecordReader {
     private DynamicByteArray dictionaryBuffer = null;
     private int dictionarySize;
     private int[] dictionaryOffsets;
-    private RunLengthIntegerReader reader;
+    private NewRunLengthIntegerReader reader;
 
     StringTreeReader(int columnId) {
       super(columnId);
@@ -642,7 +642,7 @@ class RecordReaderImpl implements RecordReader {
       // read the lengths
       name = new StreamName(columnId, OrcProto.Stream.Kind.LENGTH);
       in = streams.get(name);
-      RunLengthIntegerReader lenReader = new RunLengthIntegerReader(in, false);
+      NewRunLengthIntegerReader lenReader = new NewRunLengthIntegerReader(in, false);
       int offset = 0;
       if (dictionaryOffsets == null ||
           dictionaryOffsets.length < dictionarySize + 1) {
@@ -657,7 +657,7 @@ class RecordReaderImpl implements RecordReader {
 
       // set up the row reader
       name = new StreamName(columnId, OrcProto.Stream.Kind.DATA);
-      reader = new RunLengthIntegerReader(streams.get(name), false);
+      reader = new NewRunLengthIntegerReader(streams.get(name), false);
     }
 
     @Override
@@ -841,7 +841,7 @@ class RecordReaderImpl implements RecordReader {
 
   private static class ListTreeReader extends TreeReader {
     private final TreeReader elementReader;
-    private RunLengthIntegerReader lengths;
+    private NewRunLengthIntegerReader lengths;
 
     ListTreeReader(int columnId,
                     List<OrcProto.Type> types,
@@ -893,7 +893,7 @@ class RecordReaderImpl implements RecordReader {
                      List<OrcProto.ColumnEncoding> encodings
                     ) throws IOException {
       super.startStripe(streams, encodings);
-      lengths = new RunLengthIntegerReader(streams.get(new StreamName
+      lengths = new NewRunLengthIntegerReader(streams.get(new StreamName
           (columnId, OrcProto.Stream.Kind.LENGTH)), false);
       if (elementReader != null) {
         elementReader.startStripe(streams, encodings);
@@ -914,7 +914,7 @@ class RecordReaderImpl implements RecordReader {
   private static class MapTreeReader extends TreeReader {
     private final TreeReader keyReader;
     private final TreeReader valueReader;
-    private RunLengthIntegerReader lengths;
+    private NewRunLengthIntegerReader lengths;
 
     MapTreeReader(int columnId,
                    List<OrcProto.Type> types,
@@ -970,7 +970,7 @@ class RecordReaderImpl implements RecordReader {
                      List<OrcProto.ColumnEncoding> encodings
                     ) throws IOException {
       super.startStripe(streams, encodings);
-      lengths = new RunLengthIntegerReader(streams.get(new StreamName
+      lengths = new NewRunLengthIntegerReader(streams.get(new StreamName
           (columnId, OrcProto.Stream.Kind.LENGTH)), false);
       if (keyReader != null) {
         keyReader.startStripe(streams, encodings);

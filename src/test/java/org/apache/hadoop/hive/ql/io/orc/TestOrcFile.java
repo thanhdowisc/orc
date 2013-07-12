@@ -648,7 +648,9 @@ public class TestOrcFile {
       }
     }
     assertEquals(reader.getNumberOfRows(), rowCount);
-    assertEquals(2, stripeCount);
+    // the buffered stream size is not greater than stripe size, hence there 
+    // is only one stripe with new orc encoding
+    assertEquals(1, stripeCount);
     assertEquals(reader.getContentLength(), currentOffset);
     RecordReader rows = reader.rows(null);
     assertEquals(0, rows.getRowNumber());

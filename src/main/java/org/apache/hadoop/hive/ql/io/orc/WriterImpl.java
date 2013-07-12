@@ -555,9 +555,9 @@ class WriterImpl implements Writer {
 
   private static class StringTreeWriter extends TreeWriter {
     private final PositionedOutputStream stringOutput;
-    private final RunLengthIntegerWriter lengthOutput;
-    private final RunLengthIntegerWriter rowOutput;
-    private final RunLengthIntegerWriter countOutput;
+    private final NewRunLengthIntegerWriter lengthOutput;
+    private final NewRunLengthIntegerWriter rowOutput;
+    private final NewRunLengthIntegerWriter countOutput;
     private final StringRedBlackTree dictionary = new StringRedBlackTree();
     private final DynamicIntArray rows = new DynamicIntArray();
     private final List<OrcProto.RowIndexEntry> savedRowIndex =
@@ -572,12 +572,12 @@ class WriterImpl implements Writer {
       super(columnId, inspector, writer, nullable);
       stringOutput = writer.createStream(id,
           OrcProto.Stream.Kind.DICTIONARY_DATA);
-      lengthOutput = new RunLengthIntegerWriter(writer.createStream(id,
+      lengthOutput = new NewRunLengthIntegerWriter(writer.createStream(id,
           OrcProto.Stream.Kind.LENGTH), false);
-      rowOutput = new RunLengthIntegerWriter(writer.createStream(id,
+      rowOutput = new NewRunLengthIntegerWriter(writer.createStream(id,
           OrcProto.Stream.Kind.DATA), false);
       if (writer.buildIndex()) {
-        countOutput = new RunLengthIntegerWriter(writer.createStream(id,
+        countOutput = new NewRunLengthIntegerWriter(writer.createStream(id,
             OrcProto.Stream.Kind.DICTIONARY_COUNT), false);
       } else {
         countOutput = null;
@@ -680,7 +680,7 @@ class WriterImpl implements Writer {
 
   private static class BinaryTreeWriter extends TreeWriter {
     private final PositionedOutputStream stream;
-    private final RunLengthIntegerWriter length;
+    private final NewRunLengthIntegerWriter length;
 
     BinaryTreeWriter(int columnId,
                      ObjectInspector inspector,
@@ -689,7 +689,7 @@ class WriterImpl implements Writer {
       super(columnId, inspector, writer, nullable);
       this.stream = writer.createStream(id,
           OrcProto.Stream.Kind.DATA);
-      this.length = new RunLengthIntegerWriter(writer.createStream(id,
+      this.length = new NewRunLengthIntegerWriter(writer.createStream(id,
           OrcProto.Stream.Kind.LENGTH), false);
       recordPosition(rowIndexPosition);
     }
@@ -727,17 +727,17 @@ class WriterImpl implements Writer {
       Timestamp.valueOf("2015-01-01 00:00:00").getTime() / MILLIS_PER_SECOND;
 
   private static class TimestampTreeWriter extends TreeWriter {
-    private final RunLengthIntegerWriter seconds;
-    private final RunLengthIntegerWriter nanos;
+    private final NewRunLengthIntegerWriter seconds;
+    private final NewRunLengthIntegerWriter nanos;
 
     TimestampTreeWriter(int columnId,
                      ObjectInspector inspector,
                      StreamFactory writer,
                      boolean nullable) throws IOException {
       super(columnId, inspector, writer, nullable);
-      this.seconds = new RunLengthIntegerWriter(writer.createStream(id,
+      this.seconds = new NewRunLengthIntegerWriter(writer.createStream(id,
           OrcProto.Stream.Kind.DATA), true);
-      this.nanos = new RunLengthIntegerWriter(writer.createStream(id,
+      this.nanos = new NewRunLengthIntegerWriter(writer.createStream(id,
           OrcProto.Stream.Kind.NANO_DATA), false);
       recordPosition(rowIndexPosition);
     }
@@ -830,7 +830,7 @@ class WriterImpl implements Writer {
   }
 
   private static class ListTreeWriter extends TreeWriter {
-    private final RunLengthIntegerWriter lengths;
+    private final NewRunLengthIntegerWriter lengths;
 
     ListTreeWriter(int columnId,
                    ObjectInspector inspector,
@@ -843,7 +843,7 @@ class WriterImpl implements Writer {
         createTreeWriter(listObjectInspector.getListElementObjectInspector(),
           writer, true);
       lengths =
-        new RunLengthIntegerWriter(writer.createStream(columnId,
+        new NewRunLengthIntegerWriter(writer.createStream(columnId,
             OrcProto.Stream.Kind.LENGTH), false);
       recordPosition(rowIndexPosition);
     }
@@ -880,7 +880,7 @@ class WriterImpl implements Writer {
   }
 
   private static class MapTreeWriter extends TreeWriter {
-    private final RunLengthIntegerWriter lengths;
+    private final NewRunLengthIntegerWriter lengths;
 
     MapTreeWriter(int columnId,
                   ObjectInspector inspector,
@@ -894,7 +894,7 @@ class WriterImpl implements Writer {
       childrenWriters[1] =
         createTreeWriter(insp.getMapValueObjectInspector(), writer, true);
       lengths =
-        new RunLengthIntegerWriter(writer.createStream(columnId,
+        new NewRunLengthIntegerWriter(writer.createStream(columnId,
             OrcProto.Stream.Kind.LENGTH), false);
       recordPosition(rowIndexPosition);
     }
