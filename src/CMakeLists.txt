@@ -16,25 +16,24 @@ configure_file (
 )
 include_directories(${CMAKE_BINARY_DIR}/include)
 
-add_custom_command(
-  OUTPUT ${CMAKE_BINARY_DIR}/generated
-  COMMAND mkdir ${CMAKE_BINARY_DIR}/generated
-)
+set(PROTOC_GENERATED ${CMAKE_BINARY_DIR}/generated)
+
+file(MAKE_DIRECTORY ${PROTOC_GENERATED})
 
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/generated/orc_proto.pb.h
   COMMAND protoc -I ${CMAKE_CURRENT_SOURCE_DIR}
                  --cpp_out=${CMAKE_BINARY_DIR}/generated 
                  ${CMAKE_CURRENT_SOURCE_DIR}/orc_proto.proto 
-  DEPENDS ${CMAKE_BINARY_DIR}/generated
+  DEPENDS ${PROTOC_GENERATED}
 )
-include_directories(${CMAKE_BINARY_DIR}/generated)
+include_directories(${PROTOC_GENERATED})
 include_directories(/opt/local/include)
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
 
 add_executable(test-orc 
-  ${CMAKE_BINARY_DIR}/generated/orc_proto.pb.h
+  ${PROTOC_GENERATED}/orc_proto.pb.h
   orc-proto-wrapper.cc
   test-orc.cc 
 )

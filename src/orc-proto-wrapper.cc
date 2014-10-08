@@ -13,7 +13,6 @@
  */
 
 #ifdef __APPLE__
-  #pragma clang diagnostic push
   #pragma clang diagnostic ignored "-Wpadded"
   #pragma clang diagnostic ignored "-Wsign-conversion"
   #pragma clang diagnostic ignored "-Wweak-vtables"
@@ -26,14 +25,6 @@
   #pragma clang diagnostic ignored "-Wunused-parameter"
   #pragma clang diagnostic ignored "-Wnested-anon-types"
 #else
-  #pragma GCC diagnostic push
 #endif
 
 #include "orc_proto.pb.cc"
-
-#ifdef __APPLE__
-  #pragma clang diagnostic pop
-#else
-  #pragma GCC diagnostic pop
-#endif
-
