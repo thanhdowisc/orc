@@ -1,0 +1,164 @@
+\documentclass{article}
+\usepackage[pdftex]{hyperref}
+\usepackage[pdftex]{graphicx}
+\usepackage{fullpage}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{authblk}
+\title{Native ORC Reader/Writer}
+\author{Owen O'Malley}
+\date{October 2014}
+\begin{document}
+\maketitle
+
+\section{Requirements}
+
+Although the current Java ORC file reader and writer are convenient
+for much of the Hadoop ecosystem, the ability to read and write ORC
+files without using a JVM would help adoption of the format. Our goal
+is to enable reading and writing ORC files to or from local files,
+HDFS, or third party object stores.
+
+\subsection{Platform}
+
+The native ORC reader/writer must at least support the following platforms:
+
+\begin{description}
+\item [Linux] CentOS 6 (gcc 4.7)
+\item [Windows] Windows Server 2012 (Visual Studio 2013)
+\item [Mac] OS X 10.9 (clang 6.0)
+\end{description}
+
+\subsection{Features}
+
+\begin{description}
+\item [C++ API] The native ORC reader/writer will provide a C++ (x11) API
+  to read and write ORC files.
+\item [Source Agnosticism] The native ORC reader/writer must be able to
+  read or write from local files, native HDFS client, or third part 
+  object stores.
+\item [Read Compatibility] The native ORC reader/writer must be able
+  to read any file produced by the Java ORC writer from Hive 0.11 to
+  Hive 0.14.
+\item [Write Compatibility] The native ORC reader/writer must default
+  to writing files that are readable by Hive 0.14's Java ORC reader.
+  There must be an option of creating files that are readable by Hive
+  0.11's Java ORC reader forward.
+\item [Full type coverage] All of the types from the Hive's Java ORC
+  writer must be supported.
+\item [Input Splitting] The native ORC reader must allow readers to
+  limit row readers to a part of the file. This enables multiple tasks
+  to independently process part of the file and ensure that each row
+  is processed exactly once.
+\item [Vectorized Reading/Writing] All reading/writing will be done
+  using row batches consisting of up to 1000 rows.
+\item [Column Projection] The native ORC reader must be able to select
+  a subset of the columns for reading. Columns that are not selected should
+  not be read or decompressed.
+\item [Asynchronous Input/Output] To support asynchronous input/output, the
+  native ORC reader/writer will use libuv, which is supported on Linux,
+  Windows, and Mac OS.
+\end{description}
+
+\subsection{Vectorized Row Batch}
+
+The native ORC reader/writer will only provide a reader and writer
+that take a vectorized row batch instead of a row by row approach. Our
+experience in Hive is that for high performance applications that
+reading, processing, and output should be done in batches of roughly
+1000 rows. Each primitive column within that batch will be represented
+as an array of a corresponding primitive type. Each batch should be
+read or written using a single call to the native ORC reader/writer.
+
+The mapping for primitive types will be (hive type $\Rightarrow$ array type):
+\begin{itemize}
+\item boolean $\Rightarrow$ long array
+\item tinyint $\Rightarrow$ long array
+\item smallint $\Rightarrow$ long array
+\item int $\Rightarrow$ long array
+\item bigint $\Rightarrow$ long array
+\item float $\Rightarrow$ double array
+\item double $\Rightarrow$ double array
+\item string $\Rightarrow$ void* (start) array and long (length) array
+\item binary $\Rightarrow$ void* (start) array and long (length) array
+\item timestamp $\Rightarrow$ long array
+\item decimal $\Rightarrow$ int128 array
+\item varchar $\Rightarrow$ void* (start) array and long (length) array
+\item char $\Rightarrow$ void* (start) array and long (length) array
+\end{itemize}
+
+Null values will be represented using an isNull byte array. If none of
+the values within the batch are null, a flag will denote that. 
+
+For complex Hive types, the mapping will be:
+\begin{itemize}
+\item struct $\Rightarrow$ a list of subcolumns
+\item union $\Rightarrow$ a long array selecting the variant (0 to N-1) and a
+  list of subcolumns.
+\item list $\Rightarrow$ a long array of the number of elements in each list 
+  and a subcolumn for the list elements.
+\item map $\Rightarrow$ a long array of the number of elements in each map
+  and subcolumns for the keys and values.
+\end{itemize}
+
+\subsection{Finding an Apache Home}
+
+It isn't clear yet where to put the Native ORC reader/writer in
+Apache.  One option is to put it in Hive, although Hive does not
+currently have any native code. Another option would be to create a
+new ORC project. A final option would be to put it into Tez or
+LLAP. For now, we can use the original ORC github repo
+(http://github.com/hortonworks/orc).
+
+\section{Plan}
+
+Here's a rough sketch of the current plan. With just me, I'd pretty
+much go through them in order.
+
+\begin{enumerate}
+\item{Phase 1 - Reader (76 days)}
+  \begin{enumerate}
+  \item Write complete specification of the current ORC file format (5 days)
+  \item Implement integer rle version1 (5 days)
+  \item Implement integer rle version2 (10 days)
+  \item Implement file footer reader (2 days)
+  \item Implement the integer types reader (5 days)
+  \item Implement the float types reader (3 days)
+  \item Implement the string reader (3 days)
+  \item Implement the date and timestamp reader (3 days)
+  \item Implement the decimal reader (3 days)
+  \item Implement the char and varchar reader (2 days)
+  \item Implement the complex types (list, map, struct, union) reader (10 days)
+  \item Integrate with Native HDFS client (10 days)
+  \item System tests - randomized (5 days)
+  \item System tests - performance testing (10 days)
+  \end{enumerate}
+\item{Phase 2 - Writer (38 days)}
+  \begin{enumerate}
+  \item Implement file footer writer (2 days)
+  \item Implement the integer types writer (5 days)
+  \item Implement the float types write (3 days)
+  \item Implement the string writer (3 days)
+  \item Implement the date and timestamp writer (2 days)
+  \item Implement the decimal writer (3 days)
+  \item Implement the char and varchar writer (2 days)
+  \item Implement the complex types (list, map, struct, union) writer (3 days)
+  \item System tests - randomized (5 days)
+  \item System tests - performance testing (10 days)
+  \end{enumerate}
+\item{Phase 3 - Predicate pushdown (28 days)}
+  \begin{enumerate}
+  \item Implement seek to row number (10 days)
+  \item Implement SearchArgument (sarg) interfaces (3 days)
+  \item Integrate sarg predicate pushdown into reader (15 days)
+  \end{enumerate}
+\item{Phase 4 - ACID format support (33 days)}
+  \begin{enumerate}
+  \item implement acid utils (3 days)
+  \item implement merger (10 days)
+  \item implement interface to Hive transaction manager (10 days)
+  \item system testing (10 days)
+  \end{enumerate}
+\end{enumerate}
+
+\end{document}
