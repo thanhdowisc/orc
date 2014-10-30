@@ -6,7 +6,7 @@
 \usepackage{hyperref}
 \usepackage{wrapfig}
 \title{ORC File Format Specification}
-\author{Owen O'Malley}
+\author{Owen O'Malley\\omalley@apache.org}
 \date{October 2014}
 \begin{document}
 \maketitle
@@ -1033,6 +1033,43 @@ DIRECT & PRESENT & Yes & Boolean RLE\\
 
 \subsection{Indexes}
 
-Describe how the indexes work...
+The row indexes consist of a ROW\_INDEX stream for each primitive
+column that has an entry for each row group. Row groups are controlled
+by the writer and default to 10,000 rows. Each RowIndexEntry gives the
+position of each stream for the column and the statistics for that row
+group.
+
+The index streams are placed at the front of the stripe, because in
+the default case of streaming they do not need to be read. They are
+only loaded when either predicate push down is being used or the
+reader seeks to a particular row.
+
+\begin{verbatim}
+message RowIndexEntry {
+  repeated uint64 positions = 1 [packed=true];
+  optional ColumnStatistics statistics = 2;
+}
+
+message RowIndex {
+  repeated RowIndexEntry entry = 1;
+}
+\end{verbatim}
+
+To record positions, each stream needs a sequence of numbers. For
+uncompressed streams, the position is the byte offset of the RLE run's
+start location followed by the number of values that need to be
+consumed from the run. In compressed streams, the first number is the
+start of the compression chunk in the stream, followed by the number
+of decompressed bytes that need to be consumed, and finally the number
+of values consumed in the RLE.
+
+For columns with multiple streams, the sequences of positions in each
+stream are concatenated. That was an unfortunate decision on my part
+that we should fix at some point, because it makes code that uses the
+indexes error-prone.
+
+Because dictionaries are accessed randomly, there is not a position to
+record for the dictionary and the entire dictionary must be read even
+if only part of a stripe is being read.
 
 \end{document}
