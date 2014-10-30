@@ -571,13 +571,13 @@ Width in Bits & Encoded Value & Notes\\
 56 & 30 & \\
 64 & 31 & \\
 \hline
-2 & 3 & deprecated \\
-$4 \leq X \leq 6$ & $X + 1$ & deprecated \\
-$8 \leq X \leq 14$ & $X + 1$ & deprecated \\
-$16 \leq X \leq 22$ & $X + 1$ & deprecated \\
-24 & 26 & deprecated \\
-25 & 28 & deprecated \\
-26 & 30 & deprecated \\
+3 & 2 & deprecated \\
+$5 \leq X \leq 7$ & $X - 1$ & deprecated \\
+$9 \leq X \leq 15$ & $X - 1$ & deprecated \\
+$17 \leq X \leq 21$ & $X - 1$ & deprecated \\
+26 & 24 & deprecated \\
+28 & 25 & deprecated \\
+30 & 26 & deprecated \\
 \hline
 \end{tabular}
 
@@ -766,6 +766,7 @@ v2. If the PRESENT stream is not included, all of the values are
 present. For values that have false bits in the present stream, no
 values are included in the data stream.
 
+\vspace{10pt}
 \begin{tabular}{| l | l | l | l |}
 \hline
 Encoding & Stream Kind & Optional & Contents \\
@@ -784,6 +785,7 @@ Floating point types are stored using IEEE 754 floating point bit
 layout. Float columns use 4 bytes per value and double columns use 8
 bytes.
 
+\vspace{10pt}
 \begin{tabular}{| l | l | l | l |}
 \hline
 Encoding & Stream Kind & Optional & Contents \\
@@ -814,6 +816,7 @@ In dictionary encoding, if the values were [``Nevada'',
 DICTIONARY\_DATA would be ``CaliforniaFloridaNevada'' and LENGTH would
 be [10, 7, 6]. The DATA would be [2, 0, 2, 0, 1].
 
+\vspace{10pt}
 \begin{tabular}{| l | l | l | l |}
 \hline
 Encoding & Stream Kind & Optional & Contents \\
@@ -842,6 +845,7 @@ DICTIONARY\_V2 & PRESENT          & Yes & Boolean RLE\\
 
 Boolean columns are rare, but have a simple encoding.
 
+\vspace{10pt}
 \begin{tabular}{| l | l | l | l |}
 \hline
 Encoding & Stream Kind & Optional & Contents \\
@@ -855,6 +859,7 @@ DIRECT & PRESENT & Yes & Boolean RLE\\
 
 TinyInt (byte) columns use byte run length encoding.
 
+\vspace{10pt}
 \begin{tabular}{| l | l | l | l |}
 \hline
 Encoding & Stream Kind & Optional & Contents \\
@@ -870,6 +875,7 @@ Binary data is encoded with a PRESENT stream, a DATA stream that records
 the contents, and a LENGTH stream that records the number of bytes per a
 value.
 
+\vspace{10pt}
 \begin{tabular}{| l | l | l | l |}
 \hline
 Encoding & Stream Kind & Optional & Contents \\
@@ -886,9 +892,74 @@ DIRECT\_V2 & PRESENT & Yes & Boolean RLE\\
 
 \subsubsection{Decimal Columns}
 
+Decimal was introduced in Hive 0.11 with infinite precision (the total
+number of digits). In Hive 0.13, the definition was change to limit
+the precision to a maximum of 38 digits, which conveniently uses 127
+bits plus a sign bit. The current encoding of decimal columns stores
+the integer representation of the value as an unbounded length zigzag
+encoded base 128 varint. The scale is stored in the SECONDARY stream
+as an unsigned integer.
+
+\vspace{10pt}
+\begin{tabular}{| l | l | l | l |}
+\hline
+Encoding & Stream Kind & Optional & Contents \\
+\hline
+DIRECT & PRESENT    & Yes & Boolean RLE\\
+       & DATA       & No  & Unbounded base 128 varints\\
+       & SECONDARY  & No  & Unsigned Integer RLE v1\\
+\hline
+DIRECT\_V2 & PRESENT   & Yes & Boolean RLE\\
+          & DATA       & No  & Unbounded long base 128 varints\\
+          & SECONDARY  & No  & Unsigned Integer RLE v2\\
+\hline
+\end{tabular}
+
 \subsubsection{Date Columns}
 
+Date data is encoded with a PRESENT stream, a DATA stream that records
+the number of days after January 1, 1970 in UTC.
+
+\vspace{10pt}
+\begin{tabular}{| l | l | l | l |}
+\hline
+Encoding & Stream Kind & Optional & Contents \\
+\hline
+DIRECT & PRESENT & Yes & Boolean RLE\\
+       & DATA    & No  & Signed Integer RLE v1\\
+\hline
+DIRECT\_V2 & PRESENT & Yes & Boolean RLE\\
+           & DATA    & No  & Signed Integer RLE v2\\
+\hline
+\end{tabular}
+
 \subsubsection{Timestamp Columns}
+
+Timestamp records times down to nanoseconds as a PRESENT stream that
+records non-null values, a DATA stream that records the number of
+seconds after 1 January 2015, and a SECONDARY stream that records the
+number of nanoseconds. 
+
+Because the number of nanoseconds often has a large number of trailing
+zeros, the number has trailing decimal zero digits removed and the
+last three bits are used to record how many zeros were removed. Thus
+1000 nanoseconds would be serialized as 0x0b and 100000 would be
+serialized as 0x0d.
+
+\vspace{10pt}
+\begin{tabular}{| l | l | l | l |}
+\hline
+Encoding & Stream Kind & Optional & Contents \\
+\hline
+DIRECT & PRESENT   & Yes & Boolean RLE\\
+       & DATA      & No  & Signed Integer RLE v1\\
+       & SECONDARY & No  & Unsigned Integer RLE v1\\
+\hline
+DIRECT\_V2 & PRESENT   & Yes & Boolean RLE\\
+           & DATA      & No  & Signed Integer RLE v2\\
+           & SECONDARY & No  & Unsigned Integer RLE v2\\
+\hline
+\end{tabular}
 
 \subsubsection{Struct Columns}
 
@@ -896,6 +967,7 @@ Structs have no data themselves and delegate everything to their child
 columns except for their PRESENT stream. They have a child column
 for each of the fields.
 
+\vspace{10pt}
 \begin{tabular}{| l | l | l | l |}
 \hline
 Encoding & Stream Kind & Optional & Contents \\
@@ -910,6 +982,7 @@ Lists are encoded as the PRESENT stream and a length stream with
 number of items in each list. They have a single child column for the
 element values.
 
+\vspace{10pt}
 \begin{tabular}{| l | l | l | l |}
 \hline
 Encoding & Stream Kind & Optional & Contents \\
@@ -928,6 +1001,7 @@ Maps are encoded as the PRESENT stream and a length stream with number
 of items in each list. They have a child column for the key and
 another child column for the value.
 
+\vspace{10pt}
 \begin{tabular}{| l | l | l | l |}
 \hline
 Encoding & Stream Kind & Optional & Contents \\
@@ -947,6 +1021,7 @@ potential variant is used. They have a child column for each variant of the
 union. Currently ORC union types are limited to 256 variants, which matches 
 the Hive type model.
 
+\vspace{10pt}
 \begin{tabular}{| l | l | l | l |}
 \hline
 Encoding & Stream Kind & Optional & Contents \\
