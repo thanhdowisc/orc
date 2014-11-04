@@ -70,6 +70,8 @@ int main(int argc, char* argv[])
 		PostScript postscript ;
 		postscript.ParseFromArray(buffer, postscriptSize);
 		delete[] buffer;
+		std::cout << std::endl << "Postscript: " << std::endl ;
+		postscript.PrintDebugString();
 
 		// Everything but the postscript is compressed
 		//CompressionCodec codec ;
@@ -100,6 +102,8 @@ int main(int argc, char* argv[])
 		Metadata metadata ;
 		metadata.ParseFromArray(buffer, metadataSize);
 		delete[] buffer;
+		std::cout << std::endl << "Metadata: " << std::endl ;
+		postscript.PrintDebugString();
 
 		// Read the footer
 		//input.seekg(fileSize -1 - postscriptSize-footerSize);
@@ -108,8 +112,10 @@ int main(int argc, char* argv[])
 		Footer footer ;
 		footer.ParseFromArray(buffer, footerSize);
 		delete[] buffer;
+		std::cout << std::endl << "Footer: " << std::endl ;
+		postscript.PrintDebugString();
 
-		std::cout << "Rows: " << footer.numberofrows() << std::endl;
+		std::cout << std::endl << "Rows: " << footer.numberofrows() << std::endl;
 		std::cout << "Compression: " << postscript.compression() << std::endl;
 		if (postscript.compression() != NONE)
 			std::cout << "Compression size: " << postscript.compressionblocksize() << std::endl;
