@@ -6,7 +6,7 @@
 #include "orc_proto.pb.h"
 
 
-using namespace org::apache::hadoop::hive::ql::io::orc;
+using namespace orc;
 
 long getTotalPaddingSize(Footer footer);
 StripeFooter readStripeFooter(StripeInformation stripe);
