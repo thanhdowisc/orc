@@ -15,23 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hive.ql.io.orc;
 
-import org.apache.hadoop.hive.serde2.io.DateWritable;
+#ifndef ORC_VECTOR_HH
+#define ORC_VECTOR_HH
 
-/**
- * Statistics for DATE columns.
- */
-public interface DateColumnStatistics extends ColumnStatistics {
-  /**
-   * Get the minimum value for the column.
-   * @return minimum value
-   */
-  DateWritable getMinimum();
-
-  /**
-   * Get the maximum value for the column.
-   * @return maximum value
-   */
-  DateWritable getMaximum();
+namespace orc {
+  class ByteRange {
+  public:
+    std::shared_ptr<char*> buffer;
+    long offset;
+    long length;
+  }
 }
+
+#endif
