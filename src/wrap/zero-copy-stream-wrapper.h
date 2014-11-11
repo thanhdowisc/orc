@@ -21,7 +21,6 @@
   #pragma clang diagnostic ignored "-Wdeprecated"
   #pragma clang diagnostic ignored "-Wunused-parameter"
 #else
-  #pragma GCC diagnostic push
 #endif
 
 #include <google/protobuf/io/zero_copy_stream.h>
@@ -29,7 +28,6 @@
 #ifdef __APPLE__
   #pragma clang diagnostic pop
 #else
-  #pragma GCC diagnostic pop
 #endif
 
 #endif

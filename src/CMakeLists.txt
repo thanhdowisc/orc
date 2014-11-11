@@ -16,6 +16,9 @@ configure_file (
 )
 include_directories(${CMAKE_BINARY_DIR}/include)
 
+find_package(Protobuf REQUIRED)
+include_directories(${PROTOBUF_INCLUDE_DIRS})
+
 set(PROTOC_GENERATED ${CMAKE_BINARY_DIR}/generated)
 
 file(MAKE_DIRECTORY ${PROTOC_GENERATED})
@@ -28,7 +31,6 @@ add_custom_command(
   DEPENDS ${PROTOC_GENERATED}
 )
 include_directories(${PROTOC_GENERATED})
-include_directories(/opt/local/include)
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
 
@@ -45,8 +47,8 @@ add_executable(test-rle
 )
 
 target_link_libraries(test-rle 
-  /opt/local/lib/libprotobuf.a
   ${CMAKE_BINARY_DIR}/src/liborc.a
+  ${PROTOBUF_LITE_LIBRARIES}
   ${GTEST_LIB}
 )
 
