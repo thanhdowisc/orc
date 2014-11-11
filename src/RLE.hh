@@ -19,11 +19,11 @@
 #ifndef ORC_RLE_HH
 #define ORC_RLE_HH
 
-#include <google/protobuf/io/zero_copy_stream.h>
 #include <memory>
 
 #include "Compression.hh"
 #include "orc/Vector.hh"
+#include "wrap/zero-copy-stream-wrapper.h"
 
 namespace orc {
 

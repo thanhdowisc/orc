@@ -87,11 +87,13 @@ namespace orc {
 
   struct LongVectorBatch: public ColumnVectorBatch {
     LongVectorBatch(int capacity);
+    virtual ~LongVectorBatch();
     std::unique_ptr<long[]> data;
   };
 
   struct DoubleVectorBatch: public ColumnVectorBatch {
     DoubleVectorBatch(int capacity);
+    virtual ~DoubleVectorBatch();
     std::unique_ptr<double[]> data;
   };
 
@@ -102,11 +104,13 @@ namespace orc {
 
   struct ByteVectorBatch: public ColumnVectorBatch {
     ByteVectorBatch(int capacity);
+    virtual ~ByteVectorBatch();
     std::unique_ptr<ByteRange[]> data;
   };
 
   struct StructVectorBatch: public ColumnVectorBatch {
     StructVectorBatch(int capacity);
+    virtual ~StructVectorBatch();
     std::list<std::unique_ptr<ColumnVectorBatch> > fields;
   };
 }

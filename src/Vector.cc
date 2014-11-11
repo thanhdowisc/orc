@@ -20,14 +20,30 @@
 
 namespace orc {
 
-  ColumnVectorBatch::ColumnVectorBatch(int capacity) {
-    this->capacity = capacity;
+  ColumnVectorBatch::ColumnVectorBatch(int cap) {
+    capacity = cap;
     numElements = 0;
     isNull = 0;
     hasNulls = false;
   }
 
   ColumnVectorBatch::~ColumnVectorBatch() {
+    // PASS
+  }
+
+  LongVectorBatch::~LongVectorBatch() {
+    // PASS
+  }
+
+  DoubleVectorBatch::~DoubleVectorBatch() {
+    // PASS
+  }
+
+  ByteVectorBatch::~ByteVectorBatch() {
+    // PASS
+  }
+
+  StructVectorBatch::~StructVectorBatch() {
     // PASS
   }
 

@@ -19,8 +19,11 @@
 #ifndef ORC_COMPRESSION_HH
 #define ORC_COMPRESSION_HH
 
-#include <google/protobuf/io/zero_copy_stream.h>
+#include <initializer_list>
 #include <list>
+#include <memory>
+
+#include "wrap/zero-copy-stream-wrapper.h"
 
 namespace orc {
 
@@ -38,6 +41,8 @@ namespace orc {
    * to the protobuf readers.
    */
   class SeekableInputStream: public google::protobuf::io::ZeroCopyInputStream {
+  public:
+    virtual ~SeekableInputStream();
     virtual void seek(PositionProvider& position) = 0;
   };
 
@@ -46,15 +51,15 @@ namespace orc {
    */
   class SeekableArrayInputStream: public SeekableInputStream {
   private:
-    const void* data;
-    long offset;
+    std::unique_ptr<char[]> data;
     long length;
     long position;
     long blockSize;
 
   public:
-    SeekableArrayInputStream(const void* data, long offset, long length,
+    SeekableArrayInputStream(std::initializer_list<unsigned char> list, 
 			     long block_size = -1);
+    virtual ~SeekableArrayInputStream();
     virtual bool Next(const void** data, int*size);
     virtual void BackUp(int count);
     virtual bool Skip(int count);

@@ -11,8 +11,8 @@
 # limitations under the License.
 
 configure_file (
-  "${CMAKE_CURRENT_SOURCE_DIR}/orc-config.hh.in"
-  "${CMAKE_BINARY_DIR}/include/orc-config.hh"
+  "${CMAKE_CURRENT_SOURCE_DIR}/orc/orc-config.hh.in"
+  "${CMAKE_BINARY_DIR}/include/orc/orc-config.hh"
 )
 include_directories(${CMAKE_BINARY_DIR}/include)
 
@@ -32,10 +32,32 @@ include_directories(/opt/local/include)
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
 
-add_executable(test-orc 
+add_library(orc STATIC 
   ${PROTOC_GENERATED}/orc_proto.pb.h
-  orc-proto-wrapper.cc
-  test-orc.cc 
+  Compression.cc
+  RLE.cc
+  Vector.cc
+  wrap/orc-proto-wrapper.cc
 )
 
-target_link_libraries(test-orc /opt/local/lib/libprotobuf.a)
+add_executable(test-rle 
+  TestRLE.cc
+)
+
+target_link_libraries(test-rle 
+  /opt/local/lib/libprotobuf.a
+  ${CMAKE_BINARY_DIR}/src/liborc.a
+  ${GTEST_LIB}
+)
+
+add_test(test-rle test-rle)
+
+# Add another target called test-out that prints the results on failure
+if (CMAKE_CONFIGURATION_TYPES)
+  add_custom_target(test-out COMMAND ${CMAKE_CTEST_COMMAND}
+    --force-new-ctest-process --output-on-failure
+    --build-config "$<CONFIGURATION>")
+else()
+  add_custom_target(test-out COMMAND ${CMAKE_CTEST_COMMAND}
+    --force-new-ctest-process --output-on-failure)
+endif()

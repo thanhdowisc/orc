@@ -21,8 +21,8 @@
 
 namespace orc {
 
-  PositionProvider::PositionProvider(const std::list<long>& positions) {
-    this->positions = positions;
+  PositionProvider::PositionProvider(const std::list<long>& posns) {
+    positions = posns;
   }
 
   long PositionProvider::next() {
@@ -31,22 +31,32 @@ namespace orc {
     return result;
   }
 
-  SeekableArrayInputStream::SeekableArrayInputStream(const void* data, 
-						     long offset, 
-						     long length,
-						     long blockSize) {
-    this->data = data;
-    this->offset = offset;
-    this->length = length;
-    this->position = 0;
-    this->blockSize = blockSize == -1 ? length : blockSize;
+  SeekableInputStream::~SeekableInputStream() {
+    // PASS
   }
 
-  bool SeekableArrayInputStream::Next(const void** data, int*size) {
-    int currentSize = std::min(length - position, blockSize);
+  SeekableArrayInputStream::~SeekableArrayInputStream() {
+    // PASS
+  }
+
+  SeekableArrayInputStream::SeekableArrayInputStream
+     (std::initializer_list<unsigned char> values,
+      long blkSize) {
+    length = static_cast<long>(values.size());
+    data = std::unique_ptr<char[]>(new char[length]);
+    char *ptr = data.get();
+    for(unsigned char ch: values) {
+      *(ptr++) = static_cast<char>(ch);
+    }
+    position = 0;
+    this->blockSize = blkSize == -1 ? length : blkSize;
+  }
+
+  bool SeekableArrayInputStream::Next(const void** buffer, int*size) {
+    long currentSize = std::min(length - position, blockSize);
     if (currentSize > 0) {
-      *data = static_cast<const char*>(this->data) + position;
-      *size = currentSize;
+      *buffer = data.get() + position;
+      *size = static_cast<int>(currentSize);
       return true;
     }
     return false;

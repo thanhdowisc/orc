@@ -61,26 +61,27 @@ namespace orc {
     inline signed char readByte();
     inline void readHeader();
     inline long readLong();
-    inline void skipLongs(int numValues);
+    inline void skipLongs(long numValues);
 
     std::unique_ptr<SeekableInputStream> inputStream;
-    const bool isSigned;
-    bool repeating;
     long remainingValues;
     long value;
-    int delta;
     const char* bufferStart;
     const char* bufferEnd;
+    int delta;
+    const bool isSigned;
+    bool repeating;
   };
 
   signed char RleDecoderV1::readByte() {
     if (bufferStart == bufferEnd) {
       int bufferLength;
-      bool result = inputStream->Next((const void**)&bufferStart, 
-				      &bufferLength);
+      const void* bufferPointer;
+      bool result = inputStream->Next(&bufferPointer, &bufferLength);
       if (!result) {
 	throw std::string("bad read in readByte");
       }
+      bufferStart = static_cast<const char*>(bufferPointer);
       bufferEnd = bufferStart + bufferLength;
     }
     return *(bufferStart++);
@@ -103,7 +104,7 @@ namespace orc {
     return result;
   }
 
-  void RleDecoderV1::skipLongs(int numValues) {
+  void RleDecoderV1::skipLongs(long numValues) {
     while (numValues > 0) {
       if (readByte() >= 0) {
 	numValues -= 1;
@@ -125,7 +126,7 @@ namespace orc {
   }
 
   RleDecoderV1::RleDecoderV1(std::unique_ptr<SeekableInputStream> input,
-			     bool isSigned) : isSigned(isSigned) {
+			     bool hasSigned) : isSigned(hasSigned) {
     reset(std::move(input));
   }
 
@@ -152,7 +153,7 @@ namespace orc {
       if (remainingValues == 0) {
 	readHeader();
       }
-      int count = std::min(numValues, remainingValues);
+      long count = std::min(numValues, remainingValues);
       remainingValues -= count;
       if (!repeating) {
 	skipLongs(count);
@@ -168,8 +169,8 @@ namespace orc {
 	readHeader();
       }
       // how many do we read out of this block?
-      int count = std::min(numValues - position, remainingValues);
-      int consumed = 0;
+      long count = std::min(numValues - position, remainingValues);
+      long consumed = 0;
       if (repeating) {
 	if (isNull) {
 	  for(int i=0; i < count; ++i) {
