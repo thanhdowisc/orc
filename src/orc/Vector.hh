@@ -80,7 +80,7 @@ namespace orc {
     // the number of current occupied slots
     int numElements;
     // an array of capacity length marking null values
-    bool* isNull;
+    std::unique_ptr<bool[]> isNull;
     // whether there are any null values
     bool hasNulls;
   };

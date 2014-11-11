@@ -32,6 +32,11 @@ namespace orc {
     long next();
   };
 
+  /**
+   * A subclass of Google's ZeroCopyInputStream that supports seek.
+   * By extending Google's class, we get the ability to pass it directly
+   * to the protobuf readers.
+   */
   class SeekableInputStream: public google::protobuf::io::ZeroCopyInputStream {
     virtual void seek(PositionProvider& position) = 0;
   };

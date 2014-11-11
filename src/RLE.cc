@@ -55,7 +55,7 @@ namespace orc {
     /**
      * Read a number of values into the batch.
      */
-    virtual void next(LongVectorBatch& data, long numValues);
+    virtual void next(long* data, long numValues, bool* isNull);
 
   private:
     inline signed char readByte();
@@ -160,10 +160,7 @@ namespace orc {
     }
   }
 
-  void RleDecoderV1::next(LongVectorBatch& data, long numValues) {
-    if (data.capacity < numValues) {
-      throw std::string("Can't store enough values.");
-    }
+  void RleDecoderV1::next(long* data, long numValues, bool* isNull) {
     int position = 0;
     while (position < numValues) {
       // if we are out of values, read more
@@ -172,22 +169,51 @@ namespace orc {
       }
       // how many do we read out of this block?
       int count = std::min(numValues - position, remainingValues);
+      int consumed = 0;
       if (repeating) {
-	for(int i=0; i < count; ++i) {
-	  data.data[position + i] = value + i * delta;
+	if (isNull) {
+	  for(int i=0; i < count; ++i) {
+	    if (!isNull[position + i]) {
+	      data[position + i] = value + consumed * delta;
+	      consumed += 1;
+	    }
+	  }
+	} else {
+	  for(int i=0; i < count; ++i) {
+	    data[position + i] = value + i * delta;
+	  }
+	  consumed = count;
 	}
+	value += consumed * delta;
       } else {
-	for(int i=0; i < count; ++i) {
-	  data.data[position + i] = readLong();
+	if (isNull) {
+	  for(int i=0; i < count; ++i) {
+	    if (!isNull[i]) {
+	      data[position + i] = readLong();
+	      consumed += 1;
+	    }
+	  }
+	} else {
+	  for(int i=0; i < count; ++i) {
+	    data[position + i] = readLong();
+	  }
+	  consumed = count;
 	}
       }
-      remainingValues -= count;
+      remainingValues -= consumed;
       position += count;
     }
     if (isSigned) {
-      for(int i=0; i < numValues; ++i) {
-	unsigned long val = data.data[i];
-	data.data[i] = val >> 1 ^ -(val & 1);
+      if (isNull) {
+	for(int i=0; i < numValues; ++i) {
+	  if (!isNull[i]) {
+	    data[i] = data[i] >> 1 ^ -(data[i] & 1);
+	  }
+	}
+      } else {
+	for(int i=0; i < numValues; ++i) {
+	  data[i] = data[i] >> 1 ^ -(data[i] & 1);
+	}
       }
     }
   }

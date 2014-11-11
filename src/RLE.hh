@@ -53,8 +53,12 @@ namespace orc {
 
     /**
      * Read a number of values into the batch.
+     * @param data the array to read into
+     * @param numValues the number of values to read
+     * @param isNull If the pointer is null, all values are read. If the 
+     *    pointer is not null, positions that are true are skipped.
      */
-    virtual void next(LongVectorBatch& data, long numValues) = 0;
+    virtual void next(long* data, long numValues, bool* isNull) = 0;
   };
 
   /**

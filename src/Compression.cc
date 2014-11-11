@@ -70,7 +70,7 @@ namespace orc {
     return position;
   }
 
-  void SeekableArrayInputStream::seek(PositionProvider& position) {
-    throw new std::string("not implemented yet");
+  void SeekableArrayInputStream::seek(PositionProvider& seekPosition) {
+    position = seekPosition.next();
   }
 }

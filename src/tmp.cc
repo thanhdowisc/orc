@@ -9,7 +9,7 @@ int main(int, char*[]) {
   std::unique_ptr<orc::RleDecoder> rle = 
     orc::createRleDecoder(std::move(stream), false, orc::VERSION_1);
   orc::LongVectorBatch myBatch(1024);
-  rle->next(myBatch, 105);
+  rle->next(myBatch.data.get(), 105, 0);
   for(int i=0; i < 105; ++i) {
     std::cout << "Value: " << i << " = " << myBatch.data[i] << "\n"; 
   }
