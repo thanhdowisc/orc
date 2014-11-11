@@ -139,8 +139,8 @@ namespace orc {
     remainingValues = 0;
     value = 0;
     delta = 0;
-    bufferStart = nullptr;
-    bufferEnd = nullptr;
+    bufferStart = 0;
+    bufferEnd = 0;
   }
 
   void RleDecoderV1::seek(PositionProvider&) {

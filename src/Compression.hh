@@ -53,7 +53,7 @@ namespace orc {
     virtual bool Next(const void** data, int*size);
     virtual void BackUp(int count);
     virtual bool Skip(int count);
-    virtual long long ByteCount() const;
+    virtual google::protobuf::int64 ByteCount() const;
     virtual void seek(PositionProvider& position);
   };
 }

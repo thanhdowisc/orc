@@ -23,7 +23,7 @@ namespace orc {
   ColumnVectorBatch::ColumnVectorBatch(int capacity) {
     this->capacity = capacity;
     numElements = 0;
-    isNull = nullptr;
+    isNull = 0;
     hasNulls = false;
   }
 
