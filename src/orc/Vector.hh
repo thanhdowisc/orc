@@ -19,12 +19,15 @@
 #ifndef ORC_VECTOR_HH
 #define ORC_VECTOR_HH
 
+#include <array>
+#include <list>
+#include <memory>
+
 namespace orc {
 
   class TypePrivate;
 
-  class ByteRange {
-  public:
+  struct SharedByteRange {
     std::shared_ptr<char*> buffer;
     long offset;
     long length;
@@ -53,22 +56,25 @@ namespace orc {
 
   class Type {
   private:
-    TypePrivate* const private;
+    std::unique_ptr<TypePrivate> privateBits;
   public:
-    Type(Kind kind);
-    Type(Kind kind, int maximumLength, int scale);
-    Type(Kind kind, const std::list<Type>& subtypes);
-    Type(Kind kind, const std::list<Type>& subtypes, 
+    Type(TypeKind kind);
+    Type(TypeKind kind, int maximumLength, int scale);
+    Type(TypeKind kind, const std::list<Type>& subtypes);
+    Type(TypeKind kind, const std::list<Type>& subtypes, 
 	 const std::list<std::string>& fieldNames);
 
-    Kind getKind();
+    TypeKind getKind();
     std::list<Type> getSubtypes();
     std::list<std::string> getFieldNames();
     int getMaximumLength();
     int getScale();
-  }
+  };
 
   struct ColumnVectorBatch {
+    ColumnVectorBatch(int capacity);
+    virtual ~ColumnVectorBatch();
+
     // the number of slots available
     int capacity;
     // the number of current occupied slots
@@ -80,23 +86,28 @@ namespace orc {
   };
 
   struct LongVectorBatch: public ColumnVectorBatch {
-    long* data;
+    LongVectorBatch(int capacity);
+    std::unique_ptr<long[]> data;
   };
 
   struct DoubleVectorBatch: public ColumnVectorBatch {
-    double* data;
+    DoubleVectorBatch(int capacity);
+    std::unique_ptr<double[]> data;
+  };
+
+  struct ByteRange {
+    char* data;
+    int length;
   };
 
   struct ByteVectorBatch: public ColumnVectorBatch {
-    char* data;
-    int* offsets;
-    int* lengths;
+    ByteVectorBatch(int capacity);
+    std::unique_ptr<ByteRange[]> data;
   };
 
   struct StructVectorBatch: public ColumnVectorBatch {
-    int numFields;
-    // an array of fields
-    ColumnVectorBatch* fields;
+    StructVectorBatch(int capacity);
+    std::list<std::unique_ptr<ColumnVectorBatch> > fields;
   };
 }
 
