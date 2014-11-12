@@ -30,6 +30,8 @@ if(NOT APPLE)
 endif(NOT APPLE)
 enable_testing()
 
+find_package(Protobuf REQUIRED)
+
 set (CXX11_FLAGS "-std=gnu++11")
 if(APPLE)
   set (CXX11_FLAGS "${CXX11_FLAGS} -stdlib=libc++")
@@ -42,3 +44,4 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 
 add_subdirectory(libs)
 add_subdirectory(src)
+add_subdirectory(test)

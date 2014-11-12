@@ -46,25 +46,3 @@ add_library(orc STATIC
   Vector.cc
   wrap/orc-proto-wrapper.cc
 )
-
-add_executable(test-rle 
-  TestRLE.cc
-)
-
-target_link_libraries(test-rle 
-  ${CMAKE_BINARY_DIR}/src/liborc.a
-  ${PROTOBUF_LITE_LIBRARIES}
-  ${GTEST_LIB}
-)
-
-add_test(test-rle test-rle)
-
-# Add another target called test-out that prints the results on failure
-if (CMAKE_CONFIGURATION_TYPES)
-  add_custom_target(test-out COMMAND ${CMAKE_CTEST_COMMAND}
-    --force-new-ctest-process --output-on-failure
-    --build-config "$<CONFIGURATION>")
-else()
-  add_custom_target(test-out COMMAND ${CMAKE_CTEST_COMMAND}
-    --force-new-ctest-process --output-on-failure)
-endif()

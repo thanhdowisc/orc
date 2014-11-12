@@ -57,6 +57,7 @@ namespace orc {
     if (currentSize > 0) {
       *buffer = data.get() + position;
       *size = static_cast<int>(currentSize);
+      position += currentSize;
       return true;
     }
     return false;
