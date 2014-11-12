@@ -92,7 +92,7 @@ namespace orc {
 
   TEST(RLEv1, testSigned) {
     SeekableInputStream* stream = 
-      new SeekableArrayInputStream({0x7f, 0x01, 0x00});
+      new SeekableArrayInputStream({0x7f, 0xff, 0x20});
     std::unique_ptr<orc::RleDecoder> rle = 
       orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
 				      (stream)), 
@@ -100,19 +100,11 @@ namespace orc {
     long* data = new long[100];
     rle->next(data, 100, 0);
     for(int i=0; i < 100; ++i) {
-      if (i % 2 == 0) {
-	EXPECT_EQ(i / 2, data[i]) << "Wrong output at " << i;
-      } else {
-	EXPECT_EQ((i+1) / -2, data[i]) << "Wrong output at " << i;
-      }
+      EXPECT_EQ(16 - i, data[i]) << "Wrong output at " << i;
     }
     rle->next(data, 30, 0);
     for(int i=0; i < 30; ++i) {
-      if (i % 2 == 0) {
-	EXPECT_EQ((i + 100) / 2, data[i]) << "Wrong output at " << (i + 100);
-      } else {
-	EXPECT_EQ((i+101) / -2, data[i]) << "Wrong output at " << (i + 100);
-      }
+      EXPECT_EQ(16 - 100 - i, data[i]) << "Wrong output at " << (i + 100);
     }
     delete[] data;
   }
@@ -134,11 +126,12 @@ namespace orc {
       for(int j=0; j < 25; ++j) {
 	EXPECT_EQ(j % 2, isNull[j]);
 	if (!isNull[j]) {
-	  EXPECT_EQ(i * 13 + j/2, data[j]);
+	  EXPECT_EQ(i * 26 + j, data[j]);
 	}
       }
     }
     delete[] data;
+    delete[] isNull;
   }
 
   TEST(RLEv1, skipTest) {
@@ -347,7 +340,7 @@ namespace orc {
     std::unique_ptr<orc::RleDecoder> rle = 
       orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
 				      (stream)), 
-			    false, orc::VERSION_1);
+			    true, orc::VERSION_1);
     long* data = new long[1];
     for(int i=0; i < 2048; i += 10) {
       rle->next(data, 1, 0);

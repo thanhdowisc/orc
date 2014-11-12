@@ -27,6 +27,10 @@ namespace orc {
   const int MINIMUM_REPEAT = 3;
   const int BASE_128_MASK = 0x7f;
 
+  inline long unZigZag(long value) {
+    return value >> 1 ^ -(value & 1);
+  }
+  
   RleDecoder::~RleDecoder() {
     // PASS
   }
@@ -122,7 +126,11 @@ namespace orc {
       remainingValues = ch + MINIMUM_REPEAT;
       repeating = true;
       delta = readByte();
-      value = readLong();
+      if (isSigned) {
+	value = unZigZag(readLong());
+      } else {
+	value = readLong();
+      }
     }
   }
 
@@ -156,7 +164,10 @@ namespace orc {
       }
       long count = std::min(numValues, remainingValues);
       remainingValues -= count;
-      if (!repeating) {
+      numValues -= count;
+      if (repeating) {
+	value += delta * count;
+      } else {
 	skipLongs(count);
       }
     }
@@ -191,32 +202,29 @@ namespace orc {
 	if (isNull) {
 	  for(int i=0; i < count; ++i) {
 	    if (!isNull[i]) {
-	      data[position + i] = readLong();
+	      if (isSigned) {
+		data[position + i] = unZigZag(readLong());
+	      } else {
+		data[position + i] = readLong();
+	      }
 	      consumed += 1;
 	    }
 	  }
 	} else {
-	  for(int i=0; i < count; ++i) {
-	    data[position + i] = readLong();
+	  if (isSigned) {
+	    for(int i=0; i < count; ++i) {
+	      data[position + i] = unZigZag(readLong());
+	    }
+	  } else {
+	    for(int i=0; i < count; ++i) {
+	      data[position + i] = readLong();
+	    }
 	  }
 	  consumed = count;
 	}
       }
       remainingValues -= consumed;
       position += count;
-    }
-    if (isSigned) {
-      if (isNull) {
-	for(int i=0; i < numValues; ++i) {
-	  if (!isNull[i]) {
-	    data[i] = data[i] >> 1 ^ -(data[i] & 1);
-	  }
-	}
-      } else {
-	for(int i=0; i < numValues; ++i) {
-	  data[i] = data[i] >> 1 ^ -(data[i] & 1);
-	}
-      }
     }
   }
 
