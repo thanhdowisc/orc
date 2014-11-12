@@ -16,12 +16,6 @@ configure_file (
 )
 include_directories(${CMAKE_BINARY_DIR}/include)
 
-find_package(Protobuf REQUIRED)
-if( NOT PROTOBUF_FOUND)
-# hack: if can't find protobuf, set path explicitly ..
-set(PROTOBUF_INCLUDE_DIRS $ENV{PROTOBUF_INCLUDE_DIRS})
-set(PROTOBUF_LITE_LIBRARIES $ENV{PROTOBUF_LITE_LIBRARIES})
-endif( NOT PROTOBUF_FOUND)
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
 set(PROTOC_GENERATED ${CMAKE_BINARY_DIR}/generated)

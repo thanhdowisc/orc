@@ -31,6 +31,11 @@ endif(NOT APPLE)
 enable_testing()
 
 find_package(Protobuf REQUIRED)
+if( NOT PROTOBUF_FOUND)
+# hack: if can't find protobuf, set path explicitly ..
+set(PROTOBUF_INCLUDE_DIRS $ENV{PROTOBUF_INCLUDE_DIRS})
+set(PROTOBUF_LITE_LIBRARIES $ENV{PROTOBUF_LITE_LIBRARIES})
+endif( NOT PROTOBUF_FOUND)
 
 set (CXX11_FLAGS "-std=gnu++11")
 if(APPLE)
