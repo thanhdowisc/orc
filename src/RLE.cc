@@ -25,9 +25,9 @@
 namespace orc {
 
   const int MINIMUM_REPEAT = 3;
-  const int BASE_128_MASK = 0x7f;
+  const unsigned long BASE_128_MASK = 0x7f;
 
-  inline long unZigZag(long value) {
+  inline long unZigZag(unsigned long value) {
     return value >> 1 ^ -(value & 1);
   }
   
@@ -65,7 +65,7 @@ namespace orc {
   private:
     inline signed char readByte();
     inline void readHeader();
-    inline long readLong();
+    inline unsigned long readLong();
     inline void skipLongs(long numValues);
 
     std::unique_ptr<SeekableInputStream> inputStream;
@@ -92,19 +92,19 @@ namespace orc {
     return *(bufferStart++);
   }
 
-  long RleDecoderV1::readLong() {
-    long result = 0;
+  unsigned long RleDecoderV1::readLong() {
+    unsigned long result = 0;
     int offset = 0;
     signed char ch = readByte();
     if (ch >= 0) {
-      result = ch;
+      result = static_cast<unsigned long>(ch);
     } else {
-      result = ch & BASE_128_MASK;
+      result = static_cast<unsigned long>(ch) & BASE_128_MASK;
       while ((ch = readByte()) < 0) {
 	offset += 7;
-	result |= (ch & BASE_128_MASK) << offset;
+	result |= (static_cast<unsigned long>(ch) & BASE_128_MASK) << offset;
       }
-      result |= ch << (offset + 7);
+      result |= static_cast<unsigned long>(ch) << (offset + 7);
     }
     return result;
   }
@@ -129,7 +129,7 @@ namespace orc {
       if (isSigned) {
 	value = unZigZag(readLong());
       } else {
-	value = readLong();
+	value = static_cast<long>(readLong());
       }
     }
   }
@@ -153,8 +153,15 @@ namespace orc {
     bufferEnd = 0;
   }
 
-  void RleDecoderV1::seek(PositionProvider&) {
-    throw new std::string("Not implemented yet!");
+  void RleDecoderV1::seek(PositionProvider& location) {
+    // move the input stream
+    inputStream->seek(location);
+    // force a re-read from the stream
+    bufferEnd = bufferStart;
+    // read a new header
+    readHeader();
+    // skip ahead the given number of records
+    skip(location.next());
   }
 
   void RleDecoderV1::skip(long numValues) {
@@ -205,7 +212,7 @@ namespace orc {
 	      if (isSigned) {
 		data[position + i] = unZigZag(readLong());
 	      } else {
-		data[position + i] = readLong();
+		data[position + i] = static_cast<long>(readLong());
 	      }
 	      consumed += 1;
 	    }
@@ -217,7 +224,7 @@ namespace orc {
 	    }
 	  } else {
 	    for(int i=0; i < count; ++i) {
-	      data[position + i] = readLong();
+	      data[position + i] = static_cast<long>(readLong());
 	    }
 	  }
 	  consumed = count;

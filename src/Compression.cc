@@ -17,17 +17,19 @@
  */
 
 #include <algorithm>
+#include <iostream>
+
 #include "Compression.hh"
 
 namespace orc {
 
   PositionProvider::PositionProvider(const std::list<long>& posns) {
-    positions = posns;
+    position = posns.cbegin();
   }
 
   long PositionProvider::next() {
-    long result = positions.front();
-    positions.pop_front();
+    long result = *position;
+    ++position;
     return result;
   }
 

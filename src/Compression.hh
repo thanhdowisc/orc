@@ -29,7 +29,7 @@ namespace orc {
 
   class PositionProvider {
   private:
-    std::list<long> positions;
+    std::list<long>::const_iterator position;
   public:
     PositionProvider(const std::list<long>& positions);
     long next();
