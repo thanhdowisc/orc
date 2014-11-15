@@ -29,10 +29,10 @@ namespace orc {
 
   class PositionProvider {
   private:
-    std::list<long>::const_iterator position;
+    std::list<unsigned long>::const_iterator position;
   public:
-    PositionProvider(const std::list<long>& positions);
-    long next();
+    PositionProvider(const std::list<unsigned long>& positions);
+    unsigned long next();
   };
 
   /**
@@ -52,9 +52,9 @@ namespace orc {
   class SeekableArrayInputStream: public SeekableInputStream {
   private:
     std::unique_ptr<char[]> data;
-    long length;
-    long position;
-    long blockSize;
+    unsigned long length;
+    unsigned long position;
+    unsigned long blockSize;
 
   public:
     SeekableArrayInputStream(std::initializer_list<unsigned char> list, 

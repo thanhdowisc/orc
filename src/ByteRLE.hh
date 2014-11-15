@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 
-#ifndef ORC_RLE_HH
-#define ORC_RLE_HH
+#ifndef ORC_BYTE_RLE_HH
+#define ORC_BYTE_RLE_HH
 
 #include <memory>
 
@@ -25,20 +25,10 @@
 
 namespace orc {
 
-  enum RleVersion {
-    VERSION_1,
-    VERSION_2
-  };
-
-  class RleDecoder {
+  class ByteRleDecoder {
   public:
-    virtual ~RleDecoder();
+    virtual ~ByteRleDecoder();
     
-    /**
-     * Reset the run length decoder.
-     */
-    virtual void reset(std::unique_ptr<SeekableInputStream> stream) = 0;
-
     /**
      * Seek to a particular spot.
      */
@@ -56,19 +46,22 @@ namespace orc {
      * @param isNull If the pointer is null, all values are read. If the 
      *    pointer is not null, positions that are true are skipped.
      */
-    virtual void next(long* data, unsigned long numValues, bool* isNull) = 0;
+    virtual void next(char* data, unsigned long numValues, bool* isNull) = 0;
   };
 
   /**
-   * Create an RLE decoder.
+   * Create a byte RLE decoder.
    * @param input the input stream to read from
-   * @param isSigned is the number sequence signed?
-   * @param version version of RLE decoding to do
    */
-  std::unique_ptr<RleDecoder> createRleDecoder
-                                  (std::unique_ptr<SeekableInputStream> input, 
-				   bool isSigned,
-				   RleVersion version);
+  std::unique_ptr<ByteRleDecoder> createByteRleDecoder
+                                 (std::unique_ptr<SeekableInputStream> input);
+
+  /**
+   * Create a boolean RLE decoder.
+   * @param input the input stream to read from
+   */
+  std::unique_ptr<ByteRleDecoder> createBooleanRleDecoder
+                                 (std::unique_ptr<SeekableInputStream> input);
 }
 
 #endif

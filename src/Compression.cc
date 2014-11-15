@@ -23,12 +23,12 @@
 
 namespace orc {
 
-  PositionProvider::PositionProvider(const std::list<long>& posns) {
+  PositionProvider::PositionProvider(const std::list<unsigned long>& posns) {
     position = posns.cbegin();
   }
 
-  long PositionProvider::next() {
-    long result = *position;
+  unsigned long PositionProvider::next() {
+    unsigned long result = *position;
     ++position;
     return result;
   }
@@ -44,18 +44,18 @@ namespace orc {
   SeekableArrayInputStream::SeekableArrayInputStream
      (std::initializer_list<unsigned char> values,
       long blkSize) {
-    length = static_cast<long>(values.size());
+    length = values.size();
     data = std::unique_ptr<char[]>(new char[length]);
     char *ptr = data.get();
     for(unsigned char ch: values) {
       *(ptr++) = static_cast<char>(ch);
     }
     position = 0;
-    this->blockSize = blkSize == -1 ? length : blkSize;
+    blockSize = blkSize == -1 ? length : static_cast<unsigned long>(blkSize);
   }
 
   bool SeekableArrayInputStream::Next(const void** buffer, int*size) {
-    long currentSize = std::min(length - position, blockSize);
+    unsigned long currentSize = std::min(length - position, blockSize);
     if (currentSize > 0) {
       *buffer = data.get() + position;
       *size = static_cast<int>(currentSize);
@@ -66,21 +66,27 @@ namespace orc {
   }
 
   void SeekableArrayInputStream::BackUp(int count) {
-    if (count <= blockSize && count + position >= 0) {
-      position -= count;
+    if (count >= 0) {
+      unsigned long unsignedCount = static_cast<unsigned long>(count);
+      if (unsignedCount <= blockSize && unsignedCount <= position) {
+	position -= unsignedCount;
+      }
     }
   }
   
   bool SeekableArrayInputStream::Skip(int count) {
-    if (count + position <= length) {
-      position += count;
-      return true;
+    if (count >= 0) {
+      unsigned long unsignedCount = static_cast<unsigned long>(count);
+      if (unsignedCount + position <= length) {
+	position += unsignedCount;
+	return true;
+      }
     }
     return false;
   }
   
   google::protobuf::int64 SeekableArrayInputStream::ByteCount() const {
-    return position;
+    return static_cast<google::protobuf::int64>(position);
   }
 
   void SeekableArrayInputStream::seek(PositionProvider& seekPosition) {

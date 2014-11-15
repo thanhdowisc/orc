@@ -24,7 +24,7 @@
 
 namespace orc {
 
-  const int MINIMUM_REPEAT = 3;
+  const unsigned long MINIMUM_REPEAT = 3;
   const unsigned long BASE_128_MASK = 0x7f;
 
   inline long unZigZag(unsigned long value) {
@@ -55,21 +55,21 @@ namespace orc {
     /**
      * Seek over a given number of values.
      */
-    virtual void skip(long numValues);
+    virtual void skip(unsigned long numValues);
 
     /**
      * Read a number of values into the batch.
      */
-    virtual void next(long* data, long numValues, bool* isNull);
+    virtual void next(long* data, unsigned long numValues, bool* isNull);
 
   private:
     inline signed char readByte();
     inline void readHeader();
     inline unsigned long readLong();
-    inline void skipLongs(long numValues);
+    inline void skipLongs(unsigned long numValues);
 
     std::unique_ptr<SeekableInputStream> inputStream;
-    long remainingValues;
+    unsigned long remainingValues;
     long value;
     const char* bufferStart;
     const char* bufferEnd;
@@ -109,7 +109,7 @@ namespace orc {
     return result;
   }
 
-  void RleDecoderV1::skipLongs(long numValues) {
+  void RleDecoderV1::skipLongs(unsigned long numValues) {
     while (numValues > 0) {
       if (readByte() >= 0) {
 	numValues -= 1;
@@ -120,10 +120,10 @@ namespace orc {
   void RleDecoderV1::readHeader() {
     signed char ch = readByte();
     if (ch < 0) {
-      remainingValues = - ch;
+      remainingValues = static_cast<unsigned long>(-ch);
       repeating = false;
     } else {
-      remainingValues = ch + MINIMUM_REPEAT;
+      remainingValues = static_cast<unsigned long>(ch) + MINIMUM_REPEAT;
       repeating = true;
       delta = readByte();
       if (isSigned) {
@@ -164,50 +164,50 @@ namespace orc {
     skip(location.next());
   }
 
-  void RleDecoderV1::skip(long numValues) {
+  void RleDecoderV1::skip(unsigned long numValues) {
     while (numValues > 0) {
       if (remainingValues == 0) {
 	readHeader();
       }
-      long count = std::min(numValues, remainingValues);
+      unsigned long count = std::min(numValues, remainingValues);
       remainingValues -= count;
       numValues -= count;
       if (repeating) {
-	value += delta * count;
+	value += delta * static_cast<long>(count);
       } else {
 	skipLongs(count);
       }
     }
   }
 
-  void RleDecoderV1::next(long* data, long numValues, bool* isNull) {
-    int position = 0;
+  void RleDecoderV1::next(long* data, unsigned long numValues, bool* isNull) {
+    unsigned long position = 0;
     while (position < numValues) {
       // if we are out of values, read more
       if (remainingValues == 0) {
 	readHeader();
       }
       // how many do we read out of this block?
-      long count = std::min(numValues - position, remainingValues);
-      long consumed = 0;
+      unsigned long count = std::min(numValues - position, remainingValues);
+      unsigned long consumed = 0;
       if (repeating) {
 	if (isNull) {
-	  for(int i=0; i < count; ++i) {
+	  for(unsigned long i=0; i < count; ++i) {
 	    if (!isNull[position + i]) {
-	      data[position + i] = value + consumed * delta;
+	      data[position + i] = value + static_cast<long>(consumed) * delta;
 	      consumed += 1;
 	    }
 	  }
 	} else {
-	  for(int i=0; i < count; ++i) {
-	    data[position + i] = value + i * delta;
+	  for(unsigned long i=0; i < count; ++i) {
+	    data[position + i] = value + static_cast<long>(i) * delta;
 	  }
 	  consumed = count;
 	}
-	value += consumed * delta;
+	value += static_cast<long>(consumed) * delta;
       } else {
 	if (isNull) {
-	  for(int i=0; i < count; ++i) {
+	  for(unsigned long i=0; i < count; ++i) {
 	    if (!isNull[i]) {
 	      if (isSigned) {
 		data[position + i] = unZigZag(readLong());
@@ -219,11 +219,11 @@ namespace orc {
 	  }
 	} else {
 	  if (isSigned) {
-	    for(int i=0; i < count; ++i) {
+	    for(unsigned long i=0; i < count; ++i) {
 	      data[position + i] = unZigZag(readLong());
 	    }
 	  } else {
-	    for(int i=0; i < count; ++i) {
+	    for(unsigned long i=0; i < count; ++i) {
 	      data[position + i] = static_cast<long>(readLong());
 	    }
 	  }

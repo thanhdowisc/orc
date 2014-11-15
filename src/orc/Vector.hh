@@ -27,12 +27,6 @@ namespace orc {
 
   class TypePrivate;
 
-  struct SharedByteRange {
-    std::shared_ptr<char*> buffer;
-    long offset;
-    long length;
-  };
-
   enum TypeKind {
     BOOLEAN = 0,
     BYTE = 1,
@@ -112,6 +106,11 @@ namespace orc {
     StructVectorBatch(int capacity);
     virtual ~StructVectorBatch();
     std::list<std::unique_ptr<ColumnVectorBatch> > fields;
+  };
+
+  struct Decimal {
+    long lower;
+    long upper;
   };
 }
 
