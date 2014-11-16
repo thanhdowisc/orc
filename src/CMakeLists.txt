@@ -31,7 +31,7 @@ add_custom_command(
 )
 include_directories(${PROTOC_GENERATED})
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
+set (CMAKE_CXX_FLAGS "-O0 ${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
 
 add_library(orc STATIC 
   ${PROTOC_GENERATED}/orc_proto.pb.h

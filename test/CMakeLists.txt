@@ -19,6 +19,7 @@ include_directories(
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
 
 add_executable(test-orc
+  TestByteRle.cc
   TestDriver.cc
   TestRle.cc
 )

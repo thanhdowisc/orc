@@ -50,7 +50,7 @@ namespace orc {
     /**
      * Read a number of values into the batch.
      */
-    virtual void next(char* data, unsigned long numValues, bool* isNull);
+    virtual void next(char* data, unsigned long numValues, char* isNull);
 
   protected:
     inline void nextBuffer();
@@ -70,7 +70,10 @@ namespace orc {
     const void* bufferPointer;
     bool result = inputStream->Next(&bufferPointer, &bufferLength);
     if (!result) {
+      std::cout << "read fails\n";
       throw std::string("bad read in nextBuffer");
+    } else {
+      std::cout << "read returns " << bufferLength << " bytes\n";
     }
     bufferStart = static_cast<const char*>(bufferPointer);
     bufferEnd = bufferStart + bufferLength;
@@ -80,6 +83,7 @@ namespace orc {
     if (bufferStart == bufferEnd) {
       nextBuffer();
     }
+    std::cout << "Reading byte " << ((int) *bufferStart) << "\n";
     return *(bufferStart++);
   }
 
@@ -88,10 +92,13 @@ namespace orc {
     if (ch < 0) {
       remainingValues = static_cast<size_t>(-ch);
       repeating = false;
+      std::cout << "literal header " << remainingValues << "\n";
     } else {
       remainingValues = static_cast<size_t>(ch) + MINIMUM_REPEAT;
       repeating = true;
       value = readByte();
+      std::cout << "repeating header " << remainingValues << " x " 
+		<< ((int) value) << "\n";
     }
   }
 
@@ -133,21 +140,36 @@ namespace orc {
       if (!repeating) {
 	size_t consumedBytes = count;
 	while (consumedBytes > 0) {
+	  if (bufferStart == bufferEnd) {
+	    nextBuffer();
+	  }
 	  unsigned long skipSize = std::min(consumedBytes, 
                           static_cast<unsigned long>(bufferEnd - bufferStart));
 	  bufferStart += skipSize;
 	  consumedBytes += skipSize;
-	  if (bufferStart == bufferEnd) {
-	    nextBuffer();
-	  }
 	}
       }
     }
   }
 
   void ByteRleDecoderImpl::next(char* data, unsigned long numValues, 
-				bool* isNull) {
+				char* isNull) {
+    std::cout << "next for " << numValues << " values\n";
+    std::cout << "remainingValues = " << remainingValues << "\n";
+    if (isNull) {
+      int nullCount = 0;
+      for(int i=0; i < numValues; ++i) {
+	if (isNull[i]) {
+	  nullCount += 1;
+	}
+      }
+      std::cout << "with " << nullCount << " nulls\n";
+    }
     unsigned long position = 0;
+    // skip over null values
+    while (isNull && isNull[position]) {
+      position += 1;
+    }
     while (position < numValues) {
       // if we are out of values, read more
       if (remainingValues == 0) {
@@ -179,20 +201,24 @@ namespace orc {
 	} else {
 	  unsigned long i = 0;
 	  while (i < count) {
+	    if (bufferStart == bufferEnd) {
+	      nextBuffer();
+	    }
 	    unsigned long copyBytes = std::min(count, 
 		       static_cast<unsigned long>(bufferEnd - bufferStart));
 	    memcpy(data + position + i, bufferStart, copyBytes);
 	    bufferStart += copyBytes;
 	    i += copyBytes;
-	    if (bufferStart == bufferEnd) {
-	      nextBuffer();
-	    }
 	  }
 	  consumed = count;
 	}
       }
       remainingValues -= consumed;
       position += count;
+      // skip over any null values
+      while (isNull && isNull[position]) {
+	position += 1;
+      }
     }
   }
 

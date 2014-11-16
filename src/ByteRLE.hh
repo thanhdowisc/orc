@@ -46,7 +46,7 @@ namespace orc {
      * @param isNull If the pointer is null, all values are read. If the 
      *    pointer is not null, positions that are true are skipped.
      */
-    virtual void next(char* data, unsigned long numValues, bool* isNull) = 0;
+    virtual void next(char* data, unsigned long numValues, char* isNull) = 0;
   };
 
   /**
