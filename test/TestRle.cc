@@ -111,27 +111,70 @@ namespace orc {
 
   TEST(RLEv1, testNull) {
     SeekableInputStream* stream = 
-      new SeekableArrayInputStream({0x7f, 0x02, 0x00});
+      new SeekableArrayInputStream({0x75, 0x02, 0x00});
     std::unique_ptr<orc::RleDecoder> rle = 
       orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
 				      (stream)), 
 			    true, orc::VERSION_1);
-    long* data = new long[25];
-    bool* isNull = new bool[25];
-    for(int i=0; i < 25; ++i) {
+    long* data = new long[24];
+    char* isNull = new char[24];
+    for(int i=0; i < 24; ++i) {
       isNull[i] = i % 2;
     }
     for(int i=0; i < 10; ++i) {
-      rle->next(data, 25, isNull);
-      for(int j=0; j < 25; ++j) {
+      rle->next(data, 24, isNull);
+      for(int j=0; j < 24; ++j) {
 	EXPECT_EQ(j % 2, isNull[j]);
 	if (!isNull[j]) {
-	  EXPECT_EQ(i * 26 + j, data[j]);
+	  EXPECT_EQ(i * 24 + j, data[j]);
 	}
       }
     }
     delete[] data;
     delete[] isNull;
+  }
+
+  TEST(RLEv1, testAllNulls) {
+    SeekableInputStream* stream = 
+      new SeekableArrayInputStream({0xf0, 
+	    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 
+	    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+	    0x3d, 0x00, 0x12});
+    std::unique_ptr<orc::RleDecoder> rle = 
+      createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
+				      (stream)), 
+			    false, VERSION_1);
+    long* data = new long[16];
+    char* allNull = new char[16];
+    char* noNull = new char[16];
+    for(int i=0; i < 16; ++i) {
+      allNull[i] = 1;
+      noNull[i] = 0;
+      data[i] = -1;
+    }
+    rle->next(data, 16, allNull);
+    for(int i=0; i < 16; ++i) {
+      EXPECT_EQ(-1, data[i]) << "Output wrong at " << i;
+    }
+    rle->next(data, 16, noNull);
+    for(int i=0; i < 16; ++i) {
+      EXPECT_EQ(i, data[i]) << "Output wrong at " << i;
+      data[i] = -1;
+    }
+    rle->next(data, 16, allNull);
+    for(int i=0; i < 16; ++i) {
+      EXPECT_EQ(-1, data[i]) << "Output wrong at " << i;
+    }
+    for(int i=0; i < 4; ++i) {
+      rle->next(data, 16, noNull);
+      for(int j=0; j < 16; ++j) {
+	EXPECT_EQ(18, data[j]) << "Output wrong at " << i;
+      }
+    }
+    rle->next(data, 16, allNull);
+    delete[] data;
+    delete[] allNull;
+    delete[] noNull;
   }
 
   TEST(RLEv1, skipTest) {
@@ -1410,7 +1453,6 @@ namespace orc {
  1165486207,    51714803,  1723701480,  -802521253,  2114265882,  1634942197,
 -1224478625, -1153482049,  1127175259,  1544684234,   978234803, -1982083851,
 -1784846680,   495428362};
-    std::list<unsigned long> (positions[4096]);
     unsigned long fileLoc[] = {
     0,     0,     0,     0,     0,     3,     3,     3,     3,     6,     6,
     6,     6,     9,     9,     9,     9,    12,    12,    12,    12,    15,
@@ -2043,6 +2085,7 @@ namespace orc {
  96,  97,  98,  99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111,
 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127
     };
+    std::list<unsigned long> (positions[4096]);
     for(int i=0; i < 4096; ++i) {
       positions[i].push_back(fileLoc[i]);
       positions[i].push_back(rleLoc[i]);

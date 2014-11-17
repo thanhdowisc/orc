@@ -60,7 +60,7 @@ namespace orc {
     /**
      * Read a number of values into the batch.
      */
-    virtual void next(long* data, unsigned long numValues, bool* isNull);
+    virtual void next(long* data, unsigned long numValues, char* isNull);
 
   private:
     inline signed char readByte();
@@ -180,8 +180,11 @@ namespace orc {
     }
   }
 
-  void RleDecoderV1::next(long* data, unsigned long numValues, bool* isNull) {
+  void RleDecoderV1::next(long* data, unsigned long numValues, char* isNull) {
     unsigned long position = 0;
+    while (isNull && isNull[position]) {
+      position +=1;
+    }
     while (position < numValues) {
       // if we are out of values, read more
       if (remainingValues == 0) {
@@ -232,6 +235,9 @@ namespace orc {
       }
       remainingValues -= consumed;
       position += count;
+      while (isNull && isNull[position]) {
+	position +=1;
+      }
     }
   }
 
