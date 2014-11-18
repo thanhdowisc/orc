@@ -21,6 +21,7 @@
 
 #include <initializer_list>
 #include <list>
+#include <vector>
 #include <memory>
 
 #include "wrap/zero-copy-stream-wrapper.h"

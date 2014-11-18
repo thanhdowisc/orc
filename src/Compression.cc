@@ -54,6 +54,19 @@ namespace orc {
     blockSize = blkSize == -1 ? length : static_cast<unsigned long>(blkSize);
   }
 
+  SeekableArrayInputStream::SeekableArrayInputStream(unsigned char* values, long size, long blkSize) {
+      length = size;
+      data = std::unique_ptr<char[]>(new char[length]);
+      char *ptr = data.get();
+      unsigned char ch;
+      for(unsigned long i=0; i<length; i++) {
+          ch = values[i];
+        *(ptr++) = static_cast<char>(ch);
+      }
+      position = 0;
+      blockSize = blkSize == -1 ? length : static_cast<unsigned long>(blkSize);
+    }
+
   bool SeekableArrayInputStream::Next(const void** buffer, int*size) {
     unsigned long currentSize = std::min(length - position, blockSize);
     if (currentSize > 0) {
