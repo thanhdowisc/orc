@@ -249,57 +249,6 @@ namespace orc {
    virtual long getNumberOfRows() = 0;
    };
 
-   /**
-   * Options for creating a RecordReader.
-   */
-  class ReaderOptions {
-  private:
-//      std::unique_ptr<ReaderOptionsPrivate> privateBits;
-//      FileMetaInfo fileMetaInfo;
-      long maxLength = std::numeric_limits<long>::max();
-
-  public:
-    ReaderOptions();
-
-//    /**
-//     * Set the list of columns to read.
-//     * @param include a list of columns to read
-//     * @return this
-//     */
-//    ReaderOptions& include(const std::list<bool>& include);
-//
-//    /**
-//     * Set the section of the file to process.
-//     * @param offset the starting byte offset
-//     * @param length the number of bytes to read
-//     * @return this
-//     */
-//    ReaderOptions& range(long offset, long length);
-//
-//    /**
-//     * Set the location of the tail as defined by the logical length of the
-//     * file.
-//     */
-//    ReaderOptions& setTailLocation(long offset);
-//
-//    const std::list<bool>& getInclude() const;
-//
-//    long getOffset() const;
-//
-//    long getLength() const;
-//
-//    long getTailLocation() const;
-//
-//    FileMetaInfo getFileMetaInfo() { return fileMetaInfo; };
-//
-//    //void setFileMetaInfo(FileMetaInfo& info) { fileMetaInfo = info; };
-//
-    long getMaxLength() { return maxLength; };
-//
-//    void setMaxLength(long val) { maxLength = val; }
-  };
-
-
 
   /**
    * The interface for reading ORC file meta information. 
@@ -355,7 +304,17 @@ namespace orc {
 //     * @return the kind of compression in the file
 //     */
     virtual int getCompression() const = 0;
-//
+
+    virtual int getNumberOfRows() const = 0;
+
+    virtual int getRowStride() const = 0;
+
+    virtual std::string getMagic() const = 0;
+
+    virtual std::string getStreamName() const = 0;
+
+    virtual int getStreamSize() const = 0;
+
 //    /**
 //     * Get the buffer size for the compression.
 //     * @return number of bytes to buffer for the compression codec.

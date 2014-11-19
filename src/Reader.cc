@@ -51,7 +51,8 @@ namespace orc {
         };
 
 //        static const Log LOG = LogFactory.getLog(ReaderImpl.class);
-        static const int DIRECTORY_SIZE_GUESS = 16 * 1024;
+//        static const int DIRECTORY_SIZE_GUESS = 16 * 1024;
+        int DIRECTORY_SIZE_GUESS;
         InputStream* stream;
 //        const CompressionCodec codec;
 
@@ -154,14 +155,16 @@ namespace orc {
             int readSize = (int) std::min((int)size, DIRECTORY_SIZE_GUESS);
             ByteRange buffer;
             buffer.data = new char[readSize];
+            buffer.length = readSize ;
             stream->read(buffer.data, size - readSize, buffer.length);
 
             //read the PostScript
             //get length of PostScript
             int psLen = buffer.data[readSize - 1] & 0xff;
+
             // ensureOrcFooter(file, path, psLen, buffer);
             int psOffset = readSize - 1 - psLen;
-            this->fileMetaInfo.postscript.ParseFromArray(buffer.data+psOffset, psLen);
+            fileMetaInfo.postscript.ParseFromArray(buffer.data+psOffset, psLen);
 
             // checkOrcVersion(LOG, path, ps.getVersionList());
 
@@ -474,13 +477,23 @@ namespace orc {
 //                footerMetaData = extractMetaInfoFromFooter(path, options.getMaxLength());
 //            };
 
+            DIRECTORY_SIZE_GUESS = 16 * 1024;
+
             this->stream = stream;
             extractMetaInfoFromFooter(stream, options.getMaxLength());
         }
 
-       int getCompression() const {
-            return (int)(this->fileMetaInfo.postscript.compression()) ;
-        }
+       int getCompression() const { return (int)(fileMetaInfo.postscript.compression()) ; }
+
+       int getNumberOfRows() const { return fileMetaInfo.footer.numberofrows() ; }
+
+       int getRowStride() const { return fileMetaInfo.footer.rowindexstride() ; }
+
+       std::string getMagic() const { return fileMetaInfo.postscript.magic() ; }
+
+       std::string getStreamName() const { return stream->getName() ; }
+
+       int getStreamSize() const { return stream->getLength() ; }
 
 //        FileMetaInfo getFileMetaInfo() { return FileMetaInfo(compressionKind, bufferSize, metadataSize, footerByteBuffer, versionList); }
 //
