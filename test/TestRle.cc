@@ -46,11 +46,11 @@ namespace orc {
   }
 
   TEST(RLEv1, splitHeader) {
-    SeekableInputStream* stream = 
+    SeekableInputStream* stream =
       new SeekableArrayInputStream({0x0, 0x00, 0xdc, 0xba, 0x98, 0x76}, 4);
-    std::unique_ptr<orc::RleDecoder> rle = 
+    std::unique_ptr<orc::RleDecoder> rle =
       orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
-				      (stream)), 
+				      (stream)),
 			    false, orc::VERSION_1);
     long* data = new long[200];
     rle->next(data, 3, 0);
@@ -62,18 +62,18 @@ namespace orc {
   }
 
   TEST(RLEv1, splitRuns) {
-    SeekableInputStream* stream = 
+    SeekableInputStream* stream =
       new SeekableArrayInputStream({0x7d, 0x01, 0xff, 0x01, 0xfb, 0x01,
 	    0x02, 0x03, 0x04, 0x05});
-    std::unique_ptr<orc::RleDecoder> rle = 
+    std::unique_ptr<orc::RleDecoder> rle =
       orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
-				      (stream)), 
+				      (stream)),
 			    false, orc::VERSION_1);
     long* data = new long[200];
     for(int i=0; i < 42; ++i) {
       rle->next(data, 3, 0);
       for(int j=0; j < 3; ++j) {
-	EXPECT_EQ(255 + i * 3 + j, data[j]) << "Wrong output at " << i 
+	EXPECT_EQ(255 + i * 3 + j, data[j]) << "Wrong output at " << i
 					    << ", " << j;
       }
     }
@@ -91,11 +91,11 @@ namespace orc {
   }
 
   TEST(RLEv1, testSigned) {
-    SeekableInputStream* stream = 
+    SeekableInputStream* stream =
       new SeekableArrayInputStream({0x7f, 0xff, 0x20});
-    std::unique_ptr<orc::RleDecoder> rle = 
+    std::unique_ptr<orc::RleDecoder> rle =
       orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
-				      (stream)), 
+				      (stream)),
 			    true, orc::VERSION_1);
     long* data = new long[100];
     rle->next(data, 100, 0);
@@ -110,11 +110,11 @@ namespace orc {
   }
 
   TEST(RLEv1, testNull) {
-    SeekableInputStream* stream = 
+    SeekableInputStream* stream =
       new SeekableArrayInputStream({0x75, 0x02, 0x00});
-    std::unique_ptr<orc::RleDecoder> rle = 
+    std::unique_ptr<orc::RleDecoder> rle =
       orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
-				      (stream)), 
+				      (stream)),
 			    true, orc::VERSION_1);
     long* data = new long[24];
     char* isNull = new char[24];
@@ -135,14 +135,14 @@ namespace orc {
   }
 
   TEST(RLEv1, testAllNulls) {
-    SeekableInputStream* stream = 
-      new SeekableArrayInputStream({0xf0, 
-	    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 
+    SeekableInputStream* stream =
+      new SeekableArrayInputStream({0xf0,
+	    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 	    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
 	    0x3d, 0x00, 0x12});
-    std::unique_ptr<orc::RleDecoder> rle = 
+    std::unique_ptr<orc::RleDecoder> rle =
       createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
-				      (stream)), 
+				      (stream)),
 			    false, VERSION_1);
     long* data = new long[16];
     char* allNull = new char[16];
@@ -183,9 +183,9 @@ namespace orc {
     //   out.write(i);
     // for(int i=1024; i < 2048; ++i)
     //   out.write(i * 256);
-    // This causes the first half to be delta encoded and the second half to 
+    // This causes the first half to be delta encoded and the second half to
     // be literal encoded.
-    SeekableInputStream* stream = 
+    SeekableInputStream* stream =
       new SeekableArrayInputStream({
 127,   1,   0, 127,   1, 132,   2, 127,   1, 136,   4, 127,   1, 140,   6, 127,
   1, 144,   8, 127,   1, 148,  10, 127,   1, 152,  12, 111,   1, 156,  14, 128,
@@ -382,9 +382,9 @@ namespace orc {
 128, 204,  63, 128, 208,  63, 128, 212,  63, 128, 216,  63, 128, 220,  63, 128,
 224,  63, 128, 228,  63, 128, 232,  63, 128, 236,  63, 128, 240,  63, 128, 244,
  63, 128, 248,  63, 128, 252,  63});
-    std::unique_ptr<orc::RleDecoder> rle = 
+    std::unique_ptr<orc::RleDecoder> rle =
       orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
-				      (stream)), 
+				      (stream)),
 			    true, orc::VERSION_1);
     long* data = new long[1];
     for(int i=0; i < 2048; i += 10) {
@@ -403,7 +403,7 @@ namespace orc {
   }
 
   TEST(RLEv1, seekTest) {
-    // Create the RLE stream from Java's 
+    // Create the RLE stream from Java's
     // TestRunLengthIntegerEncoding.testUncompressedSeek
     // for(int i=0; i < 1024; ++i)
     //   out.write(i / 4);
@@ -411,9 +411,9 @@ namespace orc {
     //   out.write(2 * i);
     // for(int i=0; i < 2048; ++i)
     //   out.write(junk[i]);
-    // This causes the first half to be delta encoded and the second half to 
+    // This causes the first half to be delta encoded and the second half to
     // be literal encoded.
-    SeekableInputStream* stream = 
+    SeekableInputStream* stream =
       new SeekableArrayInputStream({
   1,   0,   0,   1,   0,   2,   1,   0,   4,   1,   0,   6,   1,   0,   8,   1,
   0,  10,   1,   0,  12,   1,   0,  14,   1,   0,  16,   1,   0,  18,   1,   0,
@@ -2090,9 +2090,9 @@ namespace orc {
       positions[i].push_back(fileLoc[i]);
       positions[i].push_back(rleLoc[i]);
     }
-    std::unique_ptr<orc::RleDecoder> rle = 
+    std::unique_ptr<orc::RleDecoder> rle =
       orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
-				      (stream)), 
+				      (stream)),
 			    true, orc::VERSION_1);
     long* data = new long[2048];
     rle->next(data, 2048, 0);

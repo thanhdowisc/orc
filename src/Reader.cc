@@ -170,13 +170,13 @@ namespace orc {
 
             //check compression codec
             switch (this->fileMetaInfo.postscript.compression()) {
-              case orc::NONE:
+              case proto::NONE:
                   break;
-              case orc::ZLIB:
+              case proto::ZLIB:
 //                  break;
-              case orc::SNAPPY:
+              case proto::SNAPPY:
 //                  break;
-              case orc::LZO:
+              case proto::LZO:
 //                  break;
               default:
                   throw std::invalid_argument("Unknown compression");
@@ -476,22 +476,10 @@ namespace orc {
 
             this->stream = stream;
             extractMetaInfoFromFooter(stream, options.getMaxLength());
+        }
 
-//            MetaInfoObjExtractor rInfo =
-//                new MetaInfoObjExtractor(footerMetaData.compressionType,
-//                                         footerMetaData.bufferSize,
-//                                         footerMetaData.metadataSize,
-//                                         footerMetaData.footerBuffer
-//                                         );
-//            this->footerByteBuffer = footerMetaData.footerBuffer;
-//            this->compressionKind = rInfo.compressionKind;
-//            //this->codec = rInfo.codec;
-//            this->bufferSize = rInfo.bufferSize;
-//            this->metadataSize = rInfo.metadataSize;
-//            this->metadata = rInfo.metadata;
-//            this->footer = rInfo.footer;
-//            //this->inspector = rInfo.inspector;
-//            this->versionList = footerMetaData.versionList;
+       int getCompression() const {
+            return (int)(this->fileMetaInfo.postscript.compression()) ;
         }
 
 //        FileMetaInfo getFileMetaInfo() { return FileMetaInfo(compressionKind, bufferSize, metadataSize, footerByteBuffer, versionList); }
@@ -584,7 +572,7 @@ namespace orc {
     }
 
     Reader* createReader(InputStream* stream) {
-        ReaderOptions opts;
+        orc::ReaderOptions opts;
         return new ReaderImpl(stream, opts);
     }
 
