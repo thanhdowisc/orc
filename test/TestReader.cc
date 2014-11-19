@@ -26,9 +26,9 @@
 namespace orc {
 
   TEST(Reader, simpleTest) {
-      Reader* reader = createReader( readLocalFile("/tmp/demo-11-none.orc"));
+      Reader* reader = createReader( readLocalFile("demo-11-none.orc"));
 
-      //EXPECT_EQ(reader->getCompression(), (int)(orc::proto::CompressionKind::NONE));
-      EXPECT_EQ(reader->getCompression(), 1);
+      EXPECT_EQ(reader->getCompression(), (int)(orc::proto::CompressionKind::NONE));
+
   }
 }
