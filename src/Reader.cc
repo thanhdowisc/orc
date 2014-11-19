@@ -18,7 +18,6 @@
 
 #include "orc/Reader.hh"
 #include "orc/OrcFile.hh"
-#include "InputStream.hh"
 #include "orc_proto.pb.h"
 
 #include <vector>
@@ -26,33 +25,44 @@
 #include <memory>
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
 #include <limits>
 #include <algorithm>
 
 namespace orc {
 
-    class ReaderImpl: public Reader {
+    Reader::~Reader() {
+        // PASS
+    }
+
+    class ReaderImpl : public Reader {
     private:
-        //static const Log LOG = LogFactory.getLog(ReaderImpl.class);
+        class FileMetaInfo {
+        public:
+          proto::PostScript postscript ;
+          proto::Footer footer ;
+          proto::Metadata metadata ;
+//          const CompressionCodec codec ;
+
+          FileMetaInfo() {};
+
+          FileMetaInfo(proto::PostScript &postscript, proto::Footer &footer, proto::Metadata &metadata):
+              postscript(postscript), footer(footer), metadata(metadata) {};
+        };
+
+//        static const Log LOG = LogFactory.getLog(ReaderImpl.class);
         static const int DIRECTORY_SIZE_GUESS = 16 * 1024;
-        //const FileSystem fileSystem;
-        const std::string path;
-        const CompressionKind compressionKind;
-        //const CompressionCodec codec;
-        int bufferSize;
+        InputStream* stream;
+//        const CompressionCodec codec;
 
-        int metadataSize;
-        const Footer footer;
-        const Metadata metadata;
-        //const ObjectInspector inspector;
-        long deserializedSize = -1;
-        //const Configuration conf;
-        const std::vector<int> versionList;
+        FileMetaInfo fileMetaInfo ;
 
-        //serialized footer - Keeping this around for use by getFileMetaInfo()
-        // will help avoid cpu cycles spend in deserializing at cost of increased
-        // memory footprint.
-        const ByteRange footerByteBuffer;
+//        long deserializedSize = -1;
+//
+//        //serialized footer - Keeping this around for use by getFileMetaInfo()
+//        // will help avoid cpu cycles spend in deserializing at cost of increased
+//        // memory footprint.
+//        const ByteRange footerByteBuffer;
 
         /**
         * Build a version string out of an array.
@@ -61,7 +71,7 @@ namespace orc {
         */
         static std::string versionString(std::vector<int> version) {
             std::string buffer;
-            for(int i=0; i < version.size(); ++i) {
+            for(unsigned int i=0; i < version.size(); ++i) {
                 if (i != 0) {
                     buffer.append(".");
                 };
@@ -131,13 +141,12 @@ namespace orc {
 //            }
 //        };
 
-        static FileMetaInfo extractMetaInfoFromFooter(std::string path, long maxFileLength) {
-            FileInputStream file(path);
+        void extractMetaInfoFromFooter(InputStream* stream, long maxFileLength) {
 
             // figure out the size of the file using the option or filesystem
             long size;
             if (maxFileLength == std::numeric_limits<long>::max())
-                size =file.getLength();
+                size =stream->getLength();
             else
                 size = maxFileLength;
 
@@ -145,33 +154,32 @@ namespace orc {
             int readSize = (int) std::min((int)size, DIRECTORY_SIZE_GUESS);
             ByteRange buffer;
             buffer.data = new char[readSize];
-            file.read(buffer.data, size - readSize, buffer.length);
+            stream->read(buffer.data, size - readSize, buffer.length);
 
             //read the PostScript
             //get length of PostScript
             int psLen = buffer.data[readSize - 1] & 0xff;
             // ensureOrcFooter(file, path, psLen, buffer);
             int psOffset = readSize - 1 - psLen;
-            proto::PostScript ps;
-            ps.ParseFromArray(buffer.data+psOffset, psLen);
+            this->fileMetaInfo.postscript.ParseFromArray(buffer.data+psOffset, psLen);
 
             // checkOrcVersion(LOG, path, ps.getVersionList());
 
-            int footerSize = (int) ps.footerlength();
-            int metadataSize = (int) ps.metadatalength();
+            int footerSize = (int) this->fileMetaInfo.postscript.footerlength();
+            int metadataSize = (int) this->fileMetaInfo.postscript.metadatalength();
 
             //check compression codec
-            switch (ps.compression()) {
+            switch (this->fileMetaInfo.postscript.compression()) {
               case orc::NONE:
                   break;
               case orc::ZLIB:
-                  break;
+//                  break;
               case orc::SNAPPY:
-                  break;
+//                  break;
               case orc::LZO:
-                  break;
+//                  break;
               default:
-                  throw exception("Unknown compression");
+                  throw std::invalid_argument("Unknown compression");
             };
 
             //check if extra bytes need to be read
@@ -179,7 +187,7 @@ namespace orc {
             if (extra > 0) {
                 //more bytes need to be read, seek back to the right place and read extra bytes
                 char* extraBuf = new char[readSize+extra];
-                file.read(extraBuf, size - readSize - extra, readSize, extra);
+                stream->read(extraBuf, size - readSize - extra, extra);
                 //append with already read bytes
                 memcpy(extraBuf+extra, buffer.data, buffer.length);
                 delete[] buffer.data;
@@ -187,13 +195,10 @@ namespace orc {
                 buffer.length = extra + readSize;
             };
 
-            return new FileMetaInfo(
-                  ps.compression(),
-                  (int) ps.compressionblocksize(),
-                  (int) ps.metadatalength(),
-                  buffer,
-                  ps.version()
-                  );
+            this->fileMetaInfo.metadata.ParseFromArray(buffer.data, metadataSize);
+            this->fileMetaInfo.footer.ParseFromArray(buffer.data+metadataSize, footerSize);
+
+            delete[] buffer.data;
         };
 
 //        long getRawDataSizeFromColIndices(std::vector<int> colIndices) {
@@ -461,14 +466,7 @@ namespace orc {
         * @param options options for reading
         * @throws IOException
         */
-        ReaderImpl(std::string path, ReaderOptions options) {
-//            FileSystem fs = options.getFilesystem();
-//            if (fs == NULL) {
-//                fs = path.getFileSystem(options.getConfiguration());
-//            }
-//            this->fileSystem = fs;
-//            this->conf = options.getConfiguration();
-//
+        ReaderImpl(InputStream* stream, ReaderOptions& options) {
 //            FileMetaInfo footerMetaData;
 //            if (options.getFileMetaInfo() != null) {
 //                footerMetaData = options.getFileMetaInfo();
@@ -476,18 +474,8 @@ namespace orc {
 //                footerMetaData = extractMetaInfoFromFooter(path, options.getMaxLength());
 //            };
 
-            this->path = path;
-            FileMetaInfo footerMetaData = extractMetaInfoFromFooter(path, options.getMaxLength());
-            this->footerByteBuffer = footerMetaData.footerBuffer;
-            this->compressionKind = footerMetaData.compressionType;
-            //this->codec = rInfo.codec;
-            this->bufferSize = rInfo.bufferSize;
-            this->metadataSize = rInfo.metadataSize;
-            this->metadata = rInfo.metadata;
-            this->footer = rInfo.footer;
-            //this->inspector = rInfo.inspector;
-            this->versionList = footerMetaData.versionList;
-
+            this->stream = stream;
+            extractMetaInfoFromFooter(stream, options.getMaxLength());
 
 //            MetaInfoObjExtractor rInfo =
 //                new MetaInfoObjExtractor(footerMetaData.compressionType,
@@ -555,4 +543,49 @@ namespace orc {
 //        std::vector<StripeStatistics> getOrcProtoStripeStatistics() { return metadata.stripestats(); }
 //
 //        std::vector<UserMetadataItem> getOrcProtoUserMetadata() { return footer.metadata(); }
+    };
+
+
+    InputStream::~InputStream() {
+        // PASS
+    };
+
+    class FileInputStream : public InputStream {
+    private:
+        std::string filename ;
+        std::ifstream file;
+        long long length;
+        std::string name ;
+
+    public:
+        FileInputStream(std::string filename, std::string name="") {
+            this->filename = filename ;
+            file.open(filename.c_str(), std::ios::in | std::ios::binary);
+            // TODO: Can we get the file size from the filesystem?
+            file.seekg(0,file.end);
+            length = file.tellg();
+            this->name = (name.compare("")==0) ? filename : name ;
+        }
+
+        ~FileInputStream() { file.close(); }
+
+        long getLength() const { return this->length; }
+
+        void read(void* buffer, long offset, long length) {
+            file.seekg(offset);
+            file.read((char*)buffer, length);
+        }
+
+        const std::string& getName() const { return this->name; }
+    };
+
+    InputStream* readLocalFile(const std::string& path) {
+        return new FileInputStream(path);
+    }
+
+    Reader* createReader(InputStream* stream) {
+        ReaderOptions opts;
+        return new ReaderImpl(stream, opts);
+    }
+
 }

@@ -20,7 +20,7 @@
 #define ORC_FILE_HH
 
 #include <string>
-#include <orc/Reader.hh>
+#include "Reader.hh"
 
 /** @file orc/OrcFile.hh
     @brief The top level interface to ORC.

@@ -20,43 +20,249 @@
 #define ORC_READER_HH
 
 #include <list>
+#include <vector>
 #include <memory>
 #include <string>
+#include <limits>
 
-#include "orc/Vector.hh"
+#include "Vector.hh"
 
 namespace orc {
 
-  // classes that hold data members so we can maintain binary compatibility
-  class ReaderOptionsPrivate;
-  
-  class FileMetaInfo {
-  public:
-    const orc::proto::CompressionKind compression;
-    const int bufferSize;
-    const int metadataSize;
-    const ByteRange footerBuffer;
-    const std::vector<int> versionList;
+    enum CompressionKind {
+        NONE = 0,
+        ZLIB = 1,
+        SNAPPY = 2,
+        LZO = 3
+    };
 
-    FileMetaInfo(CompressionKind compression, int bufferSize, int metadataSize,
-            ByteRange footerBuffer, std::vector<int> versionList): compression(compression), bufferSize(bufferSize),
-                    metadataSize(metadataSize), footerBuffer(footerBuffer), versionList(versionList) {};
-//        this->footerBuffer.length = footerBuffer.length;
-//        this->footerBuffer.data = new char[this->footerBuffer.length];
-//        memcpy(this->footerBuffer, footerBuffer, footerBuffer.length);
-//
-//        for(std::vector<int>::iterator it=versionList.begin(); it!=versionList.end(); it++)
-//            this->versionList.push_back(*it);
-  };
+    // classes that hold data members so we can maintain binary compatibility
+    class StripeInformationPrivate;
+    class ColumnStatisticsPrivate;
+    class ReaderOptionsPrivate;
 
+    /**
+     * Statistics that are available for all types of columns.
+     */
+    class ColumnStatistics {
+    private:
+        std::unique_ptr<ColumnStatisticsPrivate> privateBits;
 
-  /**
+    public:
+        ColumnStatistics(std::unique_ptr<ColumnStatisticsPrivate> data);
+        virtual ~ColumnStatistics();
+
+        /**
+         * Get the number of values in this column. It will differ from the number
+         * of rows because of NULL values and repeated values.
+         * @return the number of values
+         */
+        long getNumberOfValues() const;
+    };
+
+    /**
+    * Statistics for binary columns.
+    */
+    class BinaryColumnStatistics: public ColumnStatistics {
+    public:
+        BinaryColumnStatistics(std::unique_ptr<ColumnStatisticsPrivate> data);
+        virtual ~BinaryColumnStatistics();
+        long getTotalLength() const;
+    };
+
+    /**
+     * Statistics for boolean columns.
+     */
+   class BooleanColumnStatistics: public ColumnStatistics {
+   public:
+   BooleanColumnStatistics(std::unique_ptr<ColumnStatisticsPrivate> data);
+   virtual ~BooleanColumnStatistics();
+   long getFalseCount() const;
+   long getTrueCount() const;
+   };
+   /**
+   * Statistics for date columns.
+   */
+   class DateColumnStatistics: public ColumnStatistics {
+   public:
+   DateColumnStatistics(std::unique_ptr<ColumnStatisticsPrivate> data);
+   virtual ~DateColumnStatistics();
+   /**
+   * Get the minimum value for the column.
+   * @return minimum value
+   */
+   long getMinimum() const;
+   /**
+   * Get the maximum value for the column.
+   * @return maximum value
+   */
+   long getMaximum() const;
+   };
+   /**
+   * Statistics for decimal columns.
+   */
+   class DecimalColumnStatistics: public ColumnStatistics {
+   public:
+   DecimalColumnStatistics(std::unique_ptr<ColumnStatisticsPrivate> data);
+   virtual ~DecimalColumnStatistics();
+   /**
+   * Get the minimum value for the column.
+   * @return minimum value
+   */
+   Decimal getMinimum() const;
+   /**
+   * Get the maximum value for the column.
+   * @return maximum value
+   */
+   Decimal getMaximum() const;
+   /**
+   * Get the sum for the column.
+   * @return sum of all the values
+   */
+   Decimal getSum() const;
+   };
+   /**
+   * Statistics for float and double columns.
+   */
+   class DoubleColumnStatistics: public ColumnStatistics {
+   public:
+   DoubleColumnStatistics(std::unique_ptr<ColumnStatisticsPrivate> data);
+   virtual ~DoubleColumnStatistics();
+   /**
+   * Get the smallest value in the column. Only defined if getNumberOfValues
+   * is non-zero.
+   * @return the minimum
+   */
+   double getMinimum() const;
+   /**
+   * Get the largest value in the column. Only defined if getNumberOfValues
+   * is non-zero.
+   * @return the maximum
+   */
+   double getMaximum() const;
+   /**
+   * Get the sum of the values in the column.
+   * @return the sum
+   */
+   double getSum() const;
+   };
+   /**
+   * Statistics for all of the integer columns, such as byte, short, int, and
+   * long.
+   */
+   class IntegerColumnStatistics: public ColumnStatistics {
+   public:
+   IntegerColumnStatistics(std::unique_ptr<ColumnStatisticsPrivate> data);
+   virtual ~IntegerColumnStatistics();
+   /**
+   * Get the smallest value in the column. Only defined if getNumberOfValues
+   * is non-zero.
+   * @return the minimum
+   */
+   long getMinimum() const;
+   /**
+   * Get the largest value in the column. Only defined if getNumberOfValues
+   * is non-zero.
+   * @return the maximum
+   */
+   long getMaximum() const;
+   /**
+   * Is the sum defined? If the sum overflowed the counter this will be
+   * false.
+   * @return is the sum available
+   */
+   bool isSumDefined() const;
+   /**
+   * Get the sum of the column. Only valid if isSumDefined returns true.
+   * @return the sum of the column
+   */
+   long getSum() const;
+   };
+   /**
+   * Statistics for string columns.
+   */
+   class StringColumnStatistics: public ColumnStatistics {
+   public:
+   StringColumnStatistics(std::unique_ptr<ColumnStatisticsPrivate> data);
+   virtual ~StringColumnStatistics();
+   /**
+   * Get the minimum value for the column.
+   * @return minimum value
+   */
+   std::string getMinimum() const;
+   /**
+   * Get the maximum value for the column.
+   * @return maximum value
+   */
+   std::string getMaximum() const;
+   /**
+   * Get the total length of all values.
+   * @return total length of all the values
+   */
+   long getTotalLength() const;
+   };
+   /**
+   * Statistics for stamp columns.
+   */
+   class TimestampColumnStatistics: public ColumnStatistics {
+   public:
+   TimestampColumnStatistics(std::unique_ptr<ColumnStatisticsPrivate> data);
+   virtual ~TimestampColumnStatistics();
+   /**
+   * Get the minimum value for the column.
+   * @return minimum value
+   */
+   long getMinimum() const;
+   /**
+   * Get the maximum value for the column.
+   * @return maximum value
+   */
+   long getMaximum() const;
+   };
+   class StripeInformation {
+   private:
+   std::unique_ptr<StripeInformationPrivate> privateBits;
+   public:
+   virtual ~StripeInformation();
+   /**
+   * Get the byte offset of the start of the stripe.
+   * @return the bytes from the start of the file
+   */
+   virtual long getOffset() = 0;
+   /**
+   * Get the total length of the stripe in bytes.
+   * @return the number of bytes in the stripe
+   */
+   virtual long getLength() = 0;
+   /**
+   * Get the length of the stripe's indexes.
+   * @return the number of bytes in the index
+   */
+   virtual long getIndexLength() = 0;
+   /**
+   * Get the length of the stripe's data.
+   * @return the number of bytes in the stripe
+   */
+   virtual long getDataLength() = 0;
+   /**
+   * Get the length of the stripe's tail section, which contains its index.
+   * @return the number of bytes in the tail
+   */
+   virtual long getFooterLength() = 0;
+   /**
+   * Get the number of rows in the stripe.
+   * @return a count of the number of rows
+   */
+   virtual long getNumberOfRows() = 0;
+   };
+
+   /**
    * Options for creating a RecordReader.
    */
   class ReaderOptions {
   private:
-      std::unique_ptr<ReaderOptionsPrivate> privateBits;
-      FileMetaInfo fileMetaInfo;
+//      std::unique_ptr<ReaderOptionsPrivate> privateBits;
+//      FileMetaInfo fileMetaInfo;
       long maxLength = std::numeric_limits<long>::max();
 
   public:
@@ -95,10 +301,12 @@ namespace orc {
 //
 //    //void setFileMetaInfo(FileMetaInfo& info) { fileMetaInfo = info; };
 //
-//    long getMaxLength() { return maxLength; };
+    long getMaxLength() { return maxLength; };
 //
 //    void setMaxLength(long val) { maxLength = val; }
   };
+
+
 
   /**
    * The interface for reading ORC file meta information. 
@@ -208,64 +416,47 @@ namespace orc {
 //    virtual RecordReader rows(const ReaderOptions& options) const = 0;
   };
 
-  class ReaderImpl: public Reader {
-      public:
-          virtual ~ReaderImpl();
+    /**
+     * An abstract interface for providing ORC readers a stream of bytes.
+     */
+    class InputStream {
+    public:
+      virtual ~InputStream();
 
-//          long getNumberOfRows() ;
-//
-//          std::vector<std::string> getMetadataKeys();
-//
-//          std::string getMetadataValue(std::string key);
-//
-//          bool hasMetadataValue(std::string key);
-//
-//          CompressionKind getCompression();
-//
-//          int getCompressionSize();
-//
-//          std::vector<StripeInformation> getStripes();
-//
-//          long getContentLength();
-//
-//          std::vector<Type> getTypes();
-//
-//          int getRowIndexStride();
-//
-//          //std::vector<ColumnStatistics> getStatistics() ;
-//
-//          /**
-//          * Check to see if this ORC file is from a future version and if so,
-//          * warn the user that we may not be able to read all of the column encodings.
-//          * @param log the logger to write any error message to
-//          * @param path the filename for error messages
-//          * @param version the version of hive that wrote the file.
-//          */
-//          //static void checkOrcVersion(Log log, Path path, List<Integer> version) {
-//          static void checkOrcVersion(std::string path, std::vector<int> version);
-//
-//          /**
-//          * Constructor that let's the user specify additional options.
-//          * @param path pathname for file
-//          * @param options options for reading
-//          * @throws IOException
-//          */
-//          ReaderImpl(std::string path, ReaderOptions options) ;
-//
-//          FileMetaInfo getFileMetaInfo() ;
-//
-//          long getRawDataSize();
-//
-//          long getRawDataSizeOfColumns(std::vector<std::string> colNames) ;
-//
-//          Metadata getMetadata() ;
-//
-//          std::vector<StripeStatistics> getOrcProtoStripeStatistics();
-//
-//          std::vector<UserMetadataItem> getOrcProtoUserMetadata();
-  };
+      /**
+       * Get the total length of the file in bytes.
+       */
+      virtual long getLength() const = 0;
 
+      /**
+       * Read length bytes from the file starting at offset into
+       * the buffer.
+       * @param buffer the location to write the bytes to, which must be
+       *        at least length bytes long
+       * @param offset the position in the file to read from
+       * @param length the number of bytes toread
+       */
+      virtual void read(void* buffer, long offset, long length) = 0;
 
+      /**
+       * Get the name of the stream for error messages.
+       */
+      virtual const std::string& getName() const = 0;
+    };
+
+    /**
+     * Create a stream to a local file.
+     * The resulting object should be deleted when the user is done with the
+     * stream.
+     * @param path the name of the file in the local file system
+     */
+    InputStream* readLocalFile(const std::string& path);
+
+    /**
+     * Create a reader to the for the ORC file.
+     * @param stream the stream to read
+     */
+    Reader* createReader(InputStream* stream);
 }
 
 #endif
