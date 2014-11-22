@@ -24,6 +24,7 @@
 #include <memory>
 #include <string>
 #include <limits>
+#include <boost/any.hpp>
 
 #include "Vector.hh"
 
@@ -249,7 +250,6 @@ namespace orc {
    virtual long getNumberOfRows() = 0;
    };
 
-
   /**
    * The interface for reading ORC file meta information. 
    * This is an an abstract class that will subclassed as necessary.
@@ -260,112 +260,75 @@ namespace orc {
   public:
     virtual ~Reader();
 
-//    /**
-//     * Get the number of rows in the file.
-//     * @return the number of rows
-//     */
-//    virtual long getNumberOfRows() const = 0;
-//
-//    /**
-//     * Get the deserialized data size of the file
-//     * @return raw data size
-//     */
-//    virtual long getRawDataSize() const = 0;
-//
-//    /**
-//     * Get the deserialized data size of the specified columns
-//     * @param colNames
-//     * @return raw data size of columns
-//     */
-//    virtual long getRawDataSizeOfColumns(const std::list<std::string>& colNames) = 0;
-//
-//    /**
-//     * Get the user metadata keys.
-//     * @return the set of metadata keys
-//     */
-//    virtual std::list<std::string> getMetadataKeys() const = 0;
-//
-//    /**
-//     * Get a user metadata value.
-//     * @param key a key given by the user
-//     * @return the bytes associated with the given key
-//     */
-//    virtual ByteRange getMetadataValue(const std::string& key) const = 0;
-//
-//    /**
-//     * Did the user set the given metadata value.
-//     * @param key the key to check
-//     * @return true if the metadata value was set
-//     */
-//    virtual bool hasMetadataValue(const std::string& key) const = 0;
-//
-//    /**
-//     * Get the compression kind.
-//     * @return the kind of compression in the file
-//     */
+    /**
+     * Get the number of rows in the file.
+     * @return the number of rows
+     */
+    virtual long getNumberOfRows() const = 0;
+
+    /**
+     * Get the compression kind.
+     * @return the kind of compression in the file
+     */
     virtual int getCompression() const = 0;
 
-    virtual int getNumberOfRows() const = 0;
-
     virtual int getRowStride() const = 0;
-
-    virtual std::string getMagic() const = 0;
 
     virtual std::string getStreamName() const = 0;
 
     virtual int getStreamSize() const = 0;
 
-//    /**
-//     * Get the buffer size for the compression.
-//     * @return number of bytes to buffer for the compression codec.
-//     */
-//    virtual int getCompressionSize() const = 0;
-//
-//    /**
-//     * Get the number of rows per a entry in the row index.
-//     * @return the number of rows per an entry in the row index or 0 if there
-//     * is no row index.
-//     */
-//    virtual int getRowIndexStride() const = 0;
-//
-//    /**
-//     * Get the list of stripes.
-//     * @return the information about the stripes in order
-//     */
-//    const std::list<StripeInformation>& getStripes() const = 0;
-//
-//    /**
-//     * Get the length of the file.
-//     * @return the number of bytes in the file
-//     */
-//    virtual long getContentLength() const = 0;
+    /**
+    * Does the reader have more rows available.
+    * @return true if there are more rows
+    * @throws java.io.IOException
+    */
+    virtual bool hasNext() const = 0;
 
-//    /**
-//     * Get the statistics about the columns in the file.
-//     * @return the information about the column
-//     */
-//    virtual std::list<ColumnStatistics*> getStatistics() = 0;
-//
-//    /**
-//     * Get the statistics about the columns in the file.
-//     * @return the information about the column
-//     */
-//    virtual const std::list<ColumnStatistics>& getStatistics() = 0;
-//
-//    /**
-//     * Get the list of types contained in the file. The root type is the first
-//     * type in the list.
-//     * @return the list of flattened types
-//     */
-//    virtual const std::list<Type>& getTypes() const = 0;
-//
-//    /**
-//     * Create a RecordReader that uses the options given.
-//     * @param options the options to read with
-//     * @return a new RecordReader
-//     * @throws IOException
-//     */
-//    virtual RecordReader rows(const ReaderOptions& options) const = 0;
+    /**
+    * Read the next row.
+    * @param previous a row object that can be reused by the reader
+    * @return the row that was read
+    * @throws java.io.IOException
+    */
+    // virtual Object next(Object previous) = 0;
+    virtual std::vector<boost::any> next() = 0;
+
+//            /**
+//            * Read the next row batch. The size of the batch to read cannot be controlled
+//            * by the callers. Caller need to look at VectorizedRowBatch.size of the retunred
+//            * object to know the batch size read.
+//            * @param previousBatch a row batch object that can be reused by the reader
+//            * @return the row batch that was read
+//            * @throws java.io.IOException
+//            */
+//            virtual VectorizedRowBatch nextBatch(VectorizedRowBatch previousBatch) = 0;
+
+    /**
+    * Get the row number of the row that will be returned by the following
+    * call to next().
+    * @return the row number from 0 to the number of rows in the file
+    * @throws java.io.IOException
+    */
+    virtual long getRowNumber() = 0;
+
+    /**
+    * Get the progress of the reader through the rows.
+    * @return a fraction between 0.0 and 1.0 of rows read
+    * @throws java.io.IOException
+    */
+    virtual float getProgress() = 0;
+
+    /**
+    * Release the resources associated with the given reader.
+    * @throws java.io.IOException
+    */
+    virtual void close() = 0;
+
+//            /**
+//            * Seek to a particular row number.
+//            */
+//            virtual void seekToRow(long rowCount) = 0;
   };
 }
 
