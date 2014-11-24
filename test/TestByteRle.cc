@@ -786,19 +786,19 @@ namespace orc {
       for(int j=0; j < 50; ++j) {
 	int bitPosn = 50 * i + j;
 	if ((bitPosn & 0x4) == 0) {
-	  EXPECT_EQ(1, data[i]) << "Output wrong at " << bitPosn;
+	  EXPECT_EQ(1, data[j]) << "Output wrong at " << i << ", " << j;
 	} else {
-	  EXPECT_EQ(0, data[i]) << "Output wrong at " << bitPosn;
+	  EXPECT_EQ(0, data[j]) << "Output wrong at " << i << ", " << j;
 	}
       }
     }
     rle->next(data, 24, 0);
     for(int i=0; i < 3; ++i) {
       for(int j=0; j< 8; ++j) {
-	if ((i & 0x1) == (j & 0x1)) {
-	  EXPECT_EQ(0, data[i]) << "Output wrong at " << i;
+	if ((i % 2) == (j % 2)) {
+	  EXPECT_EQ(0, data[i * 8 + j]) << "Output wrong at " << i << "," << j;
 	} else {
-	  EXPECT_EQ(1, data[i]) << "Output wrong at " << i;
+	  EXPECT_EQ(1, data[i * 8 + j]) << "Output wrong at " << i << "," << j;
 	}
       }
     }

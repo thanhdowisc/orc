@@ -272,7 +272,9 @@ namespace orc {
 
   void BooleanRleDecoderImpl::next(char* data, unsigned long numValues, 
 				   char* isNull) {
+    // next spot to fill in
     unsigned long position = 0;
+
     // use up any remaining bits
     if (isNull) {
       while(remainingBits > 0 && position < numValues) {
@@ -285,12 +287,13 @@ namespace orc {
     } else {
       while(remainingBits > 0 && position < numValues) {
 	remainingBits -= 1;
-	data[position] = (static_cast<unsigned char>(lastByte) >> 
-			  remainingBits) & 0x1;
+	data[position++] = (static_cast<unsigned char>(lastByte) >> 
+			    remainingBits) & 0x1;
       }
     }
+
     // count the number of nonNulls remaining
-    unsigned long nonNulls = numValues;
+    unsigned long nonNulls = numValues - position;
     if (isNull) {
       for(unsigned long i=position; i < numValues; ++i) {
 	if (isNull[i]) {
@@ -298,24 +301,30 @@ namespace orc {
 	}
       }
     }
+
+    // fill in the remaining values
     if (nonNulls != 0) {
       // read the new bytes into the array
       unsigned long bytesRead = (nonNulls + 7) / 8;
-      ByteRleDecoderImpl::next(data + position, (nonNulls + 7) / 8, 0);
+      ByteRleDecoderImpl::next(data + position, bytesRead, 0);
       lastByte = data[position + bytesRead - 1];
-      remainingBits = bytesRead % 8;
+      remainingBits = bytesRead * 8 - nonNulls;
       // expand the array backwards so that we don't clobber the data
       unsigned long bitsLeft = bytesRead * 8 - remainingBits;
       if (isNull) {
-	for(unsigned long i=numValues; i >= position; --i) {
+	for(long i=static_cast<long>(numValues) - 1;
+	    i >= static_cast<long>(position); --i) {
 	  if (!isNull[i]) {
-	    data[i] = (data[position + bitsLeft / 8] >> (bitsLeft % 8)) & 0x1;
+	    unsigned long shiftPosn = (-bitsLeft) % 8;
+	    data[i] = (data[position + (bitsLeft - 1) / 8] >> shiftPosn) & 0x1;
 	    bitsLeft -= 1;
 	  }
 	}
       } else {
-	for(unsigned long i=numValues; i >= position; --i, --bitsLeft) {
-	  data[i] = (data[position + bitsLeft / 8] >> (bitsLeft % 8)) & 0x1;
+	for(long i=static_cast<long>(numValues) - 1;
+	    i >= static_cast<long>(position); --i, --bitsLeft) {
+	  unsigned long shiftPosn = (-bitsLeft) % 8;
+	  data[i] = (data[position + (bitsLeft - 1) / 8] >> shiftPosn) & 0x1;
 	}
       }
     }
