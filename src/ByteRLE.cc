@@ -209,4 +209,122 @@ namespace orc {
     return std::unique_ptr<ByteRleDecoder>
       (new ByteRleDecoderImpl(std::move(input)));
   }
+
+  class BooleanRleDecoderImpl: public ByteRleDecoderImpl {
+  public:
+    BooleanRleDecoderImpl(std::unique_ptr<SeekableInputStream> input);
+
+    virtual ~BooleanRleDecoderImpl();
+    
+    /**
+     * Seek to a particular spot.
+     */
+    virtual void seek(PositionProvider&);
+
+    /**
+     * Seek over a given number of values.
+     */
+    virtual void skip(unsigned long numValues);
+
+    /**
+     * Read a number of values into the batch.
+     */
+    virtual void next(char* data, unsigned long numValues, char* isNull);
+
+  protected:
+    size_t remainingBits;
+    char lastByte;
+  };
+
+  BooleanRleDecoderImpl::BooleanRleDecoderImpl
+                                (std::unique_ptr<SeekableInputStream> input
+				 ): ByteRleDecoderImpl(std::move(input)) {
+    remainingBits = 0;
+    lastByte = 0;
+  }
+
+  BooleanRleDecoderImpl::~BooleanRleDecoderImpl() {
+    // PASS
+  }
+
+  void BooleanRleDecoderImpl::seek(PositionProvider& location) {
+    ByteRleDecoderImpl::seek(location);
+    unsigned long consumed = location.next();
+    if (consumed > 8) {
+      throw std::string("bad position");
+    }
+    if (consumed != 0) {
+      remainingBits = 8 - consumed;
+      ByteRleDecoderImpl::next(&lastByte, 1, 0);
+    }
+  }
+
+  void BooleanRleDecoderImpl::skip(unsigned long numValues) {
+    unsigned long count = std::min(numValues, remainingBits);
+    numValues -= count;
+    remainingBits -= count;
+    if (numValues > 0) {
+      ByteRleDecoderImpl::skip(numValues / 8);
+      ByteRleDecoderImpl::next(&lastByte, 1, 0);
+      remainingBits = 8 - (remainingBits % 8);
+    }
+  }
+
+  void BooleanRleDecoderImpl::next(char* data, unsigned long numValues, 
+				   char* isNull) {
+    unsigned long position = 0;
+    // use up any remaining bits
+    if (isNull) {
+      while(remainingBits > 0 && position < numValues) {
+	if (!isNull[position]) {
+	  remainingBits -= 1;
+	  data[position] = (static_cast<unsigned char>(lastByte) >> 
+			    remainingBits) & 0x1;
+	}
+      }
+    } else {
+      while(remainingBits > 0 && position < numValues) {
+	remainingBits -= 1;
+	data[position] = (static_cast<unsigned char>(lastByte) >> 
+			  remainingBits) & 0x1;
+      }
+    }
+    // count the number of nonNulls remaining
+    unsigned long nonNulls = numValues;
+    if (isNull) {
+      for(unsigned long i=position; i < numValues; ++i) {
+	if (isNull[i]) {
+	  numValues -= 1;
+	}
+      }
+    }
+    if (nonNulls != 0) {
+      // read the new bytes into the array
+      unsigned long bytesRead = (nonNulls + 7) / 8;
+      ByteRleDecoderImpl::next(data + position, (nonNulls + 7) / 8, 0);
+      lastByte = data[position + bytesRead - 1];
+      remainingBits = bytesRead % 8;
+      // expand the array backwards so that we don't clobber the data
+      unsigned long bitsLeft = bytesRead * 8 - remainingBits;
+      if (isNull) {
+	for(unsigned long i=numValues; i >= position; --i) {
+	  if (!isNull[i]) {
+	    data[i] = (data[position + bitsLeft / 8] >> (bitsLeft % 8)) & 0x1;
+	    bitsLeft -= 1;
+	  }
+	}
+      } else {
+	for(unsigned long i=numValues; i >= position; --i, --bitsLeft) {
+	  data[i] = (data[position + bitsLeft / 8] >> (bitsLeft % 8)) & 0x1;
+	}
+      }
+    }
+  }
+
+  std::unique_ptr<ByteRleDecoder> createBooleanRleDecoder
+                                 (std::unique_ptr<SeekableInputStream> input) {
+    return std::unique_ptr<BooleanRleDecoderImpl>
+      (new BooleanRleDecoderImpl(std::move(input)));
+  }
+
 }

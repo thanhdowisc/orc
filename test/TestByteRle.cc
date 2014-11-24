@@ -774,4 +774,35 @@ namespace orc {
     }
   }
 
+  TEST(BooleanRle, simpleTest) {
+    SeekableInputStream* stream = 
+      new SeekableArrayInputStream({0x61, 0xf0, 0xfd, 0x55, 0xAA, 0x55});
+    std::unique_ptr<ByteRleDecoder> rle = 
+      createBooleanRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
+					(stream)));
+    char* data = new char[50];
+    for(int i=0; i < 16; ++i) {
+      rle->next(data, 50, 0);
+      for(int j=0; j < 50; ++j) {
+	int bitPosn = 50 * i + j;
+	if ((bitPosn & 0x4) == 0) {
+	  EXPECT_EQ(1, data[i]) << "Output wrong at " << bitPosn;
+	} else {
+	  EXPECT_EQ(0, data[i]) << "Output wrong at " << bitPosn;
+	}
+      }
+    }
+    rle->next(data, 24, 0);
+    for(int i=0; i < 3; ++i) {
+      for(int j=0; j< 8; ++j) {
+	if ((i & 0x1) == (j & 0x1)) {
+	  EXPECT_EQ(0, data[i]) << "Output wrong at " << i;
+	} else {
+	  EXPECT_EQ(1, data[i]) << "Output wrong at " << i;
+	}
+      }
+    }
+    delete[] data;
+  }
+
 }
