@@ -260,13 +260,14 @@ namespace orc {
   }
 
   void BooleanRleDecoderImpl::skip(unsigned long numValues) {
-    unsigned long count = std::min(numValues, remainingBits);
-    numValues -= count;
-    remainingBits -= count;
-    if (numValues > 0) {
-      ByteRleDecoderImpl::skip(numValues / 8);
+    if (numValues <= remainingBits) {
+      remainingBits -= numValues;
+    } else {
+      numValues -= remainingBits;
+      unsigned long bytesSkipped = numValues / 8;
+      ByteRleDecoderImpl::skip(bytesSkipped);
       ByteRleDecoderImpl::next(&lastByte, 1, 0);
-      remainingBits = 8 - (remainingBits % 8);
+      remainingBits = 8 - (numValues % 8);
     }
   }
 
@@ -283,6 +284,7 @@ namespace orc {
 	  data[position] = (static_cast<unsigned char>(lastByte) >> 
 			    remainingBits) & 0x1;
 	}
+	position += 1;
       }
     } else {
       while(remainingBits > 0 && position < numValues) {
@@ -297,7 +299,7 @@ namespace orc {
     if (isNull) {
       for(unsigned long i=position; i < numValues; ++i) {
 	if (isNull[i]) {
-	  numValues -= 1;
+	  nonNulls -= 1;
 	}
       }
     }
