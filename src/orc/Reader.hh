@@ -444,7 +444,8 @@ namespace orc {
      * @return a new RecordReader
      * @throws IOException
      */
-    virtual RecordReader rows(const ReaderOptions& options) const = 0;
+    virtual std::unique_ptr<RecordReader> rows(const ReaderOptions& options
+					       ) const = 0;
   };
 }
 

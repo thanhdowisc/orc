@@ -182,7 +182,7 @@ namespace orc {
 
   void RleDecoderV1::next(long* data, unsigned long numValues, char* isNull) {
     unsigned long position = 0;
-    while (isNull && isNull[position]) {
+    while (isNull && position < numValues && isNull[position]) {
       position +=1;
     }
     while (position < numValues) {
@@ -235,7 +235,7 @@ namespace orc {
       }
       remainingValues -= consumed;
       position += count;
-      while (isNull && isNull[position]) {
+      while (isNull && position < numValues && isNull[position]) {
 	position +=1;
       }
     }

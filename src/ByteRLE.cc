@@ -149,7 +149,7 @@ namespace orc {
 				char* isNull) {
     unsigned long position = 0;
     // skip over null values
-    while (isNull && isNull[position]) {
+    while (isNull && position < numValues && isNull[position]) {
       position += 1;
     }
     while (position < numValues) {
@@ -198,7 +198,7 @@ namespace orc {
       remainingValues -= consumed;
       position += count;
       // skip over any null values
-      while (isNull && isNull[position]) {
+      while (isNull && position < numValues && isNull[position]) {
 	position += 1;
       }
     }

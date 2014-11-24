@@ -316,6 +316,7 @@ namespace orc {
       }
       rle->skip(0);
     }
+    delete[] data;
   }
 
   TEST(ByteRle, testSeek) {
@@ -772,6 +773,7 @@ namespace orc {
 	  << "Output wrong at " << i;
       }
     }
+    delete[] data;
   }
 
   TEST(BooleanRle, simpleTest) {
