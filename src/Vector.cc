@@ -48,28 +48,28 @@ namespace orc {
   }
 
   LongVectorBatch::LongVectorBatch(int capacity
-				   ): ColumnVectorBatch(capacity),
-				      data(std::unique_ptr<long[]>
-					   (new long[capacity])){
+                                   ): ColumnVectorBatch(capacity),
+                                      data(std::unique_ptr<long[]>
+                                           (new long[capacity])){
     // PASS
   }
 
   DoubleVectorBatch::DoubleVectorBatch(int capacity
-				       ): ColumnVectorBatch(capacity),
-					  data(std::unique_ptr<double[]>
-					   (new double[capacity])){
+                                       ): ColumnVectorBatch(capacity),
+                                          data(std::unique_ptr<double[]>
+                                           (new double[capacity])){
     // PASS
   }
 
   ByteVectorBatch::ByteVectorBatch(int capacity
-				   ): ColumnVectorBatch(capacity),
-				      data(std::unique_ptr<ByteRange[]>
-					   (new ByteRange[capacity])){
+                                   ): ColumnVectorBatch(capacity),
+                                      data(std::unique_ptr<ByteRange[]>
+                                           (new ByteRange[capacity])){
     // PASS
   }
 
   StructVectorBatch::StructVectorBatch(int capacity
-				       ): ColumnVectorBatch(capacity) {
+                                       ): ColumnVectorBatch(capacity) {
     // PASS
   }
 }

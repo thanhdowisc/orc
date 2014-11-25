@@ -55,8 +55,8 @@ namespace orc {
     Type(TypeKind kind);
     Type(TypeKind kind, int maximumLength, int scale);
     Type(TypeKind kind, const std::list<Type>& subtypes);
-    Type(TypeKind kind, const std::list<Type>& subtypes, 
-	 const std::list<std::string>& fieldNames);
+    Type(TypeKind kind, const std::list<Type>& subtypes,
+         const std::list<std::string>& fieldNames);
 
     TypeKind getKind();
     std::list<Type> getSubtypes();

@@ -35,7 +35,7 @@ The native ORC reader/writer must at least support the following platforms:
 \item [C++ API] The native ORC reader/writer will provide a C++ (x11) API
   to read and write ORC files.
 \item [Source Agnosticism] The native ORC reader/writer must be able to
-  read or write from local files, native HDFS client, or third part 
+  read or write from local files, native HDFS client, or third part
   object stores.
 \item [Read Compatibility] The native ORC reader/writer must be able
   to read any file produced by the Java ORC writer from Hive 0.11 to
@@ -88,14 +88,14 @@ The mapping for primitive types will be (hive type $\Rightarrow$ array type):
 \end{itemize}
 
 Null values will be represented using an isNull byte array. If none of
-the values within the batch are null, a flag will denote that. 
+the values within the batch are null, a flag will denote that.
 
 For complex Hive types, the mapping will be:
 \begin{itemize}
 \item struct $\Rightarrow$ a list of subcolumns
 \item union $\Rightarrow$ a long array selecting the variant (0 to N-1) and a
   list of subcolumns.
-\item list $\Rightarrow$ a long array of the number of elements in each list 
+\item list $\Rightarrow$ a long array of the number of elements in each list
   and a subcolumn for the list elements.
 \item map $\Rightarrow$ a long array of the number of elements in each map
   and subcolumns for the keys and values.

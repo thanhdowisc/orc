@@ -41,7 +41,7 @@ namespace orc {
     virtual long getLength() const = 0;
 
     /**
-     * Read length bytes from the file starting at offset into 
+     * Read length bytes from the file starting at offset into
      * the buffer.
      * @param buffer the location to write the bytes to, which must be
      *        at least length bytes long

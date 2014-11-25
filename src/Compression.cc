@@ -69,22 +69,22 @@ namespace orc {
     if (count >= 0) {
       unsigned long unsignedCount = static_cast<unsigned long>(count);
       if (unsignedCount <= blockSize && unsignedCount <= position) {
-	position -= unsignedCount;
+        position -= unsignedCount;
       }
     }
   }
-  
+
   bool SeekableArrayInputStream::Skip(int count) {
     if (count >= 0) {
       unsigned long unsignedCount = static_cast<unsigned long>(count);
       if (unsignedCount + position <= length) {
-	position += unsignedCount;
-	return true;
+        position += unsignedCount;
+        return true;
       }
     }
     return false;
   }
-  
+
   google::protobuf::int64 SeekableArrayInputStream::ByteCount() const {
     return static_cast<google::protobuf::int64>(position);
   }

@@ -26,7 +26,7 @@
 namespace orc {
 
   const size_t MINIMUM_REPEAT = 3;
-  
+
   ByteRleDecoder::~ByteRleDecoder() {
     // PASS
   }
@@ -36,7 +36,7 @@ namespace orc {
     ByteRleDecoderImpl(std::unique_ptr<SeekableInputStream> input);
 
     virtual ~ByteRleDecoderImpl();
-    
+
     /**
      * Seek to a particular spot.
      */
@@ -95,8 +95,8 @@ namespace orc {
     }
   }
 
-  ByteRleDecoderImpl::ByteRleDecoderImpl(std::unique_ptr<SeekableInputStream> 
-					 input) {
+  ByteRleDecoderImpl::ByteRleDecoderImpl(std::unique_ptr<SeekableInputStream>
+                                         input) {
     inputStream = std::move(input);
     repeating = false;
     remainingValues = 0;
@@ -108,7 +108,7 @@ namespace orc {
   ByteRleDecoderImpl::~ByteRleDecoderImpl() {
     // PASS
   }
-    
+
   void ByteRleDecoderImpl::seek(PositionProvider& location) {
     // move the input stream
     inputStream->seek(location);
@@ -123,30 +123,30 @@ namespace orc {
   void ByteRleDecoderImpl::skip(unsigned long numValues) {
     while (numValues > 0) {
       if (remainingValues == 0) {
-	readHeader();
+        readHeader();
       }
       size_t count = std::min(numValues, remainingValues);
       remainingValues -= count;
       numValues -= count;
-      // for literals we need to skip over count bytes, which may involve 
+      // for literals we need to skip over count bytes, which may involve
       // reading from the underlying stream
       if (!repeating) {
-	size_t consumedBytes = count;
-	while (consumedBytes > 0) {
-	  if (bufferStart == bufferEnd) {
-	    nextBuffer();
-	  }
-	  unsigned long skipSize = std::min(consumedBytes, 
+        size_t consumedBytes = count;
+        while (consumedBytes > 0) {
+          if (bufferStart == bufferEnd) {
+            nextBuffer();
+          }
+          unsigned long skipSize = std::min(consumedBytes,
                           static_cast<unsigned long>(bufferEnd - bufferStart));
-	  bufferStart += skipSize;
-	  consumedBytes -= skipSize;
-	}
+          bufferStart += skipSize;
+          consumedBytes -= skipSize;
+        }
       }
     }
   }
 
-  void ByteRleDecoderImpl::next(char* data, unsigned long numValues, 
-				char* isNull) {
+  void ByteRleDecoderImpl::next(char* data, unsigned long numValues,
+                                char* isNull) {
     unsigned long position = 0;
     // skip over null values
     while (isNull && position < numValues && isNull[position]) {
@@ -155,51 +155,51 @@ namespace orc {
     while (position < numValues) {
       // if we are out of values, read more
       if (remainingValues == 0) {
-	readHeader();
+        readHeader();
       }
       // how many do we read out of this block?
       unsigned long count = std::min(numValues - position, remainingValues);
       unsigned long consumed = 0;
       if (repeating) {
-	if (isNull) {
-	  for(unsigned long i=0; i < count; ++i) {
-	    if (!isNull[position + i]) {
-	      data[position + i] = value;
-	      consumed += 1;
-	    }
-	  }
-	} else {
-	  memset(data + position, value, count);
-	  consumed = count;
-	}
+        if (isNull) {
+          for(unsigned long i=0; i < count; ++i) {
+            if (!isNull[position + i]) {
+              data[position + i] = value;
+              consumed += 1;
+            }
+          }
+        } else {
+          memset(data + position, value, count);
+          consumed = count;
+        }
       } else {
-	if (isNull) {
-	  for(unsigned long i=0; i < count; ++i) {
-	    if (!isNull[i]) {
-	      data[position + i] = readByte();
-	      consumed += 1;
-	    }
-	  }
-	} else {
-	  unsigned long i = 0;
-	  while (i < count) {
-	    if (bufferStart == bufferEnd) {
-	      nextBuffer();
-	    }
-	    unsigned long copyBytes = std::min(count, 
-		       static_cast<unsigned long>(bufferEnd - bufferStart));
-	    memcpy(data + position + i, bufferStart, copyBytes);
-	    bufferStart += copyBytes;
-	    i += copyBytes;
-	  }
-	  consumed = count;
-	}
+        if (isNull) {
+          for(unsigned long i=0; i < count; ++i) {
+            if (!isNull[i]) {
+              data[position + i] = readByte();
+              consumed += 1;
+            }
+          }
+        } else {
+          unsigned long i = 0;
+          while (i < count) {
+            if (bufferStart == bufferEnd) {
+              nextBuffer();
+            }
+            unsigned long copyBytes = std::min(count,
+                       static_cast<unsigned long>(bufferEnd - bufferStart));
+            memcpy(data + position + i, bufferStart, copyBytes);
+            bufferStart += copyBytes;
+            i += copyBytes;
+          }
+          consumed = count;
+        }
       }
       remainingValues -= consumed;
       position += count;
       // skip over any null values
       while (isNull && position < numValues && isNull[position]) {
-	position += 1;
+        position += 1;
       }
     }
   }
@@ -215,7 +215,7 @@ namespace orc {
     BooleanRleDecoderImpl(std::unique_ptr<SeekableInputStream> input);
 
     virtual ~BooleanRleDecoderImpl();
-    
+
     /**
      * Seek to a particular spot.
      */
@@ -238,7 +238,7 @@ namespace orc {
 
   BooleanRleDecoderImpl::BooleanRleDecoderImpl
                                 (std::unique_ptr<SeekableInputStream> input
-				 ): ByteRleDecoderImpl(std::move(input)) {
+                                 ): ByteRleDecoderImpl(std::move(input)) {
     remainingBits = 0;
     lastByte = 0;
   }
@@ -271,26 +271,26 @@ namespace orc {
     }
   }
 
-  void BooleanRleDecoderImpl::next(char* data, unsigned long numValues, 
-				   char* isNull) {
+  void BooleanRleDecoderImpl::next(char* data, unsigned long numValues,
+                                   char* isNull) {
     // next spot to fill in
     unsigned long position = 0;
 
     // use up any remaining bits
     if (isNull) {
       while(remainingBits > 0 && position < numValues) {
-	if (!isNull[position]) {
-	  remainingBits -= 1;
-	  data[position] = (static_cast<unsigned char>(lastByte) >> 
-			    remainingBits) & 0x1;
-	}
-	position += 1;
+        if (!isNull[position]) {
+          remainingBits -= 1;
+          data[position] = (static_cast<unsigned char>(lastByte) >>
+                            remainingBits) & 0x1;
+        }
+        position += 1;
       }
     } else {
       while(remainingBits > 0 && position < numValues) {
-	remainingBits -= 1;
-	data[position++] = (static_cast<unsigned char>(lastByte) >> 
-			    remainingBits) & 0x1;
+        remainingBits -= 1;
+        data[position++] = (static_cast<unsigned char>(lastByte) >>
+                            remainingBits) & 0x1;
       }
     }
 
@@ -298,9 +298,9 @@ namespace orc {
     unsigned long nonNulls = numValues - position;
     if (isNull) {
       for(unsigned long i=position; i < numValues; ++i) {
-	if (isNull[i]) {
-	  nonNulls -= 1;
-	}
+        if (isNull[i]) {
+          nonNulls -= 1;
+        }
       }
     }
 
@@ -314,20 +314,20 @@ namespace orc {
       // expand the array backwards so that we don't clobber the data
       unsigned long bitsLeft = bytesRead * 8 - remainingBits;
       if (isNull) {
-	for(long i=static_cast<long>(numValues) - 1;
-	    i >= static_cast<long>(position); --i) {
-	  if (!isNull[i]) {
-	    unsigned long shiftPosn = (-bitsLeft) % 8;
-	    data[i] = (data[position + (bitsLeft - 1) / 8] >> shiftPosn) & 0x1;
-	    bitsLeft -= 1;
-	  }
-	}
+        for(long i=static_cast<long>(numValues) - 1;
+            i >= static_cast<long>(position); --i) {
+          if (!isNull[i]) {
+            unsigned long shiftPosn = (-bitsLeft) % 8;
+            data[i] = (data[position + (bitsLeft - 1) / 8] >> shiftPosn) & 0x1;
+            bitsLeft -= 1;
+          }
+        }
       } else {
-	for(long i=static_cast<long>(numValues) - 1;
-	    i >= static_cast<long>(position); --i, --bitsLeft) {
-	  unsigned long shiftPosn = (-bitsLeft) % 8;
-	  data[i] = (data[position + (bitsLeft - 1) / 8] >> shiftPosn) & 0x1;
-	}
+        for(long i=static_cast<long>(numValues) - 1;
+            i >= static_cast<long>(position); --i, --bitsLeft) {
+          unsigned long shiftPosn = (-bitsLeft) % 8;
+          data[i] = (data[position + (bitsLeft - 1) / 8] >> shiftPosn) & 0x1;
+        }
       }
     }
   }

@@ -30,7 +30,7 @@ namespace orc {
   inline long unZigZag(unsigned long value) {
     return value >> 1 ^ -(value & 1);
   }
-  
+
   RleDecoder::~RleDecoder() {
     // PASS
   }
@@ -38,10 +38,10 @@ namespace orc {
   class RleDecoderV1: public RleDecoder {
   public:
     RleDecoderV1(std::unique_ptr<SeekableInputStream> input,
-		 bool isSigned);
+                 bool isSigned);
 
     virtual ~RleDecoderV1();
-    
+
     /**
      * Reset the run length decoder.
      */
@@ -84,7 +84,7 @@ namespace orc {
       const void* bufferPointer;
       bool result = inputStream->Next(&bufferPointer, &bufferLength);
       if (!result) {
-	throw std::string("bad read in readByte");
+        throw std::string("bad read in readByte");
       }
       bufferStart = static_cast<const char*>(bufferPointer);
       bufferEnd = bufferStart + bufferLength;
@@ -101,8 +101,8 @@ namespace orc {
     } else {
       result = static_cast<unsigned long>(ch) & BASE_128_MASK;
       while ((ch = readByte()) < 0) {
-	offset += 7;
-	result |= (static_cast<unsigned long>(ch) & BASE_128_MASK) << offset;
+        offset += 7;
+        result |= (static_cast<unsigned long>(ch) & BASE_128_MASK) << offset;
       }
       result |= static_cast<unsigned long>(ch) << (offset + 7);
     }
@@ -112,7 +112,7 @@ namespace orc {
   void RleDecoderV1::skipLongs(unsigned long numValues) {
     while (numValues > 0) {
       if (readByte() >= 0) {
-	numValues -= 1;
+        numValues -= 1;
       }
     }
   }
@@ -127,22 +127,22 @@ namespace orc {
       repeating = true;
       delta = readByte();
       if (isSigned) {
-	value = unZigZag(readLong());
+        value = unZigZag(readLong());
       } else {
-	value = static_cast<long>(readLong());
+        value = static_cast<long>(readLong());
       }
     }
   }
 
   RleDecoderV1::RleDecoderV1(std::unique_ptr<SeekableInputStream> input,
-			     bool hasSigned) : isSigned(hasSigned) {
+                             bool hasSigned) : isSigned(hasSigned) {
     reset(std::move(input));
   }
 
   RleDecoderV1::~RleDecoderV1() {
     // PASS
   }
-    
+
   void RleDecoderV1::reset(std::unique_ptr<SeekableInputStream> stream) {
     inputStream = std::move(stream);
     repeating = false;
@@ -167,15 +167,15 @@ namespace orc {
   void RleDecoderV1::skip(unsigned long numValues) {
     while (numValues > 0) {
       if (remainingValues == 0) {
-	readHeader();
+        readHeader();
       }
       unsigned long count = std::min(numValues, remainingValues);
       remainingValues -= count;
       numValues -= count;
       if (repeating) {
-	value += delta * static_cast<long>(count);
+        value += delta * static_cast<long>(count);
       } else {
-	skipLongs(count);
+        skipLongs(count);
       }
     }
   }
@@ -188,63 +188,63 @@ namespace orc {
     while (position < numValues) {
       // if we are out of values, read more
       if (remainingValues == 0) {
-	readHeader();
+        readHeader();
       }
       // how many do we read out of this block?
       unsigned long count = std::min(numValues - position, remainingValues);
       unsigned long consumed = 0;
       if (repeating) {
-	if (isNull) {
-	  for(unsigned long i=0; i < count; ++i) {
-	    if (!isNull[position + i]) {
-	      data[position + i] = value + static_cast<long>(consumed) * delta;
-	      consumed += 1;
-	    }
-	  }
-	} else {
-	  for(unsigned long i=0; i < count; ++i) {
-	    data[position + i] = value + static_cast<long>(i) * delta;
-	  }
-	  consumed = count;
-	}
-	value += static_cast<long>(consumed) * delta;
+        if (isNull) {
+          for(unsigned long i=0; i < count; ++i) {
+            if (!isNull[position + i]) {
+              data[position + i] = value + static_cast<long>(consumed) * delta;
+              consumed += 1;
+            }
+          }
+        } else {
+          for(unsigned long i=0; i < count; ++i) {
+            data[position + i] = value + static_cast<long>(i) * delta;
+          }
+          consumed = count;
+        }
+        value += static_cast<long>(consumed) * delta;
       } else {
-	if (isNull) {
-	  for(unsigned long i=0; i < count; ++i) {
-	    if (!isNull[i]) {
-	      if (isSigned) {
-		data[position + i] = unZigZag(readLong());
-	      } else {
-		data[position + i] = static_cast<long>(readLong());
-	      }
-	      consumed += 1;
-	    }
-	  }
-	} else {
-	  if (isSigned) {
-	    for(unsigned long i=0; i < count; ++i) {
-	      data[position + i] = unZigZag(readLong());
-	    }
-	  } else {
-	    for(unsigned long i=0; i < count; ++i) {
-	      data[position + i] = static_cast<long>(readLong());
-	    }
-	  }
-	  consumed = count;
-	}
+        if (isNull) {
+          for(unsigned long i=0; i < count; ++i) {
+            if (!isNull[i]) {
+              if (isSigned) {
+                data[position + i] = unZigZag(readLong());
+              } else {
+                data[position + i] = static_cast<long>(readLong());
+              }
+              consumed += 1;
+            }
+          }
+        } else {
+          if (isSigned) {
+            for(unsigned long i=0; i < count; ++i) {
+              data[position + i] = unZigZag(readLong());
+            }
+          } else {
+            for(unsigned long i=0; i < count; ++i) {
+              data[position + i] = static_cast<long>(readLong());
+            }
+          }
+          consumed = count;
+        }
       }
       remainingValues -= consumed;
       position += count;
       while (isNull && position < numValues && isNull[position]) {
-	position +=1;
+        position +=1;
       }
     }
   }
 
   std::unique_ptr<RleDecoder> createRleDecoder
-                                  (std::unique_ptr<SeekableInputStream> input, 
-				   bool isSigned,
-				   RleVersion version) {
+                                  (std::unique_ptr<SeekableInputStream> input,
+                                   bool isSigned,
+                                   RleVersion version) {
     RleDecoder* result;
     if (version == VERSION_1) {
       result = new RleDecoderV1(std::move(input), isSigned);

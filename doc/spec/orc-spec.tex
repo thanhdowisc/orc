@@ -46,7 +46,7 @@ Since HDFS does not support changing the data in a file after it is
 written, ORC stores the top level index at the end of the file. The
 overall structure of the file is given in figure~\ref{orc-structure}.
 The file's tail consists of 3 parts- the file metadata, file footer,
-and postscript. 
+and postscript.
 
 The metadata for ORC is stored using
 \href{http://s.apache.org/protobuf_encoding}{Protocol Buffers}, which
@@ -105,7 +105,7 @@ enum CompressionKind {
 
 The Footer section contains the layout of the body of the file, the
 type schema information, the number of rows, and the statistics about
-each of the columns. 
+each of the columns.
 
 The file is broken in to three parts- Header, Body, and Tail. The
 Header consists of the bytes ``ORC'' to support tools that want to
@@ -172,14 +172,14 @@ message StripeInformation {
 
 All of the rows in an ORC file must have the same schema.  Logically
 the schema is expressed as a tree as in figure~\ref{type-tree}, where
-the compound types have subcolumns under them. 
+the compound types have subcolumns under them.
 
 The equivalent Hive DDL for figure~\ref{type-tree} would be:
 \begin{verbatim}
 create table Foobar (
   myInt int,
-  myMap map<string, 
-            struct<myString : string, 
+  myMap map<string,
+            struct<myString : string,
                    myDouble: double>>,
   myTime timestamp
 );
@@ -316,7 +316,7 @@ message DateStatistics {
 }
 \end{verbatim}
 
-Timestamp columns record the minimum and maximum values as the number of 
+Timestamp columns record the minimum and maximum values as the number of
 milliseconds since the epoch (1/1/2015).
 
 \begin{verbatim}
@@ -618,7 +618,7 @@ the index values and the additional value bits.
   \item 3 bits for patch gap width (PGW) (1 to 8 bits)
   \item 5 bits for patch list length (PLL) (0 to 31 patches)
   \end{itemize}
-\item Base value (BW bytes) - The base value is stored as a big endian value 
+\item Base value (BW bytes) - The base value is stored as a big endian value
   with negative values marked by the most significant bit set. If it that
   bit is set, the entire value is negated.
 \item Data values ($W * L$ bits) - A sequence of W bit positive values that
@@ -718,7 +718,7 @@ message Stream {
     // the dictionary blob
     DICTIONARY\_DATA = 3;
     // deprecated prior to Hive 0.11
-    // It was used to store the number of instances of each value in the 
+    // It was used to store the number of instances of each value in the
     // dictionary
     DICTIONARY_COUNT = 4;
     // a secondary data stream
@@ -735,7 +735,7 @@ message Stream {
 \end{verbatim}
 
 Depending on their type several options for encoding are possible. The
-encodings are divided into direct or dictionary-based categories and 
+encodings are divided into direct or dictionary-based categories and
 further refined as to whether they use RLE v1 or v2.
 
 \begin{verbatim}
@@ -938,7 +938,7 @@ DIRECT\_V2 & PRESENT & Yes & Boolean RLE\\
 Timestamp records times down to nanoseconds as a PRESENT stream that
 records non-null values, a DATA stream that records the number of
 seconds after 1 January 2015, and a SECONDARY stream that records the
-number of nanoseconds. 
+number of nanoseconds.
 
 Because the number of nanoseconds often has a large number of trailing
 zeros, the number has trailing decimal zero digits removed and the
@@ -1018,7 +1018,7 @@ DIRECT\_V2 & PRESENT & Yes & Boolean RLE\\
 
 Unions are encoded as the PRESENT stream and a tag stream that controls which
 potential variant is used. They have a child column for each variant of the
-union. Currently ORC union types are limited to 256 variants, which matches 
+union. Currently ORC union types are limited to 256 variants, which matches
 the Hive type model.
 
 \vspace{10pt}

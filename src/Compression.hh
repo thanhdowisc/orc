@@ -57,8 +57,8 @@ namespace orc {
     unsigned long blockSize;
 
   public:
-    SeekableArrayInputStream(std::initializer_list<unsigned char> list, 
-			     long block_size = -1);
+    SeekableArrayInputStream(std::initializer_list<unsigned char> list,
+                             long block_size = -1);
     virtual ~SeekableArrayInputStream();
     virtual bool Next(const void** data, int*size);
     virtual void BackUp(int count);

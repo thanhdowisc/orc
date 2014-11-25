@@ -182,7 +182,7 @@ namespace orc {
     long getMaximum() const;
 
     /**
-     * Is the sum defined? If the sum overflowed the counter this will be 
+     * Is the sum defined? If the sum overflowed the counter this will be
      * false.
      * @return is the sum available
      */
@@ -353,7 +353,7 @@ namespace orc {
   };
 
   /**
-   * The interface for reading ORC file meta information. 
+   * The interface for reading ORC file meta information.
    * This is an an abstract class that will subclassed as necessary.
    *
    * One Reader can support multiple concurrent RecordReader.
@@ -429,7 +429,7 @@ namespace orc {
      * Get the statistics about the columns in the file.
      * @return the information about the column
      */
-    virtual const std::list<std::unique_ptr<ColumnStatistics> >& 
+    virtual const std::list<std::unique_ptr<ColumnStatistics> >&
       getStatistics() = 0;
 
     /**
@@ -445,7 +445,7 @@ namespace orc {
      * @throws IOException
      */
     virtual std::unique_ptr<RecordReader> rows(const ReaderOptions& options
-					       ) const = 0;
+                                               ) const = 0;
   };
 }
 
