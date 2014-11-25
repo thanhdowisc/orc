@@ -41,6 +41,27 @@ namespace orc {
     delete[] data;
   }
 
+  TEST(ByteRle, skipLiteralBufferUnderflowTest) {
+    SeekableInputStream* stream = 
+      new SeekableArrayInputStream({0xf8, 0x0, 0x1, 0x2, 0x3, 0x4,
+	    0x5, 0x6, 0x7}, 4);
+    std::unique_ptr<ByteRleDecoder> rle = 
+      createByteRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
+				     (stream)));
+    char* data = new char[8];
+    rle->next(data, 3, 0);
+    EXPECT_EQ(0x0, data[0]);
+    EXPECT_EQ(0x1, data[1]);
+    EXPECT_EQ(0x2, data[2]);
+
+    rle->skip(2);
+    rle->next(data, 3, 0);
+    EXPECT_EQ(0x5, data[0]);
+    EXPECT_EQ(0x6, data[1]);
+    EXPECT_EQ(0x7, data[2]);
+    delete[] data;
+  }
+
   TEST(ByteRle, simpleRuns) {
     SeekableInputStream* stream = 
       new SeekableArrayInputStream({0x0d, 0xff, 0x0d, 0xfe, 0x0d, 0xfd});

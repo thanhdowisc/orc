@@ -45,6 +45,30 @@ namespace orc {
     delete[] data;
   }
 
+  TEST(RLEv1, signedNullLiteralTest) {
+    SeekableInputStream* stream = 
+      new SeekableArrayInputStream({0xf8, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6,
+	    0x7});
+    std::unique_ptr<orc::RleDecoder> rle = 
+      orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
+				      (stream)), 
+			    true, orc::VERSION_1);
+    long* data = new long[8];
+    char* isNull = new char[8];
+    memset(isNull, 0, 8);
+    rle->next(data, 8, isNull);
+
+    for(int i=0; i < 8; ++i) {
+      if (i % 2 == 0) {
+	EXPECT_EQ(i/2, data[i]);
+      } else {
+	EXPECT_EQ(-((i+1)/2), data[i]);
+      }
+    }
+    delete[] isNull;
+    delete[] data;
+  }
+
   TEST(RLEv1, splitHeader) {
     SeekableInputStream* stream = 
       new SeekableArrayInputStream({0x0, 0x00, 0xdc, 0xba, 0x98, 0x76}, 4);
