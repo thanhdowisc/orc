@@ -15,6 +15,7 @@ configure_file (
   "${CMAKE_BINARY_DIR}/include/orc/orc-config.hh"
 )
 include_directories(${CMAKE_BINARY_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
@@ -38,6 +39,7 @@ add_library(orc STATIC
   ByteRLE.cc
   Compression.cc
   Reader.cc
+  DataReader.cc
   RLE.cc
   Vector.cc
   wrap/orc-proto-wrapper.cc
