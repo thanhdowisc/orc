@@ -21,6 +21,7 @@
 
 #include <initializer_list>
 #include <list>
+#include <vector>
 #include <memory>
 
 #include "wrap/zero-copy-stream-wrapper.h"
@@ -59,6 +60,7 @@ namespace orc {
   public:
     SeekableArrayInputStream(std::initializer_list<unsigned char> list, 
 			     long block_size = -1);
+    SeekableArrayInputStream(unsigned char* values, long size, long block_size = -1);
     virtual ~SeekableArrayInputStream();
     virtual bool Next(const void** data, int*size);
     virtual void BackUp(int count);

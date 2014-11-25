@@ -18,13 +18,13 @@
 
 #include "orc/Reader.hh"
 #include "orc/OrcFile.hh"
+#include "DataReader.hh"
 #include "RLE.hh"
 #include "orc_proto.pb.h"
 
 #include <vector>
 #include <string>
 #include <memory>
-#include <stdexcept>
 #include <iostream>
 #include <fstream>
 #include <limits>
@@ -41,7 +41,7 @@ namespace orc {
         proto::PostScript postscript ;
         proto::Footer footer ;
         proto::Metadata metadata ;
-        //          const CompressionCodec codec ;
+        // const CompressionCodec codec ;
 
         FileMetaInfo() {};
 
@@ -63,11 +63,10 @@ namespace orc {
         long stripeRowIx;
         long stripeRows;
         int stripeIx;
+        int nColumns;
         std::vector<long> firstRowOfStripe ;
-
-//        std::vector<std::vector<unsigned char>> streams; // encoded streams for the current stripe
-        std::vector<long*> columns;    // for now, handle only integer columns
-
+        std::vector<DataReader*> columnReaders ;
+        std::vector<orc::proto::ColumnEncoding_Kind> columnEncodings ;
 
         /**
         * Build a version string out of an array.
@@ -148,16 +147,36 @@ namespace orc {
         };
 
         void loadStripe(long stripeIx) {
-            columns.clear();
-
-            ByteRange buffer;
             orc::proto::StripeInformation stripeInfo = fileMetaInfo.footer.stripes(stripeIx);
-            buffer.length = stripeInfo.indexlength() + stripeInfo.datalength() + stripeInfo.footerlength();
-            buffer.data = new char[buffer.length];
-            stream->read(buffer.data, stripeInfo.offset(), buffer.length);
+            long stripeLength = stripeInfo.indexlength() + stripeInfo.datalength() + stripeInfo.footerlength();
+            unsigned char* stripe = new unsigned char[stripeLength];
+            stream->read(stripe, stripeInfo.offset(), stripeLength);
 
-            // TODO: Turn this stripe into data
-            delete buffer.data ;
+            // Extract stream info from the stripe footer
+            orc::proto::StripeFooter stripeFooter ;
+            stripeFooter.ParseFromArray(stripe + stripeInfo.indexlength() + stripeInfo.datalength(), stripeInfo.footerlength());
+
+            // Cut the stripe into chunks and assign to data parsers
+            // TODO: We only read DATA streams now; need to read ROW_INDEX, etc., too
+            orc::proto::Stream streamInfo;
+            long stripeStart = stripeInfo.offset();
+            long streamStart = stripeStart;
+            long streamLength;
+            int columnIx;
+
+            for (int streamIx=0; streamIx<stripeFooter.streams_size(); streamIx++) {
+                streamInfo = stripeFooter.streams(streamIx);
+                streamLength = streamInfo.length();
+                columnIx = streamInfo.column();
+                if (streamInfo.kind() == orc::proto::Stream_Kind_DATA && columnIx > 0 ) {
+                    columnReaders[columnIx-1]->reset(
+                            new SeekableArrayInputStream(stripe+(streamStart-stripeStart), streamLength),
+                            stripeFooter.columns(columnIx));
+                }
+                streamStart += streamLength;
+            }
+
+            delete stripe ;
 
             stripeRows = stripeInfo.numberofrows() ;
             stripeRowIx = 0;
@@ -179,7 +198,6 @@ namespace orc {
             extractMetaInfoFromFooter(stream, options.getMaxLength());
 
             totalRows = fileMetaInfo.footer.numberofrows();
-           //                 totalRows = 105 ;
 
            // Pre-calculate row offset for each stripe
            int firstRow = 0;
@@ -188,8 +206,22 @@ namespace orc {
                firstRow +=fileMetaInfo.footer.stripes(i).numberofrows() ;
            };
 
-           // TODO: check the columns types, store this info and pass to OrcLoader
-           // Configure columns so we can materialize columns later
+//           // Initialize column readers
+           nColumns = fileMetaInfo.footer.types_size()-1;   // Skip the first column (index info)
+           columnReaders.clear();
+           columnReaders.reserve(nColumns);
+           for (int i=0; i<nColumns; i++) {
+               switch (fileMetaInfo.footer.types(i+1).kind()) {
+               case orc::proto::Type_Kind_INT:
+                   columnReaders.push_back(createIntegerReader());
+                   break;
+               case orc::proto::Type_Kind_STRING:
+                   columnReaders.push_back(createStringReader());
+                   break;
+               default:
+                   columnReaders.push_back(createDummyReader());
+               }
+           }
 
            stripeIx = 0;
            loadStripe(stripeIx);
@@ -199,15 +231,16 @@ namespace orc {
 
         std::vector<boost::any> next() override {
             // Check if the next stripe is required
-//            if ( hasNext() && stripeRowIx == stripeRows ) {
-//                stripeIx++;
-//                loadStripe(Ix);
-//            }
+            if ( hasNext() && stripeRowIx == stripeRows ) {
+                stripeIx++;
+                loadStripe(stripeIx);
+            }
 
             std::vector<boost::any> row;
-//            long* col1 = columns[0];
-//            row.push_back((boost::any)(col1[stripeRowIx]));
-            row.push_back((boost::any)(totalRowIx));
+            for (int columnIx=0; columnIx < nColumns; columnIx++) {
+                row.push_back(columnReaders[columnIx]->next());
+            }
+
             stripeRowIx++;
             totalRowIx++;
 
@@ -219,8 +252,8 @@ namespace orc {
         float getProgress() override {   return (float)totalRowIx/totalRows ; }
 
         void close() override {
-            for(unsigned int i=0; i<columns.size();i++)
-                delete columns[i];
+            for(unsigned int i=0; i<columnReaders.size();i++)
+                delete columnReaders[i];
         }
 
 

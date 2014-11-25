@@ -108,43 +108,12 @@ static const std::string MAGIC("ORC");
    public:
      ReaderOptions() {};
 
- //    /**
- //     * Set the list of columns to read.
- //     * @param include a list of columns to read
- //     * @return this
- //     */
- //    ReaderOptions& include(const std::list<bool>& include);
- //
- //    /**
- //     * Set the section of the file to process.
- //     * @param offset the starting byte offset
- //     * @param length the number of bytes to read
- //     * @return this
- //     */
- //    ReaderOptions& range(long offset, long length);
- //
- //    /**
- //     * Set the location of the tail as defined by the logical length of the
- //     * file.
- //     */
- //    ReaderOptions& setTailLocation(long offset);
- //
- //    const std::list<bool>& getInclude() const;
- //
- //    long getOffset() const;
- //
- //    long getLength() const;
- //
- //    long getTailLocation() const;
- //
- //    FileMetaInfo getFileMetaInfo() { return fileMetaInfo; };
- //
- //    //void setFileMetaInfo(FileMetaInfo& info) { fileMetaInfo = info; };
- //
      long getMaxLength() { return maxLength; };
- //
- //    void setMaxLength(long val) { maxLength = val; }
    };
+
+    // ORC data types
+    #define ORC_INT int
+    #define ORC_STRING std::string
 
 }
 #endif
