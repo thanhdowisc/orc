@@ -20,12 +20,12 @@
 #define ORC_VECTOR_HH
 
 #include <array>
+#include <initializer_list>
 #include <list>
 #include <memory>
+#include <string>
 
 namespace orc {
-
-  class TypePrivate;
 
   enum TypeKind {
     BOOLEAN = 0,
@@ -49,21 +49,34 @@ namespace orc {
   };
 
   class Type {
-  private:
-    std::unique_ptr<TypePrivate> privateBits;
   public:
-    Type(TypeKind kind);
-    Type(TypeKind kind, int maximumLength, int scale);
-    Type(TypeKind kind, const std::list<Type>& subtypes);
-    Type(TypeKind kind, const std::list<Type>& subtypes,
-         const std::list<std::string>& fieldNames);
-
-    TypeKind getKind();
-    std::list<Type> getSubtypes();
-    std::list<std::string> getFieldNames();
-    int getMaximumLength();
-    int getScale();
+    virtual ~Type();
+    virtual TypeKind getKind() const = 0;
+    virtual int getSubtypeCount() const = 0;
+    virtual const std::unique_ptr<Type>* getSubtypes() const = 0;
+    virtual const std::string* getFieldNames() const = 0;
+    virtual int getMaximumLength() const = 0;
+    virtual int getPrecision() const = 0;
+    virtual int getScale() const = 0;
   };
+
+  const int DEFAULT_DECIMAL_SCALE = 18;
+  const int DEFAULT_DECIMAL_PRECISION = 38;
+
+  std::unique_ptr<Type> createPrimitiveType(TypeKind kind);
+  std::unique_ptr<Type> createCharType(bool isVarchar,
+                                       int maxLength);
+  std::unique_ptr<Type> 
+                createDecimalType(int precision=DEFAULT_DECIMAL_PRECISION,
+                                  int scale=DEFAULT_DECIMAL_SCALE);
+  std::unique_ptr<Type> 
+    createStructType(std::initializer_list<std::unique_ptr<Type> > types,
+                      std::initializer_list<std::string> fieldNames);
+  std::unique_ptr<Type> createListType(std::unique_ptr<Type> elements);
+  std::unique_ptr<Type> createMapType(std::unique_ptr<Type> key,
+                                      std::unique_ptr<Type> value);
+  std::unique_ptr<Type> 
+    createUnionType(std::initializer_list<std::unique_ptr<Type> > types);
 
   struct ColumnVectorBatch {
     ColumnVectorBatch(int capacity);

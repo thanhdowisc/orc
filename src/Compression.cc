@@ -54,18 +54,14 @@ namespace orc {
     blockSize = blkSize == -1 ? length : static_cast<unsigned long>(blkSize);
   }
 
-  SeekableArrayInputStream::SeekableArrayInputStream(unsigned char* values, long size, long blkSize) {
-      length = size;
-      data = std::unique_ptr<char[]>(new char[length]);
-      char *ptr = data.get();
-      unsigned char ch;
-      for(unsigned long i=0; i<length; i++) {
-          ch = values[i];
-        *(ptr++) = static_cast<char>(ch);
-      }
-      position = 0;
-      blockSize = blkSize == -1 ? length : static_cast<unsigned long>(blkSize);
-    }
+  SeekableArrayInputStream::SeekableArrayInputStream(unsigned char* values, 
+                                                     long size, long blkSize) {
+    length = static_cast<unsigned long>(size);
+    data = std::unique_ptr<char[]>(new char[length]);
+    memcpy(data.get(), values, length);
+    position = 0;
+    blockSize = blkSize == -1 ? length : static_cast<unsigned long>(blkSize);
+  }
 
   bool SeekableArrayInputStream::Next(const void** buffer, int*size) {
     unsigned long currentSize = std::min(length - position, blockSize);
@@ -104,5 +100,89 @@ namespace orc {
 
   void SeekableArrayInputStream::seek(PositionProvider& seekPosition) {
     position = seekPosition.next();
+  }
+
+  SeekableFileInputStream::SeekableFileInputStream(InputStream* _input,
+                                                   unsigned long _offset,
+                                                   unsigned long _length,
+                                                   long _blockSize) {
+    input = _input;
+    offset = _offset;
+    length = _length;
+    position = 0;
+    blockSize = std::min(length,
+                         static_cast<unsigned long>(_blockSize < 0 ? 
+                                                    256 * 1024 : _blockSize));
+    buffer.reset(new char[blockSize]);
+    remainder = 0;
+  }
+
+  SeekableFileInputStream::~SeekableFileInputStream() {
+    // PASS
+  }
+
+  bool SeekableFileInputStream::Next(const void** data, int*size) {
+    int bytesRead = std::min(length - position, blockSize);
+    position += bytesRead;
+    *data = buffer.get();
+    // read from the file, skipping over the remainder
+    input->read(buffer.get() + remainder, position + remainder, 
+                bytesRead - remainder);
+    *size = bytesRead;
+    remainder = 0;
+    return bytesRead != 0;
+  }
+
+  void SeekableFileInputStream::BackUp(int count) {
+    if (position == 0 || remainder > 0) {
+      throw std::string("can't backup unless we just called Next");
+    }
+    if (remainder > blockSize) {
+      throw std::string("can't backup that far");
+    }
+    remainder = count;
+    memmove(buffer.get(), buffer.get() + blockSize - count, count);
+  }
+
+  bool SeekableFileInputStream::Skip(int count) {
+    position += count;
+    if (position > length) {
+      position = length;
+      return false;
+    }
+    if (remainder > count) {
+      remainder -= count;
+    } else {
+      remainder = 0;
+    }
+    return true;
+  }
+  
+  google::protobuf::int64 SeekableFileInputStream::ByteCount() const {
+    return position;
+  }
+
+  void SeekableFileInputStream::seek(PositionProvider& location) {
+    position = location.next();
+    if (position > length) {
+      throw std::string("seek too far");
+    }
+    remainder = 0;
+  }
+
+  std::unique_ptr<SeekableInputStream> 
+     createCodec(CompressionKind kind,
+                 std::unique_ptr<SeekableInputStream> input,
+                 unsigned long bufferSize) {
+    switch (kind) {
+    case NONE:
+      return std::move(input);
+    case LZO:
+    case SNAPPY:
+    case ZLIB:
+      throw std::string("Not implemented yet");
+    default:
+      throw std::string("Unknown compression kind");
+    }
   }
 }

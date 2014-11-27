@@ -19,12 +19,12 @@
 #ifndef ORC_COMPRESSION_HH
 #define ORC_COMPRESSION_HH
 
+#include "orc/OrcFile.hh"
+#include "wrap/zero-copy-stream-wrapper.h"
+
 #include <initializer_list>
 #include <list>
-#include <vector>
 #include <memory>
-
-#include "wrap/zero-copy-stream-wrapper.h"
 
 namespace orc {
 
@@ -60,6 +60,9 @@ namespace orc {
   public:
     SeekableArrayInputStream(std::initializer_list<unsigned char> list,
                              long block_size = -1);
+    SeekableArrayInputStream(unsigned char* list,
+                             long length,
+                             long block_size = -1);
     virtual ~SeekableArrayInputStream();
     virtual bool Next(const void** data, int*size);
     virtual void BackUp(int count);
@@ -67,6 +70,44 @@ namespace orc {
     virtual google::protobuf::int64 ByteCount() const;
     virtual void seek(PositionProvider& position);
   };
+
+  /**
+   * Create a seekable input stream based on an input stream.
+   */
+  class SeekableFileInputStream: public SeekableInputStream {
+  private:
+    InputStream* input;
+    std::unique_ptr<char[]> buffer;
+    unsigned long offset;
+    unsigned long length;
+    unsigned long position;
+    unsigned long blockSize;
+    unsigned long remainder;
+
+  public:
+    SeekableFileInputStream(InputStream* input,
+                            unsigned long offset,
+                            unsigned long length,
+                            long blockSize = -1);
+    virtual ~SeekableFileInputStream();
+
+    virtual bool Next(const void** data, int*size) override;
+    virtual void BackUp(int count) override;
+    virtual bool Skip(int count) override;
+    virtual google::protobuf::int64 ByteCount() const override;
+    virtual void seek(PositionProvider& position) override;
+  };
+
+  /**
+   * Create a codec for the given compression kind.
+   * @param kind the compression type to implement
+   * @param input the input stream that is the underlying source
+   * @param bufferSize the maximum size of the buffer
+   */
+  std::unique_ptr<SeekableInputStream> 
+     createCodec(CompressionKind kind,
+                 std::unique_ptr<SeekableInputStream> input,
+                 unsigned long bufferSize);
 }
 
 #endif

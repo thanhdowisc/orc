@@ -20,94 +20,57 @@
 #define ORC_FILE_HH
 
 #include <string>
+
 #include "Reader.hh"
 
-/** @file orc/OrcFile.hh
+/** /file orc/OrcFile.hh
     @brief The top level interface to ORC.
 */
 
 namespace orc {
 
-static const std::string MAGIC("ORC");
-
-    class Version {
-    private:
-     std::string name;
-     int major;
-     int minor;
-
-    public:
-     Version(std::string name, int major, int minor) {
-         this->name = name;
-         this->major = major;
-         this->minor = minor;
-     }
-
-     std::string getName()   { return this->name; }
-     int getMajor()   { return this->major; }
-     int getMinor()   { return this->minor; }
-    };
-
-    static const Version V_0_11("0.11", 0, 11);
-    static const Version V_0_12("0.12", 0, 12);
-    //static std::unordered_map<std::string, Version> Versions({{"0.11", V_0_11},{"0.12", V_0_12}});
-    static const Version CURRENT_VERSION = V_0_12;
+  /**
+   * An abstract interface for providing ORC readers a stream of bytes.
+   */
+  class InputStream {
+  public:
+    virtual ~InputStream();
 
     /**
-     * An abstract interface for providing ORC readers a stream of bytes.
+     * Get the total length of the file in bytes.
      */
-    class InputStream {
-    public:
-      virtual ~InputStream();
-
-      /**
-       * Get the total length of the file in bytes.
-       */
-      virtual long getLength() const = 0;
-
-      /**
-       * Read length bytes from the file starting at offset into
-       * the buffer.
-       * @param buffer the location to write the bytes to, which must be
-       *        at least length bytes long
-       * @param offset the position in the file to read from
-       * @param length the number of bytes toread
-       */
-      virtual void read(void* buffer, long offset, long length) = 0;
-
-      /**
-       * Get the name of the stream for error messages.
-       */
-      virtual const std::string& getName() const = 0;
-    };
+    virtual long getLength() const = 0;
 
     /**
-     * Create a stream to a local file.
-     * The resulting object should be deleted when the user is done with the
-     * stream.
-     * @param path the name of the file in the local file system
+     * Read length bytes from the file starting at offset into
+     * the buffer.
+     * @param buffer the location to write the bytes to, which must be
+     *        at least length bytes long
+     * @param offset the position in the file to read from
+     * @param length the number of bytes toread
      */
-    InputStream* readLocalFile(const std::string& path);
+    virtual void read(void* buffer, unsigned long offset, 
+                      unsigned long length) = 0;
 
     /**
-     * Create a reader to the for the ORC file.
-     * @param stream the stream to read
+     * Get the name of the stream for error messages.
      */
-    Reader* createReader(InputStream* stream);
+    virtual const std::string& getName() const = 0;
+  };
 
+  /**
+   * Create a stream to a local file.
+   * @param path the name of the file in the local file system
+   */
+  std::unique_ptr<InputStream> readLocalFile(const std::string& path);
 
-    /**
-    * Options for creating a RecordReader.
-    */
-   class ReaderOptions {
-   private:
-       std::unique_ptr<ReaderOptionsPrivate> privateBits;
-
-   public:
-     ReaderOptions() {};
-
-     long getMaxLength() { return maxLength; };
-   };
-
+  /**
+   * Create a reader to the for the ORC file.
+   * @param stream the stream to read
+   * @param options the options for reading the file
+   */
+  std::unique_ptr<Reader> createReader(std::unique_ptr<InputStream> stream,
+                                       const ReaderOptions& options);
 }
+
 #endif

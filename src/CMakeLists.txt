@@ -36,7 +36,9 @@ set (CMAKE_CXX_FLAGS "-O0 ${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
 add_library(orc STATIC
   ${PROTOC_GENERATED}/orc_proto.pb.h
   ByteRLE.cc
+  ColumnReader.cc
   Compression.cc
+  OrcFile.cc
   Reader.cc
   RLE.cc
   Vector.cc
