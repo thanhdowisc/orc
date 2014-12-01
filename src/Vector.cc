@@ -22,6 +22,7 @@ namespace orc {
 
   class TypeImpl: public Type {
   private:
+    int columnId;
     TypeKind kind;
     std::unique_ptr<std::unique_ptr<Type>[]> subTypes;
     std::unique_ptr<std::string[]> fieldNames;
@@ -38,6 +39,12 @@ namespace orc {
              int scale);
     virtual ~TypeImpl();
 
+    int assignIds(int root) override;
+
+    int getColumnId() const override {
+      return columnId;
+    }
+
     TypeKind getKind() const override {
       return kind;
     }
@@ -46,12 +53,12 @@ namespace orc {
       return subtypeCount;
     }
 
-    const std::unique_ptr<Type> *getSubtypes() const override {
-      return subTypes.get();
+    const Type& getSubtype(int i) const override {
+      return *(subTypes.get()[i].get());
     }
 
-    const std::string *getFieldNames() const override {
-      return fieldNames.get();
+    const std::string& getFieldName(int i) const override {
+      return fieldNames.get()[i];
     }
 
     virtual int getMaximumLength() const override {
@@ -77,10 +84,12 @@ namespace orc {
                      int _maxLength,
                      int _precision,
                      int _scale) {
+    kind = _kind;
     maxLength = _maxLength;
     precision = _precision;
     scale = _scale;
-    subTypes.reset(new std::unique_ptr<Type>[_types.size()]);
+    subtypeCount = static_cast<int>(_types.size());
+    subTypes.reset(new std::unique_ptr<Type>[subtypeCount]);
     int i = 0;
     for(auto itr= _types.begin(); itr != _types.end(); ++itr) {
       subTypes.get()[i++].
@@ -91,6 +100,16 @@ namespace orc {
     for(std::string field: _fieldNames) {
       fieldNames.get()[i++] = field;
     }
+  }
+
+  int TypeImpl::assignIds(int root) {
+    columnId = root;
+    int current = root + 1;
+    std::unique_ptr<Type> *children = subTypes.get();
+    for(int i=0; i < subtypeCount; ++i) {
+      current = children[i].get()->assignIds(current);
+    }
+    return current;
   }
 
   TypeImpl::~TypeImpl() {
@@ -136,7 +155,7 @@ namespace orc {
     return std::unique_ptr<Type>(new TypeImpl(UNION, types, {}, 0, 0, 0));
   }
 
-  ColumnVectorBatch::ColumnVectorBatch(int cap) {
+  ColumnVectorBatch::ColumnVectorBatch(unsigned long cap) {
     capacity = cap;
     numElements = 0;
     isNull = 0;
@@ -163,28 +182,28 @@ namespace orc {
     // PASS
   }
 
-  LongVectorBatch::LongVectorBatch(int capacity
+  LongVectorBatch::LongVectorBatch(unsigned long capacity
                                    ): ColumnVectorBatch(capacity),
                                       data(std::unique_ptr<long[]>
                                            (new long[capacity])){
     // PASS
   }
 
-  DoubleVectorBatch::DoubleVectorBatch(int capacity
+  DoubleVectorBatch::DoubleVectorBatch(unsigned long capacity
                                        ): ColumnVectorBatch(capacity),
                                           data(std::unique_ptr<double[]>
                                            (new double[capacity])){
     // PASS
   }
 
-  ByteVectorBatch::ByteVectorBatch(int capacity
+  ByteVectorBatch::ByteVectorBatch(unsigned long capacity
                                    ): ColumnVectorBatch(capacity),
                                       data(std::unique_ptr<ByteRange[]>
                                            (new ByteRange[capacity])){
     // PASS
   }
 
-  StructVectorBatch::StructVectorBatch(int capacity
+  StructVectorBatch::StructVectorBatch(unsigned long capacity
                                        ): ColumnVectorBatch(capacity) {
     // PASS
   }

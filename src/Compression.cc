@@ -122,13 +122,13 @@ namespace orc {
   }
 
   bool SeekableFileInputStream::Next(const void** data, int*size) {
-    int bytesRead = std::min(length - position, blockSize);
+    unsigned long bytesRead = std::min(length - position, blockSize);
     position += bytesRead;
     *data = buffer.get();
     // read from the file, skipping over the remainder
     input->read(buffer.get() + remainder, position + remainder, 
                 bytesRead - remainder);
-    *size = bytesRead;
+    *size = static_cast<int>(bytesRead);
     remainder = 0;
     return bytesRead != 0;
   }
@@ -140,11 +140,14 @@ namespace orc {
     if (remainder > blockSize) {
       throw std::string("can't backup that far");
     }
-    remainder = count;
-    memmove(buffer.get(), buffer.get() + blockSize - count, count);
+    remainder = static_cast<unsigned long>(count);
+    memmove(buffer.get(), 
+            buffer.get() + blockSize - static_cast<size_t>(count), 
+            static_cast<unsigned long>(count));
   }
 
-  bool SeekableFileInputStream::Skip(int count) {
+  bool SeekableFileInputStream::Skip(int _count) {
+    unsigned long count = static_cast<unsigned long>(_count);
     position += count;
     if (position > length) {
       position = length;
@@ -159,7 +162,7 @@ namespace orc {
   }
   
   google::protobuf::int64 SeekableFileInputStream::ByteCount() const {
-    return position;
+    return static_cast<google::protobuf::int64>(position);
   }
 
   void SeekableFileInputStream::seek(PositionProvider& location) {
@@ -173,7 +176,7 @@ namespace orc {
   std::unique_ptr<SeekableInputStream> 
      createCodec(CompressionKind kind,
                  std::unique_ptr<SeekableInputStream> input,
-                 unsigned long bufferSize) {
+                 unsigned long) {
     switch (kind) {
     case NONE:
       return std::move(input);
@@ -181,8 +184,6 @@ namespace orc {
     case SNAPPY:
     case ZLIB:
       throw std::string("Not implemented yet");
-    default:
-      throw std::string("Unknown compression kind");
     }
   }
 }

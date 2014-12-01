@@ -19,21 +19,20 @@
 #ifndef ORC_COLUMN_READER_HH
 #define ORC_COLUMN_READER_HH
 
-#include "orc/Reader.hh"
 #include "orc/Vector.hh"
 #include "Compression.hh"
 #include "wrap/orc-proto-wrapper.hh"
 
 namespace orc {
 
-  class DetailedStripeInformation {
+  class StripeStreams {
   public:
-    virtual ~DetailedStripeInformation();
+    virtual ~StripeStreams();
 
     /**
      * Get the encoding for the given column for this stripe.
      */
-    virtual proto::ColumnEncoding_Kind getEncoding(int columnId) = 0;
+    virtual proto::ColumnEncoding getEncoding(int columnId) = 0;
 
     /**
      * Get the stream for the given column/kind in this stripe.
@@ -44,42 +43,40 @@ namespace orc {
   };
 
   /**
-   * The interface for reading ORC data types
+   * The interface for reading ORC data types.
    */
   class ColumnReader {
+  protected:
+    std::unique_ptr<ByteRleDecoder> isNullDecoder;
+    int columnId;
+
   public:
-    ColumnReader(int columnId, DetailedStripeInformation& stipe);
+    ColumnReader(const Type& type, StripeStreams& stipe);
 
     virtual ~ColumnReader();
 
     /**
-     * Seek to the position provided by index.
-     * @param index
-     * @throws IOException
-     */
-    virtual void seek(PositionProvider& index) = 0;
-
-    /**
      * Skip number of specified rows.
-     * @param numValues
+     * @param numValues the number of values to skip
+     * @return the number of non-null values skipped
      * @throws IOException
      */
-    virtual void skip(long numValues) = 0;
+    virtual unsigned long skip(unsigned long numValues);
 
     /**
      * Read the next group of values into this rowBatch.
      * @param rowBatch the memory to read into.
      * @throws IOException
      */
-    virtual void next(ColumnVectorBatch& rowBatch, long numValues) = 0;
+    virtual void next(ColumnVectorBatch& rowBatch, 
+                      unsigned long numValues);
   };
 
   /**
    * Create a reader for the given stripe.
    */
-  std::unique_ptr<ColumnReader> buildReader(const Reader& reader,
-                                            int rootColumn,
-                                            DetailedStripeInformation& stripe);
+  std::unique_ptr<ColumnReader> buildReader(const Type& type,
+                                            StripeStreams& stripe);
 }
 
 #endif

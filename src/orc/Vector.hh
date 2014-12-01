@@ -51,10 +51,12 @@ namespace orc {
   class Type {
   public:
     virtual ~Type();
+    virtual int assignIds(int root) = 0;
+    virtual int getColumnId() const = 0;
     virtual TypeKind getKind() const = 0;
     virtual int getSubtypeCount() const = 0;
-    virtual const std::unique_ptr<Type>* getSubtypes() const = 0;
-    virtual const std::string* getFieldNames() const = 0;
+    virtual const Type& getSubtype(int typeId) const = 0;
+    virtual const std::string& getFieldName(int fieldId) const = 0;
     virtual int getMaximumLength() const = 0;
     virtual int getPrecision() const = 0;
     virtual int getScale() const = 0;
@@ -79,27 +81,27 @@ namespace orc {
     createUnionType(std::initializer_list<std::unique_ptr<Type> > types);
 
   struct ColumnVectorBatch {
-    ColumnVectorBatch(int capacity);
+    ColumnVectorBatch(unsigned long capacity);
     virtual ~ColumnVectorBatch();
 
     // the number of slots available
-    int capacity;
+    unsigned long capacity;
     // the number of current occupied slots
-    int numElements;
+    unsigned long numElements;
     // an array of capacity length marking null values
-    std::unique_ptr<bool[]> isNull;
+    std::unique_ptr<char[]> isNull;
     // whether there are any null values
     bool hasNulls;
   };
 
   struct LongVectorBatch: public ColumnVectorBatch {
-    LongVectorBatch(int capacity);
+    LongVectorBatch(unsigned long capacity);
     virtual ~LongVectorBatch();
     std::unique_ptr<long[]> data;
   };
 
   struct DoubleVectorBatch: public ColumnVectorBatch {
-    DoubleVectorBatch(int capacity);
+    DoubleVectorBatch(unsigned long capacity);
     virtual ~DoubleVectorBatch();
     std::unique_ptr<double[]> data;
   };
@@ -110,15 +112,15 @@ namespace orc {
   };
 
   struct ByteVectorBatch: public ColumnVectorBatch {
-    ByteVectorBatch(int capacity);
+    ByteVectorBatch(unsigned long capacity);
     virtual ~ByteVectorBatch();
     std::unique_ptr<ByteRange[]> data;
   };
 
   struct StructVectorBatch: public ColumnVectorBatch {
-    StructVectorBatch(int capacity);
+    StructVectorBatch(unsigned long capacity);
     virtual ~StructVectorBatch();
-    std::list<std::unique_ptr<ColumnVectorBatch> > fields;
+    std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]> fields;
   };
 
   struct Decimal {

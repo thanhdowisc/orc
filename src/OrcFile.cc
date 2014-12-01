@@ -26,34 +26,37 @@ namespace orc {
   private:
     std::string filename ;
     std::ifstream file;
-    long length;
+    long totalLength;
 
   public:
-    FileInputStream(std::string filename) {
-      this->filename = filename ;
+    FileInputStream(std::string _filename) {
+      filename = _filename ;
       file.open(filename.c_str(), std::ios::in | std::ios::binary);
       file.seekg(0,file.end);
-      length = file.tellg();
+      totalLength = file.tellg();
     }
 
-    ~FileInputStream() { 
-      file.close();
-    }
+    ~FileInputStream();
 
     long getLength() const {
-      return this->length;
+      return totalLength;
     }
 
     void read(void* buffer, unsigned long offset,
               unsigned long length) override {
-      file.seekg(offset);
-      file.read((char*)buffer, length);
+      file.seekg(static_cast<std::streamoff>(offset));
+      file.read(static_cast<char*>(buffer), 
+                static_cast<std::streamsize>(length));
     }
 
     const std::string& getName() const override { 
       return filename;
     }
   };
+
+  FileInputStream::~FileInputStream() { 
+    file.close();
+  }
 
   std::unique_ptr<InputStream> readLocalFile(const std::string& path) {
     return std::unique_ptr<InputStream>(new FileInputStream(path));
