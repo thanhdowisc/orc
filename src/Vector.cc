@@ -20,145 +20,10 @@
 
 namespace orc {
 
-  class TypeImpl: public Type {
-  private:
-    int columnId;
-    TypeKind kind;
-    std::unique_ptr<std::unique_ptr<Type>[]> subTypes;
-    std::unique_ptr<std::string[]> fieldNames;
-    int subtypeCount;
-    int maxLength;
-    int precision;
-    int scale;
-  public:
-    TypeImpl(TypeKind _kind, 
-             std::initializer_list<std::unique_ptr<Type> > types,
-             std::initializer_list<std::string> fieldNames,
-             int maxLength,
-             int precision,
-             int scale);
-    virtual ~TypeImpl();
-
-    int assignIds(int root) override;
-
-    int getColumnId() const override {
-      return columnId;
-    }
-
-    TypeKind getKind() const override {
-      return kind;
-    }
-
-    int getSubtypeCount() const override {
-      return subtypeCount;
-    }
-
-    const Type& getSubtype(int i) const override {
-      return *(subTypes.get()[i].get());
-    }
-
-    const std::string& getFieldName(int i) const override {
-      return fieldNames.get()[i];
-    }
-
-    virtual int getMaximumLength() const override {
-      return maxLength;
-    }
-
-    virtual int getPrecision() const override {
-      return precision;
-    }
-
-    virtual int getScale() const override {
-      return scale;
-    }
-  };
-
-  Type::~Type() {
-    // PASS
-  }
-
-  TypeImpl::TypeImpl(TypeKind _kind, 
-                     std::initializer_list<std::unique_ptr<Type> > _types,
-                     std::initializer_list<std::string> _fieldNames,
-                     int _maxLength,
-                     int _precision,
-                     int _scale) {
-    kind = _kind;
-    maxLength = _maxLength;
-    precision = _precision;
-    scale = _scale;
-    subtypeCount = static_cast<int>(_types.size());
-    subTypes.reset(new std::unique_ptr<Type>[subtypeCount]);
-    int i = 0;
-    for(auto itr= _types.begin(); itr != _types.end(); ++itr) {
-      subTypes.get()[i++].
-        reset(const_cast<std::unique_ptr<Type>&>(*itr).release());
-    }
-    i = 0;
-    fieldNames.reset(new std::string[_fieldNames.size()]);
-    for(std::string field: _fieldNames) {
-      fieldNames.get()[i++] = field;
-    }
-  }
-
-  int TypeImpl::assignIds(int root) {
-    columnId = root;
-    int current = root + 1;
-    std::unique_ptr<Type> *children = subTypes.get();
-    for(int i=0; i < subtypeCount; ++i) {
-      current = children[i].get()->assignIds(current);
-    }
-    return current;
-  }
-
-  TypeImpl::~TypeImpl() {
-    // PASS
-  }
-
-  std::unique_ptr<Type> createPrimitiveType(TypeKind kind) {
-    return std::unique_ptr<Type>(new TypeImpl(kind, {}, {}, 0, 0, 0));
-  }
-
-  std::unique_ptr<Type> createCharType(bool isVarchar,
-                                       int maxLength) {
-    TypeKind kind = isVarchar ? VARCHAR : CHAR;
-    return std::unique_ptr<Type>(new TypeImpl(kind, {}, {}, maxLength, 0, 0));
-  }
-
-  std::unique_ptr<Type> createDecimalType(int precision,
-                                          int scale) {
-    return std::unique_ptr<Type>(new TypeImpl(DECIMAL, {}, {}, 0, precision, 
-                                              scale));
-  }
-
-  std::unique_ptr<Type> 
-    createStructType(std::initializer_list<std::unique_ptr<Type> > types,
-                     std::initializer_list<std::string> fieldNames) {
-    return std::unique_ptr<Type>(new TypeImpl(STRUCT, types, fieldNames, 
-                                              0, 0, 0));
-  }
-
-  std::unique_ptr<Type> createListType(std::unique_ptr<Type> element) {
-    return std::unique_ptr<Type>(new TypeImpl(LIST, {std::move(element)}, 
-                                              {}, 0, 0, 0));
-  }
-
-  std::unique_ptr<Type> createMapType(std::unique_ptr<Type> key,
-                                      std::unique_ptr<Type> value) {
-    return std::unique_ptr<Type>(new TypeImpl(MAP, {std::move(key), 
-            std::move(value)}, {}, 0, 0, 0));
-  }
-
-  std::unique_ptr<Type> 
-      createUnionType(std::initializer_list<std::unique_ptr<Type> > types) {
-    return std::unique_ptr<Type>(new TypeImpl(UNION, types, {}, 0, 0, 0));
-  }
-
-  ColumnVectorBatch::ColumnVectorBatch(unsigned long cap) {
+  ColumnVectorBatch::ColumnVectorBatch(unsigned long cap
+                                       ): notNull(new char[cap]) {
     capacity = cap;
     numElements = 0;
-    isNull = 0;
     hasNulls = false;
   }
 
@@ -198,8 +63,10 @@ namespace orc {
 
   ByteVectorBatch::ByteVectorBatch(unsigned long capacity
                                    ): ColumnVectorBatch(capacity),
-                                      data(std::unique_ptr<ByteRange[]>
-                                           (new ByteRange[capacity])){
+                                      data(std::unique_ptr<char*[]>
+                                           (new char *[capacity])),
+                                      length(std::unique_ptr<long[]>
+                                             (new long[capacity])) {
     // PASS
   }
 

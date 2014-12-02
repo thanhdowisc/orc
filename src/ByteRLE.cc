@@ -283,6 +283,8 @@ namespace orc {
           remainingBits -= 1;
           data[position] = (static_cast<unsigned char>(lastByte) >>
                             remainingBits) & 0x1;
+        } else {
+          data[position] = 0;
         }
         position += 1;
       }

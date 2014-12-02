@@ -20,6 +20,7 @@
 #include "orc/OrcFile.hh"
 #include "ColumnReader.hh"
 #include "RLE.hh"
+#include "TypeImpl.hh"
 
 #include <algorithm>
 #include <iostream>
@@ -30,14 +31,51 @@
 
 namespace orc {
 
+  struct ReaderOptionsPrivate {
+    std::list<int> includedColumns;
+    unsigned long dataStart;
+    unsigned long dataLength;
+    unsigned long tailLocation;
+    ReaderOptionsPrivate() {
+      includedColumns.push_back(1);
+      dataStart = 0;
+      dataLength = std::numeric_limits<unsigned long>::max();
+      tailLocation = std::numeric_limits<unsigned long>::max();
+    }
+  };
+
+  ReaderOptions::ReaderOptions(): 
+    privateBits(std::unique_ptr<ReaderOptionsPrivate>
+                  (new ReaderOptionsPrivate())) {
+    // PASS
+  }
+
+  ReaderOptions::ReaderOptions(const ReaderOptions& rhs): 
+    privateBits(std::unique_ptr<ReaderOptionsPrivate>
+                (new ReaderOptionsPrivate(*(rhs.privateBits.get())))) {
+    // PASS
+  }
+
+  ReaderOptions::ReaderOptions(ReaderOptions&& rhs) {
+    privateBits.swap(rhs.privateBits);
+  }
+  
+  ReaderOptions& ReaderOptions::operator=(const ReaderOptions& rhs) {
+    if (this != &rhs) {
+      privateBits.reset(new ReaderOptionsPrivate(*(rhs.privateBits.get())));
+    }
+    return *this;
+  }
+  
+  ReaderOptions::~ReaderOptions() {
+    // PASS
+  }
+
   Reader::~Reader() {
     // PASS
   }
 
-  Type parseType(const proto::Footer& footer) {
-  }
-
-  static const int DIRECTORY_SIZE_GUESS = 16 * 1024;
+  static const unsigned long DIRECTORY_SIZE_GUESS = 16 * 1024;
 
   class ReaderImpl : public Reader {
   private:
@@ -46,27 +84,28 @@ namespace orc {
     ReaderOptions options;
 
     // postscript
-    proto::Postscript postscript;
-    long blockSize;
+    proto::PostScript postscript;
+    unsigned long blockSize;
     CompressionKind compression;
-    long postscriptLength;
+    unsigned long postscriptLength;
 
     // footer
     proto::Footer footer;
     proto::Metadata metadata;
     std::unique_ptr<unsigned long[]> firstRowOfStripe;
-    Type schema;
+    std::unique_ptr<Type> schema;
 
     // reading state
-    long currentStripe;
-    long currentRowInStripe;
+    unsigned long currentStripe;
+    unsigned long currentRowInStripe;
     std::unique_ptr<ColumnReader> reader;
 
-    void readPostscript(char * buffer, int length);
-    void readFooter(char *buffer, int length);
-    proto::StripeFooter getStripeFooter(long stripe);
+    void readPostscript(char * buffer, unsigned long length);
+    void readFooter(char *buffer, unsigned long length,
+                    unsigned long fileLength);
+    proto::StripeFooter getStripeFooter(unsigned long stripe);
     void startNextStripe();
-    void ensureOrcFooter(char* buffer, int length);
+    void ensureOrcFooter(char* buffer, unsigned long length);
     void checkOrcVersion();
 
   public:
@@ -79,15 +118,13 @@ namespace orc {
     ReaderImpl(std::unique_ptr<InputStream> stream, 
                const ReaderOptions& options);
 
-    void close() override;
+    CompressionKind getCompression() const override;
 
-    int getCompression() const override;
+    unsigned long getNumberOfRows() const override;
 
-    long getNumberOfRows() const override;
+    unsigned long getRowIndexStride() const override;
 
-    int getRowStride() const override;
-
-    std::string getStreamName() const override;
+    const std::string& getStreamName() const override;
   };
 
   InputStream::~InputStream() {
@@ -96,49 +133,47 @@ namespace orc {
 
   ReaderImpl::ReaderImpl(std::unique_ptr<InputStream> input,
                          const ReaderOptions& opts
-                         ): stream(input), options(opts) {
+                         ): stream(std::move(input)), options(opts) {
     // figure out the size of the file using the option or filesystem
-    long size = std::min(options.getTailLocation(), 
-                         stream->getLength());
+    unsigned long size = std::min(options.getTailLocation(), 
+                                  static_cast<unsigned long>
+                                     (stream->getLength()));
 
     //read last bytes into buffer to get PostScript
-    int readSize = (int) std::min((int)size, DIRECTORY_SIZE_GUESS);
-    std::unique_ptr<char[]> buffer = new char[readSize];
+    unsigned long readSize = std::min(size, DIRECTORY_SIZE_GUESS);
+    std::unique_ptr<char[]> buffer = 
+      std::unique_ptr<char[]>(new char[readSize]);
     stream->read(buffer.get(), size - readSize, readSize);
-    parsePostscript(buffer.get(), readSize);
-    parseFooter(buffer.get(), readSize);
+    readPostscript(buffer.get(), readSize);
+    readFooter(buffer.get(), readSize, size);
     currentStripe = 0;
     currentRowInStripe = 0;
-    long rowTotal = 0;
+    unsigned long rowTotal = 0;
     firstRowOfStripe.reset(new unsigned long[footer.stripes_size()]);
     for(int i=0; i < footer.stripes_size(); ++i) {
       firstRowOfStripe.get()[i] = rowTotal;
-      rowTotal += footer.stripes(i).numberOfRows();
+      rowTotal += footer.stripes(i).numberofrows();
     }
-    schema = parseType(footer);
+    schema = convertType(footer.types(0), footer);
   }
                          
-  void ReaderImpl::close() {
-    // TODO
-  }
-
   CompressionKind ReaderImpl::getCompression() const { 
     return compression;
   }
 
-  long ReaderImpl::getNumberOfRows() const { 
+  unsigned long ReaderImpl::getNumberOfRows() const { 
     return footer.numberofrows();
   }
 
-  int ReaderImpl::getRowStride() const {
+  unsigned long ReaderImpl::getRowIndexStride() const {
     return footer.rowindexstride();
   }
 
-  std::string ReaderImpl::getStreamName() const {
+  const std::string& ReaderImpl::getStreamName() const {
     return stream->getName();
   }
 
-  void ReaderImpl::readPostscript(char *buffer, int readSize) {
+  void ReaderImpl::readPostscript(char *buffer, unsigned long readSize) {
 
     //get length of PostScript
     postscriptLength = buffer[readSize - 1] & 0xff;
@@ -146,10 +181,11 @@ namespace orc {
     ensureOrcFooter(buffer, readSize);
 
     //read the PostScript
-    std::unique_ptr<ZeroCopyInputStream> pbStream = 
-      std::unique_ptr(new SeekableArrayInputStream
-                      (buffer + readSize - (1 + postscriptLength), 
-                       postscriptLength));
+    std::unique_ptr<SeekableInputStream> pbStream = 
+      std::unique_ptr<SeekableInputStream>(new SeekableArrayInputStream
+                                           (buffer + readSize - 
+                                               (1 + postscriptLength), 
+                                            postscriptLength));
     if (!postscript.ParseFromZeroCopyStream(pbStream.get())) {
       throw std::string("bad postscript parse");
     }
@@ -162,30 +198,15 @@ namespace orc {
     checkOrcVersion();
 
     //check compression codec
-    switch (postscript.compression()) {
-    case proto::NONE:
-      compression = NONE;
-      break;
-    case proto::ZLIB:
-      compression = ZLIB;
-      break;
-    case proto::SNAPPY:
-      compression = SNAPPY;
-      break;
-    case proto::LZO:
-      compression = LZO;
-      break;
-    default:
-      throw std::invalid_argument("Unknown compression");
-    }
+    compression = static_cast<CompressionKind>(postscript.compression());
   }
 
-  void ReaderImpl::readFooter(char* buffer, int readSize,
+  void ReaderImpl::readFooter(char* buffer, unsigned long readSize,
                               unsigned long fileLength) {
-    int footerSize = postscript.footerlength();
-    int metadataSize = postscript.metadatalength();
+    unsigned long footerSize = postscript.footerlength();
+    unsigned long metadataSize = postscript.metadatalength();
     //check if extra bytes need to be read
-    int tailSize = 1 + postscriptLength + footerSize + metadataSize;
+    unsigned long tailSize = 1 + postscriptLength + footerSize + metadataSize;
     char *footerBuf = buffer;
     if (length < tailSize) {
       footerBuf = new char[tailSize];
@@ -194,7 +215,7 @@ namespace orc {
       stream->read(footerBuf, fileLength - tailSize, tailSize - readSize);
       memcpy(footerBuf + tailSize - readSize, buffer, readSize);
     }
-    int tailStart = readSize - tailSize;
+    unsigned long tailStart = readSize - tailSize;
 
     pbStream.reset(createCodec(compression,
                                std::unique_ptr<SeekableInputStream>

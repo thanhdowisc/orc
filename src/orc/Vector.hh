@@ -54,12 +54,12 @@ namespace orc {
     virtual int assignIds(int root) = 0;
     virtual int getColumnId() const = 0;
     virtual TypeKind getKind() const = 0;
-    virtual int getSubtypeCount() const = 0;
-    virtual const Type& getSubtype(int typeId) const = 0;
-    virtual const std::string& getFieldName(int fieldId) const = 0;
-    virtual int getMaximumLength() const = 0;
-    virtual int getPrecision() const = 0;
-    virtual int getScale() const = 0;
+    virtual unsigned int getSubtypeCount() const = 0;
+    virtual const Type& getSubtype(unsigned int typeId) const = 0;
+    virtual const std::string& getFieldName(unsigned int fieldId) const = 0;
+    virtual unsigned int getMaximumLength() const = 0;
+    virtual unsigned int getPrecision() const = 0;
+    virtual unsigned int getScale() const = 0;
   };
 
   const int DEFAULT_DECIMAL_SCALE = 18;
@@ -88,8 +88,8 @@ namespace orc {
     unsigned long capacity;
     // the number of current occupied slots
     unsigned long numElements;
-    // an array of capacity length marking null values
-    std::unique_ptr<char[]> isNull;
+    // an array of capacity length marking non-null values
+    std::unique_ptr<char[]> notNull;
     // whether there are any null values
     bool hasNulls;
   };
@@ -106,15 +106,11 @@ namespace orc {
     std::unique_ptr<double[]> data;
   };
 
-  struct ByteRange {
-    char* data;
-    int length;
-  };
-
   struct ByteVectorBatch: public ColumnVectorBatch {
     ByteVectorBatch(unsigned long capacity);
     virtual ~ByteVectorBatch();
-    std::unique_ptr<ByteRange[]> data;
+    std::unique_ptr<char*([])> data;
+    std::unique_ptr<long[]> length;
   };
 
   struct StructVectorBatch: public ColumnVectorBatch {

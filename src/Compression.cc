@@ -54,9 +54,10 @@ namespace orc {
     blockSize = blkSize == -1 ? length : static_cast<unsigned long>(blkSize);
   }
 
-  SeekableArrayInputStream::SeekableArrayInputStream(unsigned char* values, 
-                                                     long size, long blkSize) {
-    length = static_cast<unsigned long>(size);
+  SeekableArrayInputStream::SeekableArrayInputStream(char* values, 
+                                                     unsigned long size, 
+                                                     long blkSize) {
+    length = size;
     data = std::unique_ptr<char[]>(new char[length]);
     memcpy(data.get(), values, length);
     position = 0;
@@ -178,11 +179,11 @@ namespace orc {
                  std::unique_ptr<SeekableInputStream> input,
                  unsigned long) {
     switch (kind) {
-    case NONE:
+    case CompressionKind_NONE:
       return std::move(input);
-    case LZO:
-    case SNAPPY:
-    case ZLIB:
+    case CompressionKind_LZO:
+    case CompressionKind_SNAPPY:
+    case CompressionKind_ZLIB:
       throw std::string("Not implemented yet");
     }
   }

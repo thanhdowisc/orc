@@ -28,7 +28,7 @@ namespace orc {
     std::unique_ptr<SeekableInputStream> stream =
       stripe.getStream(columnId, proto::Stream_Kind_PRESENT);
     if (stream.get()) {
-      isNullDecoder = createBooleanRleDecoder(std::move(stream));
+      notNullDecoder = createBooleanRleDecoder(std::move(stream));
     }
   }
 
@@ -37,22 +37,44 @@ namespace orc {
   }
 
   unsigned long ColumnReader::skip(unsigned long numValues) {
-    ByteRleDecoder* decoder = isNullDecoder.get();
+    ByteRleDecoder* decoder = notNullDecoder.get();
     if (decoder) {
-      decoder->skip(numValues);
-      // TODO we need to get the number of non null values
+      // page through the values that we want to skip
+      // and count how many are non-null
+      unsigned long bufferSize = std::min(32768UL, numValues);
+      char* buffer = new char[bufferSize];
+      unsigned long remaining = numValues;
+      while (remaining > 0) {
+        unsigned long chunkSize = std::min(remaining, bufferSize);
+        decoder->next(buffer, chunkSize, 0);
+        remaining -= chunkSize;
+        for(unsigned long i=0; i < chunkSize; ++i) {
+          if (!buffer[i]) {
+            numValues -= 1;
+          }
+        }
+      }
     }
     return numValues;
   }
 
   void ColumnReader::next(ColumnVectorBatch& rowBatch, 
-                          unsigned long numValues) {
+                          unsigned long numValues,
+                          char* incomingMask) {
     rowBatch.numElements = numValues;
-    ByteRleDecoder* decoder = isNullDecoder.get();
-    rowBatch.hasNulls = decoder != nullptr;
+    ByteRleDecoder* decoder = notNullDecoder.get();
     if (decoder) {
-      decoder->next(rowBatch.isNull.get(), numValues, 0);
+      char* notNullArray = rowBatch.notNull.get();
+      decoder->next(notNullArray, numValues, incomingMask);
+      // check to see if there are nulls in this batch
+      for(unsigned long i=0; i < numValues; ++i) {
+        if (!notNullArray[i]) {
+          rowBatch.hasNulls = true;
+          return;
+        }
+      }
     }
+    rowBatch.hasNulls = false;
   }
 
   class IntegerColumnReader: public ColumnReader {
@@ -65,7 +87,9 @@ namespace orc {
 
     unsigned long skip(unsigned long numValues) override;
 
-    void next(ColumnVectorBatch& rowBatch, unsigned long numValues) override;
+    void next(ColumnVectorBatch& rowBatch, 
+              unsigned long numValues,
+              char* notNull) override;
   };
 
   IntegerColumnReader::IntegerColumnReader(const Type& type,
@@ -99,10 +123,11 @@ namespace orc {
   }
 
   void IntegerColumnReader::next(ColumnVectorBatch& rowBatch, 
-                                 unsigned long numValues) {
-    ColumnReader::next(rowBatch, numValues);
+                                 unsigned long numValues,
+                                 char *notNull) {
+    ColumnReader::next(rowBatch, numValues, notNull);
     rle->next(dynamic_cast<LongVectorBatch&>(rowBatch).data.get(),
-              numValues, rowBatch.isNull.get());
+              numValues, rowBatch.hasNulls ? rowBatch.notNull.get() : 0);
   }
 
   class StringDictionaryColumnReader: public ColumnReader {
@@ -118,7 +143,9 @@ namespace orc {
 
     unsigned long skip(unsigned long numValues) override;
 
-    void next(ColumnVectorBatch& rowBatch, unsigned long numValues) override;
+    void next(ColumnVectorBatch& rowBatch, 
+              unsigned long numValues,
+              char *notNull) override;
   };
 
   void readFully(char* buffer, long bufferSize, SeekableInputStream* stream) {
@@ -183,16 +210,17 @@ namespace orc {
   }
 
   void StringDictionaryColumnReader::next(ColumnVectorBatch& rowBatch, 
-                                          unsigned long numValues) {
-    ColumnReader::next(rowBatch, numValues);
+                                          unsigned long numValues,
+                                          char *notNull) {
+    ColumnReader::next(rowBatch, numValues, notNull);
     rle->next(dynamic_cast<LongVectorBatch&>(rowBatch).data.get(),
-              numValues, rowBatch.isNull.get());
+              numValues, rowBatch.hasNulls ? rowBatch.notNull.get() : 0);
   }
 
   class StructColumnReader: public ColumnReader {
   private:
     std::unique_ptr<std::unique_ptr<ColumnReader>[]> children;
-    int subtypeCount;
+    unsigned int subtypeCount;
 
   public:
     StructColumnReader(const Type& type,
@@ -201,7 +229,9 @@ namespace orc {
 
     unsigned long skip(unsigned long numValues) override;
 
-    void next(ColumnVectorBatch& rowBatch, unsigned long numValues) override;
+    void next(ColumnVectorBatch& rowBatch, 
+              unsigned long numValues,
+              char *notNull) override;
   };
 
   StructColumnReader::StructColumnReader(const Type& type, 
@@ -211,7 +241,7 @@ namespace orc {
     children.reset(new std::unique_ptr<ColumnReader>[subtypeCount]);
     switch (stripe.getEncoding(columnId).kind()) {
     case proto::ColumnEncoding_Kind_DIRECT:
-      for(int i=0; i < subtypeCount; ++i) {
+      for(unsigned int i=0; i < subtypeCount; ++i) {
         children.get()[i].reset(buildReader(type.getSubtype(i), stripe
                                             ).release());
       }
@@ -229,19 +259,22 @@ namespace orc {
 
   unsigned long StructColumnReader::skip(unsigned long numValues) {
     numValues = ColumnReader::skip(numValues);
-    for(int i=0; i < subtypeCount; ++i) {
+    for(unsigned int i=0; i < subtypeCount; ++i) {
       children.get()[i].get()->skip(numValues);
     }
     return numValues;
   }
 
   void StructColumnReader::next(ColumnVectorBatch& rowBatch, 
-                                unsigned long numValues) {
-    ColumnReader::next(rowBatch, numValues);
+                                unsigned long numValues,
+                                char *notNull) {
+    ColumnReader::next(rowBatch, numValues, notNull);
     std::unique_ptr<ColumnVectorBatch> *childBatch = 
       dynamic_cast<StructVectorBatch&>(rowBatch).fields.get();
-    for(int i=0; i < subtypeCount; ++i) {
-      children.get()[i].get()->next(*(childBatch[i]), numValues);
+    for(unsigned int i=0; i < subtypeCount; ++i) {
+      children.get()[i].get()->next(*(childBatch[i]), numValues,
+                                    rowBatch.hasNulls ? 
+                                    rowBatch.notNull.get(): 0);
     }
   }
 

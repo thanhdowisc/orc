@@ -20,6 +20,7 @@
 #define ORC_COLUMN_READER_HH
 
 #include "orc/Vector.hh"
+#include "ByteRLE.hh"
 #include "Compression.hh"
 #include "wrap/orc-proto-wrapper.hh"
 
@@ -47,7 +48,7 @@ namespace orc {
    */
   class ColumnReader {
   protected:
-    std::unique_ptr<ByteRleDecoder> isNullDecoder;
+    std::unique_ptr<ByteRleDecoder> notNullDecoder;
     int columnId;
 
   public:
@@ -59,17 +60,20 @@ namespace orc {
      * Skip number of specified rows.
      * @param numValues the number of values to skip
      * @return the number of non-null values skipped
-     * @throws IOException
      */
     virtual unsigned long skip(unsigned long numValues);
 
     /**
      * Read the next group of values into this rowBatch.
      * @param rowBatch the memory to read into.
-     * @throws IOException
+     * @param numValues the number of values to read
+     * @param notNull if null, all values are not null. Otherwise, it is 
+     *           a mask (with at least numValues bytes) for which values to 
+     *           set.
      */
     virtual void next(ColumnVectorBatch& rowBatch, 
-                      unsigned long numValues);
+                      unsigned long numValues,
+                      char* notNull);
   };
 
   /**
