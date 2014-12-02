@@ -307,7 +307,7 @@ namespace orc {
     }
 
     // fill in the remaining values
-    if (nonNulls != 0) {
+    if (position < numValues) {
       // read the new bytes into the array
       unsigned long bytesRead = (nonNulls + 7) / 8;
       ByteRleDecoderImpl::next(data + position, bytesRead, 0);
@@ -322,6 +322,8 @@ namespace orc {
             unsigned long shiftPosn = (-bitsLeft) % 8;
             data[i] = (data[position + (bitsLeft - 1) / 8] >> shiftPosn) & 0x1;
             bitsLeft -= 1;
+          } else {
+            data[i] = 0;
           }
         }
       } else {

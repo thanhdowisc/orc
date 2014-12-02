@@ -1109,7 +1109,10 @@ namespace orc {
     char* allNull = new char[3];
     memset(allNull, 1, 3);
     for(int i=0; i < 16384; i += 5) {
+      memset(data, -1, 3);
       rle->next(data, 3, someNull);
+      EXPECT_EQ(0, data[0]) << "Output wrong at " << i;
+      EXPECT_EQ(0, data[2]) << "Output wrong at " << i;
       if (i < 8192) {
         EXPECT_EQ(i & 1, data[1]) << "Output wrong at " << i;
       } else {
@@ -1122,7 +1125,7 @@ namespace orc {
       memset(data, -1, 3);
       rle->next(data, 3, allNull);
       for(int j=0; j < 3; ++j) {
-        EXPECT_EQ(-1, data[j]) << "Output wrong at " << i << ", " << j;
+        EXPECT_EQ(0, data[j]) << "Output wrong at " << i << ", " << j;
       }
     }
     delete[] allNull;
@@ -1368,8 +1371,10 @@ namespace orc {
     char* noNull = new char[16384];
     memset(noNull, 0, 16384);
     rle->next(data, 16384, allNull);
+    for(int i=0; i < 16384; ++i) {
+      EXPECT_EQ(0, data[i]) << "Output wrong at " << i;
+    }
     rle->next(data, 16384, noNull);
-    rle->next(data, 16384, allNull);
     for(int i=0; i < 16384; ++i) {
       if (i < 8192) {
         EXPECT_EQ(i & 1, data[i]) << "Output wrong at " << i;
@@ -1410,7 +1415,7 @@ namespace orc {
       }
       data[0] = -1;
       rle->next(data, 1, allNull);
-      EXPECT_EQ(-1, data[0]) << "Output wrong at " << i;
+      EXPECT_EQ(0, data[0]) << "Output wrong at " << i;
     }
     delete[] data;
     delete[] noNull;

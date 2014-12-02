@@ -125,6 +125,30 @@ namespace orc {
     unsigned long getRowIndexStride() const override;
 
     const std::string& getStreamName() const override;
+    
+    unsigned long getRawDataSize() const override;
+
+    std::list<std::string> getMetadataKeys() const override;
+
+    std::string getMetadataValue(const std::string& key) const override;
+
+    bool hasMetadataValue(const std::string& key) const override;
+
+    unsigned long getCompressionSize() const override;
+
+    const std::list<StripeInformation>& getStripes() const override;
+
+    unsigned long getContentLength() const override;
+
+    std::list<ColumnStatistics*> getStatistics() const override;
+
+    const Type& getType() const override;
+
+    bool next(ColumnVectorBatch& data) override;
+
+    unsigned long getRowNumber() const override;
+
+    void seekToRow(unsigned long rowNumber) override;
   };
 
   InputStream::~InputStream() {
@@ -208,7 +232,7 @@ namespace orc {
     //check if extra bytes need to be read
     unsigned long tailSize = 1 + postscriptLength + footerSize + metadataSize;
     char *footerBuf = buffer;
-    if (length < tailSize) {
+    if (readSize < tailSize) {
       footerBuf = new char[tailSize];
       // more bytes need to be read, seek back to the right place and read 
       // extra bytes
@@ -216,31 +240,31 @@ namespace orc {
       memcpy(footerBuf + tailSize - readSize, buffer, readSize);
     }
     unsigned long tailStart = readSize - tailSize;
-
-    pbStream.reset(createCodec(compression,
-                               std::unique_ptr<SeekableInputStream>
-                                 (new SeekableArrayInputStream(buffer.get(),
-                                                               tailStart, 
-                                                               metadataSize)),
-                               blockSize));
+    std::unique_ptr<SeekableInputStream> pbStream = 
+      createCodec(compression,
+                  std::unique_ptr<SeekableInputStream>
+                  (new SeekableArrayInputStream(buffer + tailStart, 
+                                                metadataSize)),
+                  blockSize);
     if (!metadata.ParseFromZeroCopyStream(pbStream.get())) {
       throw std::string("bad metadata parse");
     }
 
-    pbStream.reset(createCodec(compression,
-                               std::unique_ptr<SeekableInputStream>
-                                 (new SeekableArrayInputStream(buffer.get(),
-                                                               tailStart +
-                                                                 metadataSize,
-                                                               footerSize)),
-                               blockSize));
+    pbStream =createCodec(compression,
+                          std::unique_ptr<SeekableInputStream>
+                          (new SeekableArrayInputStream(buffer +
+                                                          tailStart +
+                                                          metadataSize,
+                                                        footerSize)),
+                          blockSize);
     if (!footer.ParseFromZeroCopyStream(pbStream.get())) {
       throw std::string("bad footer parse");
     }
   }
 
-  proto::StripeFooter ReaderImpl::getStripeFooter(long stripeIx) {
+  proto::StripeFooter ReaderImpl::getStripeFooter(unsigned long) {
     // TODO
+    return proto::StripeFooter();
   }
 
   void ReaderImpl::startNextStripe() {
@@ -251,8 +275,8 @@ namespace orc {
     // TODO
   }
 
-  std::unique_ptr<Reader> createReader(InputStream* stream, 
+  std::unique_ptr<Reader> createReader(std::unique_ptr<InputStream> stream, 
                                        const ReaderOptions& options) {
-    return std::unique_ptr<Reader>(new ReaderImpl(stream, options));
+    return std::unique_ptr<Reader>(new ReaderImpl(std::move(stream), options));
   }
 }

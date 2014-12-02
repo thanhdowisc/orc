@@ -420,13 +420,13 @@ namespace orc {
      * Get the statistics about the columns in the file.
      * @return the information about the column
      */
-    virtual std::list<ColumnStatistics*> getStatistics() = 0;
+    virtual std::list<ColumnStatistics*> getStatistics() const = 0;
 
     /**
      * Get the type of the rows in the file. The top level is always a struct.
      * @return the root type
      */
-    virtual const Type& getTypes() const = 0;
+    virtual const Type& getType() const = 0;
 
     /**
      * Read the next row batch from the current position.
