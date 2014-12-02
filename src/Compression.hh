@@ -66,6 +66,29 @@ namespace orc {
     virtual google::protobuf::int64 ByteCount() const;
     virtual void seek(PositionProvider& position);
   };
+
+  /** 
+   * Compression base class
+   */
+  class CompressionCodec {
+
+  /**
+   * Compress the in buffer to the out buffer.
+   * @param in the bytes to compress
+   * @param out the uncompressed bytes
+   * @return true if the output is smaller than input
+   */
+  virtual bool compress(SeekableInputStream& in, SeekableInputStream& out) = 0;
+
+  /**
+   * Decompress the in buffer to the out buffer.
+   * @param in the bytes to decompress
+   * @param out the decompressed bytes
+   */
+  virtual void decompress(SeekableInputStream& in, SeekableInputStream& out) = 0;
+
+  };
+
 }
 
 #endif
