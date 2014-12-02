@@ -50,7 +50,7 @@ namespace orc {
     /**
      * Read a number of values into the batch.
      */
-    virtual void next(char* data, unsigned long numValues, char* isNull);
+    virtual void next(char* data, unsigned long numValues, char* notNull);
 
   protected:
     inline void nextBuffer();
@@ -146,10 +146,10 @@ namespace orc {
   }
 
   void ByteRleDecoderImpl::next(char* data, unsigned long numValues,
-                                char* isNull) {
+                                char* notNull) {
     unsigned long position = 0;
     // skip over null values
-    while (isNull && position < numValues && isNull[position]) {
+    while (notNull && position < numValues && !notNull[position]) {
       position += 1;
     }
     while (position < numValues) {
@@ -161,9 +161,9 @@ namespace orc {
       unsigned long count = std::min(numValues - position, remainingValues);
       unsigned long consumed = 0;
       if (repeating) {
-        if (isNull) {
+        if (notNull) {
           for(unsigned long i=0; i < count; ++i) {
-            if (!isNull[position + i]) {
+            if (notNull[position + i]) {
               data[position + i] = value;
               consumed += 1;
             }
@@ -173,9 +173,9 @@ namespace orc {
           consumed = count;
         }
       } else {
-        if (isNull) {
+        if (notNull) {
           for(unsigned long i=0; i < count; ++i) {
-            if (!isNull[i]) {
+            if (notNull[i]) {
               data[position + i] = readByte();
               consumed += 1;
             }
@@ -198,7 +198,7 @@ namespace orc {
       remainingValues -= consumed;
       position += count;
       // skip over any null values
-      while (isNull && position < numValues && isNull[position]) {
+      while (notNull && position < numValues && !notNull[position]) {
         position += 1;
       }
     }
@@ -229,7 +229,7 @@ namespace orc {
     /**
      * Read a number of values into the batch.
      */
-    virtual void next(char* data, unsigned long numValues, char* isNull);
+    virtual void next(char* data, unsigned long numValues, char* notNull);
 
   protected:
     size_t remainingBits;
@@ -272,14 +272,14 @@ namespace orc {
   }
 
   void BooleanRleDecoderImpl::next(char* data, unsigned long numValues,
-                                   char* isNull) {
+                                   char* notNull) {
     // next spot to fill in
     unsigned long position = 0;
 
     // use up any remaining bits
-    if (isNull) {
+    if (notNull) {
       while(remainingBits > 0 && position < numValues) {
-        if (!isNull[position]) {
+        if (notNull[position]) {
           remainingBits -= 1;
           data[position] = (static_cast<unsigned char>(lastByte) >>
                             remainingBits) & 0x1;
@@ -298,9 +298,9 @@ namespace orc {
 
     // count the number of nonNulls remaining
     unsigned long nonNulls = numValues - position;
-    if (isNull) {
+    if (notNull) {
       for(unsigned long i=position; i < numValues; ++i) {
-        if (isNull[i]) {
+        if (!notNull[i]) {
           nonNulls -= 1;
         }
       }
@@ -315,10 +315,10 @@ namespace orc {
       remainingBits = bytesRead * 8 - nonNulls;
       // expand the array backwards so that we don't clobber the data
       unsigned long bitsLeft = bytesRead * 8 - remainingBits;
-      if (isNull) {
+      if (notNull) {
         for(long i=static_cast<long>(numValues) - 1;
             i >= static_cast<long>(position); --i) {
-          if (!isNull[i]) {
+          if (notNull[i]) {
             unsigned long shiftPosn = (-bitsLeft) % 8;
             data[i] = (data[position + (bitsLeft - 1) / 8] >> shiftPosn) & 0x1;
             bitsLeft -= 1;

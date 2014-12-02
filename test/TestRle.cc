@@ -27,10 +27,10 @@ namespace orc {
     SeekableInputStream* stream =
       new SeekableArrayInputStream({0x61, 0xff, 0x64,
             0xfb, 0x02, 0x03, 0x5, 0x7, 0xb});
-    std::unique_ptr<orc::RleDecoder> rle =
-      orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
+    std::unique_ptr<RleDecoder> rle =
+      createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
                                       (stream)),
-                            false, orc::VERSION_1);
+                            false, RleVersion_1);
     long* data = new long[105];
     rle->next(data, 105, 0);
 
@@ -49,14 +49,14 @@ namespace orc {
     SeekableInputStream* stream =
       new SeekableArrayInputStream({0xf8, 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6,
             0x7});
-    std::unique_ptr<orc::RleDecoder> rle =
-      orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
+    std::unique_ptr<RleDecoder> rle =
+      createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
                                       (stream)),
-                            true, orc::VERSION_1);
+                            true, RleVersion_1);
     long* data = new long[8];
-    char* isNull = new char[8];
-    memset(isNull, 0, 8);
-    rle->next(data, 8, isNull);
+    char* notNull = new char[8];
+    memset(notNull, 1, 8);
+    rle->next(data, 8, notNull);
 
     for(int i=0; i < 8; ++i) {
       if (i % 2 == 0) {
@@ -65,17 +65,17 @@ namespace orc {
         EXPECT_EQ(-((i+1)/2), data[i]);
       }
     }
-    delete[] isNull;
+    delete[] notNull;
     delete[] data;
   }
 
   TEST(RLEv1, splitHeader) {
     SeekableInputStream* stream =
       new SeekableArrayInputStream({0x0, 0x00, 0xdc, 0xba, 0x98, 0x76}, 4);
-    std::unique_ptr<orc::RleDecoder> rle =
-      orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
+    std::unique_ptr<RleDecoder> rle =
+      createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
                                       (stream)),
-                            false, orc::VERSION_1);
+                            false, RleVersion_1);
     long* data = new long[200];
     rle->next(data, 3, 0);
 
@@ -89,10 +89,10 @@ namespace orc {
     SeekableInputStream* stream =
       new SeekableArrayInputStream({0x7d, 0x01, 0xff, 0x01, 0xfb, 0x01,
             0x02, 0x03, 0x04, 0x05});
-    std::unique_ptr<orc::RleDecoder> rle =
-      orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
+    std::unique_ptr<RleDecoder> rle =
+      createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
                                       (stream)),
-                            false, orc::VERSION_1);
+                            false, RleVersion_1);
     long* data = new long[200];
     for(int i=0; i < 42; ++i) {
       rle->next(data, 3, 0);
@@ -117,10 +117,10 @@ namespace orc {
   TEST(RLEv1, testSigned) {
     SeekableInputStream* stream =
       new SeekableArrayInputStream({0x7f, 0xff, 0x20});
-    std::unique_ptr<orc::RleDecoder> rle =
-      orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
+    std::unique_ptr<RleDecoder> rle =
+      createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
                                       (stream)),
-                            true, orc::VERSION_1);
+                            true, RleVersion_1);
     long* data = new long[100];
     rle->next(data, 100, 0);
     for(int i=0; i < 100; ++i) {
@@ -136,26 +136,30 @@ namespace orc {
   TEST(RLEv1, testNull) {
     SeekableInputStream* stream =
       new SeekableArrayInputStream({0x75, 0x02, 0x00});
-    std::unique_ptr<orc::RleDecoder> rle =
-      orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
+    std::unique_ptr<RleDecoder> rle =
+      createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
                                       (stream)),
-                            true, orc::VERSION_1);
+                            true, RleVersion_1);
     long* data = new long[24];
-    char* isNull = new char[24];
+    char* notNull = new char[24];
     for(int i=0; i < 24; ++i) {
-      isNull[i] = i % 2;
+      notNull[i] = (i + 1) % 2;
     }
     for(int i=0; i < 10; ++i) {
-      rle->next(data, 24, isNull);
       for(int j=0; j < 24; ++j) {
-        EXPECT_EQ(j % 2, isNull[j]);
-        if (!isNull[j]) {
+        data[j] = -1;
+      }
+      rle->next(data, 24, notNull);
+      for(int j=0; j < 24; ++j) {
+        if (notNull[j]) {
           EXPECT_EQ(i * 24 + j, data[j]);
+        } else {
+          EXPECT_EQ(-1, data[j]);
         }
       }
     }
     delete[] data;
-    delete[] isNull;
+    delete[] notNull;
   }
 
   TEST(RLEv1, testAllNulls) {
@@ -164,16 +168,16 @@ namespace orc {
             0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
             0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
             0x3d, 0x00, 0x12});
-    std::unique_ptr<orc::RleDecoder> rle =
+    std::unique_ptr<RleDecoder> rle =
       createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
                                       (stream)),
-                            false, VERSION_1);
+                            false, RleVersion_1);
     long* data = new long[16];
     char* allNull = new char[16];
     char* noNull = new char[16];
     for(int i=0; i < 16; ++i) {
-      allNull[i] = 1;
-      noNull[i] = 0;
+      allNull[i] = 0;
+      noNull[i] = 1;
       data[i] = -1;
     }
     rle->next(data, 16, allNull);
@@ -406,10 +410,10 @@ namespace orc {
 128, 204,  63, 128, 208,  63, 128, 212,  63, 128, 216,  63, 128, 220,  63, 128,
 224,  63, 128, 228,  63, 128, 232,  63, 128, 236,  63, 128, 240,  63, 128, 244,
  63, 128, 248,  63, 128, 252,  63});
-    std::unique_ptr<orc::RleDecoder> rle =
-      orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
+    std::unique_ptr<RleDecoder> rle =
+      createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
                                       (stream)),
-                            true, orc::VERSION_1);
+                            true, RleVersion_1);
     long* data = new long[1];
     for(int i=0; i < 2048; i += 10) {
       rle->next(data, 1, 0);
@@ -2114,10 +2118,10 @@ namespace orc {
       positions[i].push_back(fileLoc[i]);
       positions[i].push_back(rleLoc[i]);
     }
-    std::unique_ptr<orc::RleDecoder> rle =
-      orc::createRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
+    std::unique_ptr<RleDecoder> rle =
+      createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
                                       (stream)),
-                            true, orc::VERSION_1);
+                            true, RleVersion_1);
     long* data = new long[2048];
     rle->next(data, 2048, 0);
     for(int i=0; i < 2048; ++i) {

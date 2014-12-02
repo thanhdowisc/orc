@@ -26,8 +26,8 @@
 namespace orc {
 
   enum RleVersion {
-    VERSION_1,
-    VERSION_2
+    RleVersion_1,
+    RleVersion_2
   };
 
   class RleDecoder {
@@ -53,10 +53,10 @@ namespace orc {
      * Read a number of values into the batch.
      * @param data the array to read into
      * @param numValues the number of values to read
-     * @param isNull If the pointer is null, all values are read. If the
-     *    pointer is not null, positions that are true are skipped.
+     * @param notNull If the pointer is null, all values are read. If the
+     *    pointer is not null, positions that are false are skipped.
      */
-    virtual void next(long* data, unsigned long numValues, char* isNull) = 0;
+    virtual void next(long* data, unsigned long numValues, char* notNull) = 0;
   };
 
   /**

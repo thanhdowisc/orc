@@ -143,13 +143,13 @@ namespace orc {
       createByteRleDecoder(std::move(std::unique_ptr<orc::SeekableInputStream>
                                      (stream)));
     char* data = new char[16];
-    char* isNull = new char[16];
+    char* notNull = new char[16];
     for(int i=0; i < 16; ++i) {
-      isNull[i] = i % 2;
+      notNull[i] = (i + 1) % 2;
       data[i] = -1;
     }
     for(int i=0; i < 2; ++i) {
-      rle->next(data, 16, isNull);
+      rle->next(data, 16, notNull);
       for(int j=0; j < 16; ++j) {
         if (j % 2 == 0) {
           EXPECT_EQ((i*16 + j)/2, data[j]) << "Output wrong at "
@@ -161,7 +161,7 @@ namespace orc {
       }
     }
     for(int i=0; i < 8; ++i) {
-      rle->next(data, 16, isNull);
+      rle->next(data, 16, notNull);
       for(int j=0; j < 16; ++j) {
         if (j % 2 == 0) {
           EXPECT_EQ(-36, data[j]) << "Output wrong at "
@@ -173,7 +173,7 @@ namespace orc {
       }
     }
     delete[] data;
-    delete[] isNull;
+    delete[] notNull;
   }
 
   TEST(ByteRle, testAllNulls) {
@@ -188,11 +188,9 @@ namespace orc {
     char* data = new char[16];
     char* allNull = new char[16];
     char* noNull = new char[16];
-    for(int i=0; i < 16; ++i) {
-      allNull[i] = 1;
-      noNull[i] = 0;
-      data[i] = -1;
-    }
+    memset(allNull, 0, 16);
+    memset(noNull, 1, 16);
+    memset(data, -1, 16);
     rle->next(data, 16, allNull);
     for(int i=0; i < 16; ++i) {
       EXPECT_EQ(-1, data[i]) << "Output wrong at " << i;
@@ -869,9 +867,9 @@ namespace orc {
       createBooleanRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
                                         (stream)));
     char* data = new char[72];
-    char* isNull = new char[72];
-    memset(isNull, 0, 72);
-    rle->next(data, 72, isNull);
+    char* notNull = new char[72];
+    memset(notNull, 1, 72);
+    rle->next(data, 72, notNull);
     for(int i=0; i < 72; ++i) {
       if (i % 18 < 9) {
         EXPECT_EQ(1, data[i]) << "Output wrong at " << i;
@@ -886,14 +884,14 @@ namespace orc {
     PositionProvider location(position);
     rle->seek(location);
     for(int i=0; i < 72; ++i) {
-      rle->next(data, 1, isNull);
+      rle->next(data, 1, notNull);
       if (i % 18 < 9) {
         EXPECT_EQ(1, data[0]) << "Output wrong at " << i;
       } else {
         EXPECT_EQ(0, data[0]) << "Output wrong at " << i;
       }
     }
-    delete[] isNull;
+    delete[] notNull;
     delete[] data;
   }
 
@@ -1103,11 +1101,11 @@ namespace orc {
                                         (stream)));
     char* data = new char[3];
     char* someNull = new char[3];
-    someNull[0] = 1;
-    someNull[1] = 0;
-    someNull[2] = 1;
+    someNull[0] = 0;
+    someNull[1] = 1;
+    someNull[2] = 0;
     char* allNull = new char[3];
-    memset(allNull, 1, 3);
+    memset(allNull, 0, 3);
     for(int i=0; i < 16384; i += 5) {
       memset(data, -1, 3);
       rle->next(data, 3, someNull);
@@ -1367,9 +1365,9 @@ namespace orc {
                                         (stream)));
     char* data = new char[16384];
     char* allNull = new char[16384];
-    memset(allNull, 1, 16384);
+    memset(allNull, 0, 16384);
     char* noNull = new char[16384];
-    memset(noNull, 0, 16384);
+    memset(noNull, 1, 16384);
     rle->next(data, 16384, allNull);
     for(int i=0; i < 16384; ++i) {
       EXPECT_EQ(0, data[i]) << "Output wrong at " << i;

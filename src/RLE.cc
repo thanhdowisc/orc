@@ -60,7 +60,7 @@ namespace orc {
     /**
      * Read a number of values into the batch.
      */
-    virtual void next(long* data, unsigned long numValues, char* isNull);
+    virtual void next(long* data, unsigned long numValues, char* notNull);
 
   private:
     inline signed char readByte();
@@ -180,9 +180,10 @@ namespace orc {
     }
   }
 
-  void RleDecoderV1::next(long* data, unsigned long numValues, char* isNull) {
+  void RleDecoderV1::next(long* data, unsigned long numValues, char* notNull) {
     unsigned long position = 0;
-    while (isNull && position < numValues && isNull[position]) {
+    // skip over null values
+    while (notNull && position < numValues && !notNull[position]) {
       position +=1;
     }
     while (position < numValues) {
@@ -194,9 +195,9 @@ namespace orc {
       unsigned long count = std::min(numValues - position, remainingValues);
       unsigned long consumed = 0;
       if (repeating) {
-        if (isNull) {
+        if (notNull) {
           for(unsigned long i=0; i < count; ++i) {
-            if (!isNull[position + i]) {
+            if (notNull[position + i]) {
               data[position + i] = value + static_cast<long>(consumed) * delta;
               consumed += 1;
             }
@@ -209,9 +210,9 @@ namespace orc {
         }
         value += static_cast<long>(consumed) * delta;
       } else {
-        if (isNull) {
+        if (notNull) {
           for(unsigned long i=0; i < count; ++i) {
-            if (!isNull[i]) {
+            if (notNull[i]) {
               if (isSigned) {
                 data[position + i] = unZigZag(readLong());
               } else {
@@ -235,7 +236,7 @@ namespace orc {
       }
       remainingValues -= consumed;
       position += count;
-      while (isNull && position < numValues && isNull[position]) {
+      while (notNull && position < numValues && !notNull[position]) {
         position +=1;
       }
     }
@@ -246,7 +247,7 @@ namespace orc {
                                    bool isSigned,
                                    RleVersion version) {
     RleDecoder* result;
-    if (version == VERSION_1) {
+    if (version == RleVersion_1) {
       result = new RleDecoderV1(std::move(input), isSigned);
     } else {
       throw std::string("Not implemented yet");
