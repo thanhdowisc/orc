@@ -18,6 +18,12 @@ include_directories(${CMAKE_BINARY_DIR}/include)
 
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
+include_directories(${LZO_INCLUDE_DIR})
+
+include_directories(${ZLIB_INCLUDE_DIR})
+
+include_directories(${BZIP2_INCLUDE_DIR})
+
 set(PROTOC_GENERATED ${CMAKE_BINARY_DIR}/generated)
 
 file(MAKE_DIRECTORY ${PROTOC_GENERATED})

@@ -15,6 +15,8 @@ cmake_minimum_required (VERSION 2.6)
 project(ORC)
 set (ORC_VERSION "1.0.0")
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
 set (LIBUV_VERSION "0.11.29")
 include_directories(${CMAKE_SOURCE_DIR}/libs/libuv-${LIBUV_VERSION}/include)
 set (LIBUV_LIB "${CMAKE_BINARY_DIR}/libs/libuv-${LIBUV_VERSION}/libuv.a")
@@ -36,6 +38,37 @@ if( NOT PROTOBUF_FOUND)
 set(PROTOBUF_INCLUDE_DIRS $ENV{PROTOBUF_INCLUDE_DIRS})
 set(PROTOBUF_LITE_LIBRARIES $ENV{PROTOBUF_LITE_LIBRARIES})
 endif( NOT PROTOBUF_FOUND)
+
+# TODO: FindLzo.cmake license?
+find_package(LZO REQUIRED)
+#if (NOT LZO_FOUND)
+# hack: if can't find lzo, or want to share common third-party lib, set path explicitly
+    set(LZO_INCLUDE_DIR $ENV{LZO_INCLUDE_DIR})
+    set(LZO_LIBRARIES $ENV{LZO_LIBRARIES})
+    #endif(NOT LZO_FOUND)
+MESSAGE( STATUS "LZO_INCLUDE_DIR:         " ${LZO_INCLUDE_DIR} )
+MESSAGE( STATUS "LZO_LIBRARIES:         " ${LZO_LIBRARIES} )
+include_directories(${LZO_INCLUDE_DIRS})
+
+find_package(ZLIB REQUIRED)
+if (NOT ZLIB_FOUND)
+    # hack: if can't find lzo, or want to share common third-party lib, set path explicitly
+    set(ZLIB_INCLUDE_DIR $ENV{ZLIB_INCLUDE_DIR})
+    set(ZLIB_LIBRARIES $ENV{ZLIB_LIBRARIES})
+endif(NOT ZLIB_FOUND)
+MESSAGE( STATUS "ZLIB_INCLUDE_DIR:         " ${ZLIB_INCLUDE_DIR} )
+MESSAGE( STATUS "ZLIB_LIBRARIES:         " ${ZLIB_LIBRARIES} )
+include_directories(${ZLIB_INCLUDE_DIR})
+
+find_package(BZip2 REQUIRED)
+if (NOT BZIP2_FOUND)
+    # hack: if can't find lzo, or want to share common third-party lib, set path explicitly
+    set(BZIP2_INCLUDE_DIR $ENV{BZIP2_INCLUDE_DIR})
+    set(BZIP2_LIBRARIES $ENV{BZIP2_LIBRARIES})
+endif(NOT BZIP2_FOUND)
+MESSAGE( STATUS "BZIP2_INCLUDE_DIR:         " ${BZIP2_INCLUDE_DIR} )
+MESSAGE( STATUS "BZIP2_LIBRARIES:         " ${BZIP2_LIBRARIES} )
+include_directories(${BZIP2_INCLUDE_DIR})
 
 set (CXX11_FLAGS "-std=gnu++11")
 if(APPLE)

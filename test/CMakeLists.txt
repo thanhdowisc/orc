@@ -14,6 +14,9 @@ include_directories(
   ${CMAKE_BINARY_DIR}/include
   ${CMAKE_SOURCE_DIR}/src
   ${PROTOBUF_INCLUDE_DIRS}
+  ${LZO_INCLUDE_DIRS}
+  ${ZLIB_INCLUDE_DIR}
+  ${BZIP2_INCLUDE_DIR}
 )
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
@@ -27,6 +30,9 @@ add_executable(test-orc
 target_link_libraries(test-orc
   ${CMAKE_BINARY_DIR}/src/liborc.a
   ${PROTOBUF_LITE_LIBRARIES}
+  ${LZO_LIBRARIES}
+  ${ZLIB_LIBRARIES}
+  ${BZIP2_LIBRARIES}
   ${GTEST_LIB}
 )
 
