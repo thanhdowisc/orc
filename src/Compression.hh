@@ -25,6 +25,11 @@
 
 #include "wrap/zero-copy-stream-wrapper.h"
 
+#include "zlib.h"
+#include "bzlib.h"
+#include "lzo/lzo1x.h"
+#include "lzo/lzo_asm.h"
+
 namespace orc {
 
   class PositionProvider {
@@ -87,6 +92,35 @@ namespace orc {
    */
   virtual void decompress(SeekableInputStream& in, SeekableInputStream& out) = 0;
 
+  };
+
+  /**
+   * Zlib codec
+   */
+
+  class ZlibCodec: public CompressionCodec {
+      bool direct;
+      int level;
+      int strategy;
+
+      // TODO: ctor takes (level,strategy)
+
+      bool compress(SeekableInputStream& in, SeekableInputStream& out);
+
+      void decompress(SeekableInputStream& in, SeekableInputStream& out);
+  };
+
+  /**
+   * LZO codec
+   */
+
+  class LzoCodec: public CompressionCodec {
+
+      // TODO: ctor
+
+      bool compress(SeekableInputStream& in, SeekableInputStream& out);
+
+      void decompress(SeekableInputStream& in, SeekableInputStream& out);
   };
 
 }
