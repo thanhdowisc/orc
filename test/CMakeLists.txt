@@ -16,7 +16,6 @@ include_directories(
   ${PROTOBUF_INCLUDE_DIRS}
   ${LZO_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIR}
-  ${BZIP2_INCLUDE_DIR}
 )
 
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
@@ -32,7 +31,6 @@ target_link_libraries(test-orc
   ${PROTOBUF_LITE_LIBRARIES}
   ${LZO_LIBRARIES}
   ${ZLIB_LIBRARIES}
-  ${BZIP2_LIBRARIES}
   ${GTEST_LIB}
 )
 

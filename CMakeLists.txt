@@ -60,16 +60,6 @@ MESSAGE( STATUS "ZLIB_INCLUDE_DIR:         " ${ZLIB_INCLUDE_DIR} )
 MESSAGE( STATUS "ZLIB_LIBRARIES:         " ${ZLIB_LIBRARIES} )
 include_directories(${ZLIB_INCLUDE_DIR})
 
-find_package(BZip2 REQUIRED)
-if (NOT BZIP2_FOUND)
-    # hack: if can't find lzo, or want to share common third-party lib, set path explicitly
-    set(BZIP2_INCLUDE_DIR $ENV{BZIP2_INCLUDE_DIR})
-    set(BZIP2_LIBRARIES $ENV{BZIP2_LIBRARIES})
-endif(NOT BZIP2_FOUND)
-MESSAGE( STATUS "BZIP2_INCLUDE_DIR:         " ${BZIP2_INCLUDE_DIR} )
-MESSAGE( STATUS "BZIP2_LIBRARIES:         " ${BZIP2_LIBRARIES} )
-include_directories(${BZIP2_INCLUDE_DIR})
-
 set (CXX11_FLAGS "-std=gnu++11")
 if(APPLE)
   set (CXX11_FLAGS "${CXX11_FLAGS} -stdlib=libc++")

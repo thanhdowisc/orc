@@ -26,7 +26,6 @@
 #include "wrap/zero-copy-stream-wrapper.h"
 
 #include "zlib.h"
-#include "bzlib.h"
 #include "lzo/lzo1x.h"
 #include "lzo/lzo_asm.h"
 
