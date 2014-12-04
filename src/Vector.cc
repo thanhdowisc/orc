@@ -74,4 +74,48 @@ namespace orc {
                                        ): ColumnVectorBatch(capacity) {
     // PASS
   }
+
+  std::unique_ptr<ColumnVectorBatch> createRowBatch(const Type& type,
+                                                    const bool* include,
+                                                    int capacity){
+    switch (type.getKind()) {
+    case BOOLEAN:
+    case BYTE:
+    case SHORT:
+    case LONG:
+    case TIMESTAMP:
+    case DATE:
+      return std::unique_ptr<ColumnVectorBatch>(new LongVectorBatch(capacity));
+    case FLOAT:
+    case DOUBLE:
+      return std::unique_ptr<ColumnVectorBatch>
+        (new DoubleVectorBatch(capacity));
+    case STRING:
+    case BINARY:
+    case CHAR:
+    case VARCHAR:
+      return std::unique_ptr<ByteVectorBatch>
+        (new ByteVectorBatch(capacity));
+    case STRUCT: {
+      std::unique_ptr<ColumnVectorBatch> result =
+        std::unique_ptr<ColumnVectorBatch>(new StructVectorBatch(capacity));
+      StructVectorBatch* structPtr = dynamic_cast<StructVectorBatch*>
+        (result.get());
+      structPtr->fields = std::unique_ptr<ColumnVectorBatch[]>
+        (new ColumnVectorBatch[type.getSubtypeCount()]);
+      for(int i=0; i < type.getSubtypeCount(); ++i) {
+        const Type& child = type.getSubType(i);
+        if (include[child.getColumnId()]) {
+          structPtr->fields[i] = createRowBatch(child, include, capacity);
+        }
+      }
+      return result;
+    }
+    case LIST:
+    case MAP:
+    case UNION:
+    case DECIMAL:
+      throw std::string("not supported yet");
+    }
+  }
 }

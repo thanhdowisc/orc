@@ -120,9 +120,18 @@ namespace orc {
   };
 
   struct Decimal {
-    long lower;
     long upper;
+    long lower;
   };
+
+  /**
+   * Create a vector batch for the given type.
+   * @param type the row type of the file
+   * @param include an array of boolean whether each row is selected.
+   */
+  std::unique_ptr<StructVectorBatch> createRowBatch(const Type& type,
+                                                    const bool* include,
+                                                    int capacity);
 }
 
 #endif

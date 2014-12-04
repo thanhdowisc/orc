@@ -21,6 +21,7 @@
 
 #include "Vector.hh"
 
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <vector>
@@ -311,6 +312,15 @@ namespace orc {
     ReaderOptions& include(const std::list<int>& include);
 
     /**
+     * Set the list of columns to read. All columns that are children of
+     * selected columns are automatically selected. The default value is
+     * {0}.
+     * @param include a list of columns to read
+     * @return this
+     */
+    ReaderOptions& include(std::initializer_list<int> include);
+
+    /**
      * Set the section of the file to process.
      * @param offset the starting byte offset
      * @param length the number of bytes to read
@@ -324,7 +334,11 @@ namespace orc {
      */
     ReaderOptions& setTailLocation(unsigned long offset);
 
-    const std::list<bool>& getInclude() const;
+    /**
+     * Get the list of selected columns to read. All children of the selected
+     * columns are also selected.
+     */
+    const std::list<int>& getInclude() const;
 
     /**
      * Get the start of the range for the data being processed.
@@ -358,12 +372,6 @@ namespace orc {
      * @return the number of rows
      */
     virtual unsigned long getNumberOfRows() const = 0;
-
-    /**
-     * Get the deserialized data size of the file
-     * @return raw data size
-     */
-    virtual unsigned long getRawDataSize() const = 0;
 
     /**
      * Get the user metadata keys.

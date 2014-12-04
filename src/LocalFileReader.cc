@@ -1,3 +1,23 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "orc/OrcFile.hh"
+
 #include <stdlib.h>
 #include <string>
 #include <vector>
@@ -7,86 +27,26 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-#include <iomanip>
-#include <boost/any.hpp>
 
-#include "orc/Reader.hh"
-#include "orc/OrcFile.hh"
-#include "orc_proto.pb.h"
-
-
-using namespace orc;
-
-int main(int argc, char* argv[])
-{
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-    // Read the input arguments
-    const char ROWINDEX_PREFIX[] = "--rowindex=";
-    const int ROWINDEX_PREFIX_LENGTH = strlen(ROWINDEX_PREFIX);
-
-    std::vector<char*> files;
-    std::vector<int> rowIndexCols;
-
-    char* pChar ;
-    for (int i=1; i<argc; i++)
-    {
-        if (argv[i][0]=='-' & argv[i][1]=='-') {
-            pChar = strstr(argv[i], ROWINDEX_PREFIX);
-            if (pChar == argv[i]) { // the argument string starts with ROWINDEX_PREFIX
-                pChar = strtok(argv[i]+ROWINDEX_PREFIX_LENGTH,",");
-                while (pChar != NULL)
-                {
-                    rowIndexCols.push_back(atoi(pChar));
-                    pChar = strtok(NULL,",");
-                };
-            } else {
-                std::cout << "Unknown argument " << argv[i] << std::endl ;
-                std::cout << "Usage: localfiledump <filename1> [... <filenameN>] [--rowindex=i1,i2,...,iN]" << std::endl ;
-            };
-        } else {
-            files.push_back(argv[i]);
-        };
-    };
-
-    for(int fileIx=0; fileIx<files.size(); fileIx++) {
-        std::cout << "Reading file" << files[fileIx] << std::endl;
-        orc::Reader* reader = orc::createReader(orc::readLocalFile(std::string(files[fileIx])));
-
-        int rowCounter = 0;
-
-        long value;
-        std::string str;
-
-        while (reader->hasNext()) {
-            std::vector<boost::any> row = reader->next();
-
-            for (int columnIx=0; columnIx < row.size(); columnIx++) {
-                // This is a temporary hack since we don't yet have a method to get column data types
-                // We only handle integers and strings
-                try {
-                     value = boost::any_cast<long>(row[columnIx]);
-                     std::cout<< value << " | " ;
-                } catch(const boost::bad_any_cast &) {
-                    // This column is not an integer
-                }
-
-                try {
-                    str = boost::any_cast<ORC_STRING>(row[columnIx]);
-                    std::cout<< str << " | " ;
-                } catch(const boost::bad_any_cast &) {
-                    // This column is not a string
-                }
-            }
-            std::cout << std::endl ;
-        };
-
-        delete reader;
-    };
-
-    google::protobuf::ShutdownProtobufLibrary();
-
-    return 0;
+int main(int argc, char* argv[]) {
+  if (argc < 2) {
+    std::cout << "Usage: file-dump <filename>\n";
+  }
+  orc::ReaderOptions opts;
+  opts.include({1});
+  std::unique_ptr<orc::Reader> reader =
+    orc::createReader(orc::readLocalFile(std::string(argv[1])), opts);
+  std::unique_ptr<orc::StructVectorBatch> batch = 
+    orc::createRowBatch(reader->getType());
+  while (reader->next(*(batch.get()))) {
+    orc::LongVectorBatch *column1 = 
+      dynamic_cast<orc::LongVectorBatch*>(batch->fields[0].get());
+    std::cout << "Read batch of " <<  column1->numElements << "\n";
+    for(unsigned long i=0; i < column1->numElements; ++i) {
+      std::cout << "Value " << i << " = " << column1->data.get()[i] << "\n";
+    }
+  }
+  return 0;
 }
 
 

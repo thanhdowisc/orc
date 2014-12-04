@@ -80,6 +80,7 @@ namespace orc {
    * Create a reader for the given stripe.
    */
   std::unique_ptr<ColumnReader> buildReader(const Type& type,
+                                            const bool*included,
                                             StripeStreams& stripe);
 }
 

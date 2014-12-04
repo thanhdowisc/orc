@@ -71,6 +71,50 @@ namespace orc {
     // PASS
   }
 
+  ReaderOptions& ReaderOptions::include(const std::list<int>& include) {
+    privateBits->includedColumns.clear();
+    for(int columnId: include) {
+      privateBits->includedColumns.push_back(columnId);
+    }
+    return *this;
+  }
+
+  ReaderOptions& ReaderOptions::include(std::initializer_list<int> include) {
+    privateBits->includedColumns.clear();
+    for(int columnId: include) {
+      privateBits->includedColumns.push_back(columnId);
+    }
+    return *this;
+  }
+
+  ReaderOptions& ReaderOptions::range(unsigned long offset, 
+                                      unsigned long length) {
+    privateBits->dataStart = offset;
+    privateBits->dataLength = length;
+    return *this;
+  }
+
+  ReaderOptions& ReaderOptions::setTailLocation(unsigned long offset) {
+    privateBits->tailLocation = offset;
+    return *this;
+  }
+
+  const std::list<int>& ReaderOptions::getInclude() const {
+    return privateBits->includedColumns;
+  }
+
+  unsigned long ReaderOptions::getOffset() const {
+    return privateBits->dataStart;
+  }
+
+  unsigned long ReaderOptions::getLength() const {
+    return privateBits->dataLength;
+  }
+
+  unsigned long ReaderOptions::getTailLocation() const {
+    return privateBits->tailLocation;
+  }
+
   Reader::~Reader() {
     // PASS
   }
@@ -82,6 +126,7 @@ namespace orc {
     // inputs
     std::unique_ptr<InputStream> stream;
     ReaderOptions options;
+    std::unique_ptr<bool[]> includedColumns;
 
     // postscript
     proto::PostScript postscript;
@@ -98,15 +143,20 @@ namespace orc {
     // reading state
     unsigned long currentStripe;
     unsigned long currentRowInStripe;
+    proto::StripeInformation currentStripeInfo;
+    proto::StripeFooter currentStripeFooter;
     std::unique_ptr<ColumnReader> reader;
 
+    // internal methods
     void readPostscript(char * buffer, unsigned long length);
     void readFooter(char *buffer, unsigned long length,
                     unsigned long fileLength);
-    proto::StripeFooter getStripeFooter(unsigned long stripe);
+    proto::StripeFooter getStripeFooter(const proto::StripeInformation& info);
     void startNextStripe();
     void ensureOrcFooter(char* buffer, unsigned long length);
     void checkOrcVersion();
+    void selectTypeParent(int columnId);
+    void selectTypeChildren(int columnId);
 
   public:
     /**
@@ -126,8 +176,6 @@ namespace orc {
 
     const std::string& getStreamName() const override;
     
-    unsigned long getRawDataSize() const override;
-
     std::list<std::string> getMetadataKeys() const override;
 
     std::string getMetadataValue(const std::string& key) const override;
@@ -178,6 +226,10 @@ namespace orc {
       firstRowOfStripe.get()[i] = rowTotal;
       rowTotal += footer.stripes(i).numberofrows();
     }
+    for(int columnId: options.getInclude()) {
+      selectTypeParent(columnId);
+      selectTypeChildren(columnId);
+    }
     schema = convertType(footer.types(0), footer);
   }
                          
@@ -185,8 +237,16 @@ namespace orc {
     return compression;
   }
 
+  unsigned long ReaderImpl::getCompressionSize() const {
+    return postscript.compressionblocksize();
+  }
+
   unsigned long ReaderImpl::getNumberOfRows() const { 
     return footer.numberofrows();
+  }
+
+  unsigned long ReaderImpl::getContentLength() const {
+    return footer.contentlength();
   }
 
   unsigned long ReaderImpl::getRowIndexStride() const {
@@ -195,6 +255,58 @@ namespace orc {
 
   const std::string& ReaderImpl::getStreamName() const {
     return stream->getName();
+  }
+
+  std::list<std::string> ReaderImpl::getMetadataKeys() const {
+    std::list<std::string> result;
+    for(int i=0; i < footer.metadata_size(); ++i) {
+      result.push_back(footer.metadata(i).name());
+    }
+    return result;
+  }
+
+  std::string ReaderImpl::getMetadataValue(const std::string& key) const {
+    for(int i=0; i < footer.metadata_size(); ++i) {
+      if (footer.metadata(i).name() == key) {
+        return footer.metadata(i).value();
+      }
+    }
+    throw std::string("key not found");
+  }
+
+  bool ReaderImpl::hasMetadataValue(const std::string& key) const {
+    for(int i=0; i < footer.metadata_size(); ++i) {
+      if (footer.metadata(i).name() == key) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void ReaderImpl::selectTypeParent(int columnId) {
+    for(int i=0; i < columnId; ++i) {
+      for(int child: footer.types(i).subtypes()) {
+        if (child == columnId) {
+        }
+      }
+    }
+  }
+
+  void ReaderImpl::selectTypeChildren(int columnId) {
+    if (!includedColumns->get()[columnId]) {
+      includedColumns->get()[columnId] = true;
+      for(int child: footer.types(columnId).subtypes()) {
+        selectTypeChildren(child);
+      }
+    }
+  }
+
+  void ReaderImpl::ensureOrcFooter(char*, unsigned long) {
+    // TODO fix me
+  }
+
+  void ReaderImpl::seekToRow(unsigned long) {
+    throw std::string("not implemented yet");
   }
 
   void ReaderImpl::readPostscript(char *buffer, unsigned long readSize) {
@@ -262,17 +374,37 @@ namespace orc {
     }
   }
 
-  proto::StripeFooter ReaderImpl::getStripeFooter(unsigned long) {
-    // TODO
-    return proto::StripeFooter();
+  proto::StripeFooter ReaderImpl::getStripeFooter
+                        (const proto::StripeInformation& info) {
+    unsigned long footerStart = info.offset() + info.indexlength() +
+      info.datalength();
+    unsigned long footerLength = info.footerlength();
+    std::unique_ptr<SeekableInputStream> pbStream = 
+      createCodec(compression,
+                  std::unique_ptr<SeekableInputStream>
+                  (new SeekableFileInputStream(stream.get(), footerStart,
+                                               footerLength, 
+                                               static_cast<long>(blockSize+3)
+                                               )),
+                  blockSize);
+    proto::StripeFooter result;
+    if (!result.ParseFromZeroCopyStream(pbStream.get())) {
+      throw std::string("bad parse");
+    }
+    return result;
   }
 
   void ReaderImpl::startNextStripe() {
-    // TODO
+    currentStripeInfo = footer.stripes(static_cast<int>(currentStripe));
+    currentStripeFooter = getStripeFooter(currentStripeInformation);
+
   }
 
   void ReaderImpl::checkOrcVersion() {
     // TODO
+  }
+
+  bool ReaderImpl::next(ColumnVectorBatch& data) {
   }
 
   std::unique_ptr<Reader> createReader(std::unique_ptr<InputStream> stream, 

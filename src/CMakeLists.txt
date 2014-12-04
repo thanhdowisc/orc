@@ -34,6 +34,7 @@ include_directories(${PROTOC_GENERATED})
 set (CMAKE_CXX_FLAGS "-O0 ${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
 
 add_library(orc STATIC
+  wrap/orc-proto-wrapper.cc
   ByteRLE.cc
   ColumnReader.cc
   Compression.cc
@@ -44,3 +45,14 @@ add_library(orc STATIC
   Vector.cc
   wrap/orc-proto-wrapper.cc
 )
+
+add_executable(dump-file
+  LocalFileReader.cc
+)
+
+target_link_libraries(dump-file
+  orc
+  ${PROTOBUF_LIBRARIES}
+)
+
+
