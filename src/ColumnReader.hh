@@ -31,16 +31,23 @@ namespace orc {
     virtual ~StripeStreams();
 
     /**
+     * Get the array of booleans for which columns are selected.
+     * @return the address of an array which contains true at the index of
+     *    each columnId is selected.
+     */
+    virtual const bool* getSelectedColumns() const = 0;
+
+    /**
      * Get the encoding for the given column for this stripe.
      */
-    virtual proto::ColumnEncoding getEncoding(int columnId) = 0;
+    virtual proto::ColumnEncoding getEncoding(int columnId) const = 0;
 
     /**
      * Get the stream for the given column/kind in this stripe.
      */
     virtual std::unique_ptr<SeekableInputStream> 
                     getStream(int columnId,
-                              proto::Stream_Kind kind) = 0;
+                              proto::Stream_Kind kind) const = 0;
   };
 
   /**
@@ -80,7 +87,6 @@ namespace orc {
    * Create a reader for the given stripe.
    */
   std::unique_ptr<ColumnReader> buildReader(const Type& type,
-                                            const bool*included,
                                             StripeStreams& stripe);
 }
 

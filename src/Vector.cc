@@ -18,6 +18,9 @@
 
 #include "orc/Vector.hh"
 
+#include <iostream>
+#include <sstream>
+
 namespace orc {
 
   ColumnVectorBatch::ColumnVectorBatch(unsigned long cap
@@ -31,22 +34,6 @@ namespace orc {
     // PASS
   }
 
-  LongVectorBatch::~LongVectorBatch() {
-    // PASS
-  }
-
-  DoubleVectorBatch::~DoubleVectorBatch() {
-    // PASS
-  }
-
-  ByteVectorBatch::~ByteVectorBatch() {
-    // PASS
-  }
-
-  StructVectorBatch::~StructVectorBatch() {
-    // PASS
-  }
-
   LongVectorBatch::LongVectorBatch(unsigned long capacity
                                    ): ColumnVectorBatch(capacity),
                                       data(std::unique_ptr<long[]>
@@ -54,11 +41,31 @@ namespace orc {
     // PASS
   }
 
+  LongVectorBatch::~LongVectorBatch() {
+    // PASS
+  }
+  
+  std::string LongVectorBatch::toString() const {
+    std::ostringstream buffer;
+    buffer << "Long vector <" << numElements << " of " << capacity << ">";
+    return buffer.str();
+  }
+
   DoubleVectorBatch::DoubleVectorBatch(unsigned long capacity
                                        ): ColumnVectorBatch(capacity),
                                           data(std::unique_ptr<double[]>
                                            (new double[capacity])){
     // PASS
+  }
+
+  DoubleVectorBatch::~DoubleVectorBatch() {
+    // PASS
+  }
+
+  std::string DoubleVectorBatch::toString() const {
+    std::ostringstream buffer;
+    buffer << "Double vector <" << numElements << " of " << capacity << ">";
+    return buffer.str();
   }
 
   ByteVectorBatch::ByteVectorBatch(unsigned long capacity
@@ -70,43 +77,83 @@ namespace orc {
     // PASS
   }
 
+  ByteVectorBatch::~ByteVectorBatch() {
+    // PASS
+  }
+
+  std::string ByteVectorBatch::toString() const {
+    std::ostringstream buffer;
+    buffer << "Byte vector <" << numElements << " of " << capacity << ">";
+    return buffer.str();
+  }
+
   StructVectorBatch::StructVectorBatch(unsigned long capacity
                                        ): ColumnVectorBatch(capacity) {
     // PASS
   }
 
+  StructVectorBatch::~StructVectorBatch() {
+    // PASS
+  }
+
+  std::string StructVectorBatch::toString() const {
+    std::ostringstream buffer;
+    buffer << "Struct vector <" << numElements << " of " << capacity 
+           << "; ";
+    for(unsigned int i=0; i < numFields; ++i) {
+      buffer << fields[i]->toString() << "; ";
+    }
+    buffer << ">";
+    return buffer.str();
+  }
+
   std::unique_ptr<ColumnVectorBatch> createRowBatch(const Type& type,
-                                                    const bool* include,
-                                                    int capacity){
+                                                    const bool* selected,
+                                                    unsigned long capacity){
     switch (type.getKind()) {
     case BOOLEAN:
     case BYTE:
     case SHORT:
+    case INT:
     case LONG:
     case TIMESTAMP:
     case DATE:
       return std::unique_ptr<ColumnVectorBatch>(new LongVectorBatch(capacity));
+
     case FLOAT:
     case DOUBLE:
       return std::unique_ptr<ColumnVectorBatch>
         (new DoubleVectorBatch(capacity));
+
     case STRING:
     case BINARY:
     case CHAR:
     case VARCHAR:
       return std::unique_ptr<ByteVectorBatch>
         (new ByteVectorBatch(capacity));
+
     case STRUCT: {
       std::unique_ptr<ColumnVectorBatch> result =
         std::unique_ptr<ColumnVectorBatch>(new StructVectorBatch(capacity));
-      StructVectorBatch* structPtr = dynamic_cast<StructVectorBatch*>
-        (result.get());
-      structPtr->fields = std::unique_ptr<ColumnVectorBatch[]>
-        (new ColumnVectorBatch[type.getSubtypeCount()]);
-      for(int i=0; i < type.getSubtypeCount(); ++i) {
-        const Type& child = type.getSubType(i);
-        if (include[child.getColumnId()]) {
-          structPtr->fields[i] = createRowBatch(child, include, capacity);
+
+      StructVectorBatch* structPtr = 
+        dynamic_cast<StructVectorBatch*>(result.get());
+
+      structPtr->numFields = 0;
+      for(unsigned int i=0; i < type.getSubtypeCount(); ++i) {
+        const Type& child = type.getSubtype(i);
+        if (selected[child.getColumnId()]) {
+          structPtr->numFields += 1;
+        }
+      }
+      structPtr->fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
+        (new std::unique_ptr<ColumnVectorBatch>[structPtr->numFields]);
+      unsigned long next = 0;
+      for(unsigned int i=0; i < type.getSubtypeCount(); ++i) {
+        const Type& child = type.getSubtype(i);
+        if (selected[child.getColumnId()]) {
+          structPtr->fields[next++] = 
+            createRowBatch(child, selected, capacity);
         }
       }
       return result;

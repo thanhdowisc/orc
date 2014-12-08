@@ -22,6 +22,10 @@
 
 namespace orc {
 
+  StripeStreams::~StripeStreams() {
+    // PASS
+  }
+
   ColumnReader::ColumnReader(const Type& type,
                              StripeStreams& stripe
                              ): columnId(type.getColumnId()) {

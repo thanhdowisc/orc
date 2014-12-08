@@ -42,19 +42,20 @@ namespace orc {
     subtypeCount = 0;
   }
 
-  TypeImpl::TypeImpl(unsigned int _precision, unsigned int _scale) {
+  TypeImpl::TypeImpl(TypeKind _kind, unsigned int _precision,
+                     unsigned int _scale) {
     columnId = 0;
-    kind = DECIMAL;
+    kind = _kind;
     maxLength = 0;
     precision = _precision;
     scale = _scale;
     subtypeCount = 0;
   }
 
-  TypeImpl::TypeImpl(std::vector<Type*> types,
+  TypeImpl::TypeImpl(TypeKind _kind, std::vector<Type*> types,
                      std::vector<std::string> _fieldNames) {
     columnId = 0;
-    kind = STRUCT;
+    kind = _kind;
     maxLength = 0;
     precision = 0;
     scale = 0;
@@ -67,8 +68,7 @@ namespace orc {
     }
   }
 
-  TypeImpl::TypeImpl(TypeKind _kind, 
-                     std::vector<Type*> types) {
+  TypeImpl::TypeImpl(TypeKind _kind, std::vector<Type*> types) {
     columnId = 0;
     kind = _kind;
     maxLength = 0;
@@ -153,7 +153,7 @@ namespace orc {
 
     case proto::Type_Kind_DECIMAL:
       return std::unique_ptr<Type>
-        (new TypeImpl(type.precision(), type.scale()));
+        (new TypeImpl(DECIMAL, type.precision(), type.scale()));
 
     case proto::Type_Kind_LIST:
     case proto::Type_Kind_MAP:
@@ -180,7 +180,7 @@ namespace orc {
         fieldList[static_cast<unsigned int>(i)] = type.fieldnames(i);
       }
       return std::unique_ptr<Type>
-        (new TypeImpl(typeList, fieldList));
+        (new TypeImpl(STRUCT, typeList, fieldList));
     }
     }
   }

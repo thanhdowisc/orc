@@ -92,23 +92,30 @@ namespace orc {
     std::unique_ptr<char[]> notNull;
     // whether there are any null values
     bool hasNulls;
+
+    virtual std::string toString() const = 0;
   };
 
   struct LongVectorBatch: public ColumnVectorBatch {
     LongVectorBatch(unsigned long capacity);
     virtual ~LongVectorBatch();
     std::unique_ptr<long[]> data;
+    std::string toString() const;
   };
 
   struct DoubleVectorBatch: public ColumnVectorBatch {
     DoubleVectorBatch(unsigned long capacity);
     virtual ~DoubleVectorBatch();
+    std::string toString() const;
+
     std::unique_ptr<double[]> data;
   };
 
   struct ByteVectorBatch: public ColumnVectorBatch {
     ByteVectorBatch(unsigned long capacity);
     virtual ~ByteVectorBatch();
+    std::string toString() const;
+
     std::unique_ptr<char*([])> data;
     std::unique_ptr<long[]> length;
   };
@@ -116,6 +123,9 @@ namespace orc {
   struct StructVectorBatch: public ColumnVectorBatch {
     StructVectorBatch(unsigned long capacity);
     virtual ~StructVectorBatch();
+    std::string toString() const;
+
+    unsigned long numFields;
     std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]> fields;
   };
 
@@ -128,10 +138,11 @@ namespace orc {
    * Create a vector batch for the given type.
    * @param type the row type of the file
    * @param include an array of boolean whether each row is selected.
+   * @param capacity the number of elements in each column
    */
-  std::unique_ptr<StructVectorBatch> createRowBatch(const Type& type,
+  std::unique_ptr<ColumnVectorBatch> createRowBatch(const Type& type,
                                                     const bool* include,
-                                                    int capacity);
+                                                    unsigned long capacity);
 }
 
 #endif

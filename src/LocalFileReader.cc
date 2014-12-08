@@ -36,11 +36,13 @@ int main(int argc, char* argv[]) {
   opts.include({1});
   std::unique_ptr<orc::Reader> reader =
     orc::createReader(orc::readLocalFile(std::string(argv[1])), opts);
-  std::unique_ptr<orc::StructVectorBatch> batch = 
-    orc::createRowBatch(reader->getType());
+  std::unique_ptr<orc::ColumnVectorBatch> batch = 
+    orc::createRowBatch(reader->getType(), reader->getSelectedColumns(), 1024);
+  std::cout << batch->toString() << "\n";
   while (reader->next(*(batch.get()))) {
     orc::LongVectorBatch *column1 = 
-      dynamic_cast<orc::LongVectorBatch*>(batch->fields[0].get());
+      dynamic_cast<orc::LongVectorBatch*>
+      (dynamic_cast<orc::StructVectorBatch*>(batch.get())->fields[0].get());
     std::cout << "Read batch of " <<  column1->numElements << "\n";
     for(unsigned long i=0; i < column1->numElements; ++i) {
       std::cout << "Value " << i << " = " << column1->data.get()[i] << "\n";

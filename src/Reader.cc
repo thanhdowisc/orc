@@ -22,6 +22,8 @@
 #include "RLE.hh"
 #include "TypeImpl.hh"
 
+#include <google/protobuf/text_format.h>
+
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -126,7 +128,7 @@ namespace orc {
     // inputs
     std::unique_ptr<InputStream> stream;
     ReaderOptions options;
-    std::unique_ptr<bool[]> includedColumns;
+    std::unique_ptr<bool[]> selectedColumns;
 
     // postscript
     proto::PostScript postscript;
@@ -136,13 +138,19 @@ namespace orc {
 
     // footer
     proto::Footer footer;
-    proto::Metadata metadata;
     std::unique_ptr<unsigned long[]> firstRowOfStripe;
+    unsigned long numberOfStripes;
     std::unique_ptr<Type> schema;
 
+    // metadata
+    bool isMetadataLoaded;
+    proto::Metadata metadata;
+
     // reading state
+    unsigned long previousRow;
     unsigned long currentStripe;
     unsigned long currentRowInStripe;
+    unsigned long rowsInCurrentStripe;
     proto::StripeInformation currentStripeInfo;
     proto::StripeFooter currentStripeFooter;
     std::unique_ptr<ColumnReader> reader;
@@ -184,13 +192,18 @@ namespace orc {
 
     unsigned long getCompressionSize() const override;
 
-    const std::list<StripeInformation>& getStripes() const override;
+    unsigned long getNumberOfStripes() const override;
+
+    std::unique_ptr<StripeInformation> getStripe(unsigned long
+                                                 ) const override;
 
     unsigned long getContentLength() const override;
 
     std::list<ColumnStatistics*> getStatistics() const override;
 
     const Type& getType() const override;
+
+    const bool* getSelectedColumns() const override;
 
     bool next(ColumnVectorBatch& data) override;
 
@@ -206,6 +219,7 @@ namespace orc {
   ReaderImpl::ReaderImpl(std::unique_ptr<InputStream> input,
                          const ReaderOptions& opts
                          ): stream(std::move(input)), options(opts) {
+    isMetadataLoaded = false;
     // figure out the size of the file using the option or filesystem
     unsigned long size = std::min(options.getTailLocation(), 
                                   static_cast<unsigned long>
@@ -218,6 +232,7 @@ namespace orc {
     stream->read(buffer.get(), size - readSize, readSize);
     readPostscript(buffer.get(), readSize);
     readFooter(buffer.get(), readSize, size);
+
     currentStripe = 0;
     currentRowInStripe = 0;
     unsigned long rowTotal = 0;
@@ -226,11 +241,17 @@ namespace orc {
       firstRowOfStripe.get()[i] = rowTotal;
       rowTotal += footer.stripes(i).numberofrows();
     }
+    selectedColumns.reset(new bool[footer.types_size()]);
+    memset(selectedColumns.get(), 0, 
+           static_cast<std::size_t>(footer.types_size()));
     for(int columnId: options.getInclude()) {
+      std::cout << "Selecting " << columnId << "\n";
       selectTypeParent(columnId);
       selectTypeChildren(columnId);
     }
     schema = convertType(footer.types(0), footer);
+    schema->assignIds(0);
+    previousRow = std::numeric_limits<unsigned long>::max();
   }
                          
   CompressionKind ReaderImpl::getCompression() const { 
@@ -239,6 +260,16 @@ namespace orc {
 
   unsigned long ReaderImpl::getCompressionSize() const {
     return postscript.compressionblocksize();
+  }
+
+  unsigned long ReaderImpl::getNumberOfStripes() const {
+    return numberOfStripes;
+  }
+
+  std::unique_ptr<StripeInformation> 
+      ReaderImpl::getStripe(unsigned long stripeIndex) const {
+    // TODO
+    return std::unique_ptr<StripeInformation>();
   }
 
   unsigned long ReaderImpl::getNumberOfRows() const { 
@@ -284,25 +315,52 @@ namespace orc {
   }
 
   void ReaderImpl::selectTypeParent(int columnId) {
-    for(int i=0; i < columnId; ++i) {
-      for(int child: footer.types(i).subtypes()) {
-        if (child == columnId) {
+    bool* selectedColumnArray = selectedColumns.get();
+    for(int parent=0; parent < columnId; ++parent) {
+      for(unsigned int child: footer.types(parent).subtypes()) {
+        if (static_cast<int>(child) == columnId) {
+          std::cout << "found parent of " << columnId << " = " << parent 
+                    << "\n";
+          if (!selectedColumnArray[parent]) {
+            std::cout << "setting " << parent << " to true\n";
+            selectedColumnArray[parent] = true;
+            selectTypeParent(parent);
+            return;
+          }
         }
       }
     }
   }
 
   void ReaderImpl::selectTypeChildren(int columnId) {
-    if (!includedColumns->get()[columnId]) {
-      includedColumns->get()[columnId] = true;
-      for(int child: footer.types(columnId).subtypes()) {
-        selectTypeChildren(child);
+    bool* selectedColumnArray = selectedColumns.get();
+    if (!selectedColumnArray[columnId]) {
+      std::cout << "setting child " << columnId << " to true\n";
+      selectedColumnArray[columnId] = true;
+      for(unsigned int child: footer.types(columnId).subtypes()) {
+        selectTypeChildren(static_cast<int>(child));
       }
     }
   }
 
   void ReaderImpl::ensureOrcFooter(char*, unsigned long) {
     // TODO fix me
+  }
+
+  const bool* ReaderImpl::getSelectedColumns() const {
+    return selectedColumns.get();
+  }
+
+  const Type& ReaderImpl::getType() const {
+    return *(schema.get());
+  }
+
+  unsigned long ReaderImpl::getRowNumber() const {
+    return previousRow;
+  }
+
+  std::list<ColumnStatistics*> ReaderImpl::getStatistics() const {
+    throw std::string("not implemented yet");
   }
 
   void ReaderImpl::seekToRow(unsigned long) {
@@ -313,6 +371,7 @@ namespace orc {
 
     //get length of PostScript
     postscriptLength = buffer[readSize - 1] & 0xff;
+    std::cout << "postscript is " << postscriptLength << " bytes\n";
 
     ensureOrcFooter(buffer, readSize);
 
@@ -340,33 +399,15 @@ namespace orc {
   void ReaderImpl::readFooter(char* buffer, unsigned long readSize,
                               unsigned long fileLength) {
     unsigned long footerSize = postscript.footerlength();
-    unsigned long metadataSize = postscript.metadatalength();
     //check if extra bytes need to be read
-    unsigned long tailSize = 1 + postscriptLength + footerSize + metadataSize;
-    char *footerBuf = buffer;
-    if (readSize < tailSize) {
-      footerBuf = new char[tailSize];
-      // more bytes need to be read, seek back to the right place and read 
-      // extra bytes
-      stream->read(footerBuf, fileLength - tailSize, tailSize - readSize);
-      memcpy(footerBuf + tailSize - readSize, buffer, readSize);
+    unsigned long tailSize = 1 + postscriptLength + footerSize;
+    if (tailSize > readSize) {
+      throw new std::string("need more data.");
     }
-    unsigned long tailStart = readSize - tailSize;
-    std::unique_ptr<SeekableInputStream> pbStream = 
-      createCodec(compression,
-                  std::unique_ptr<SeekableInputStream>
-                  (new SeekableArrayInputStream(buffer + tailStart, 
-                                                metadataSize)),
-                  blockSize);
-    if (!metadata.ParseFromZeroCopyStream(pbStream.get())) {
-      throw std::string("bad metadata parse");
-    }
-
-    pbStream =createCodec(compression,
+    std::unique_ptr<SeekableInputStream> pbStream =createCodec(compression,
                           std::unique_ptr<SeekableInputStream>
                           (new SeekableArrayInputStream(buffer +
-                                                          tailStart +
-                                                          metadataSize,
+                                                        (readSize - tailSize),
                                                         footerSize)),
                           blockSize);
     if (!footer.ParseFromZeroCopyStream(pbStream.get())) {
@@ -394,10 +435,59 @@ namespace orc {
     return result;
   }
 
+  class StripeStreamsImpl: public StripeStreams {
+  private:
+    const ReaderImpl& reader;
+    const proto::StripeFooter& footer;
+
+  public:
+    StripeStreamsImpl(const ReaderImpl& reader,
+                      const proto::StripeFooter& footer);
+
+    virtual ~StripeStreamsImpl();
+
+    virtual const bool* getSelectedColumns() const override;
+
+    virtual proto::ColumnEncoding getEncoding(int columnId) const override;
+
+    virtual std::unique_ptr<SeekableInputStream> 
+                    getStream(int columnId,
+                              proto::Stream_Kind kind) const override;
+  };
+
+  StripeStreamsImpl::StripeStreamsImpl(const ReaderImpl& _reader,
+                                       const proto::StripeFooter& _footer
+                                       ): reader(_reader), footer(_footer) {
+    // PASS
+  }
+
+  StripeStreamsImpl::~StripeStreamsImpl() {
+    // PASS
+  }
+
+  const bool* StripeStreamsImpl::getSelectedColumns() const {
+    return reader.getSelectedColumns();
+  }
+
+  proto::ColumnEncoding StripeStreamsImpl::getEncoding(int columnId) const {
+    return footer.columns(columnId);
+  }
+
+  std::unique_ptr<SeekableInputStream> 
+        StripeStreamsImpl::getStream(int columnId,
+                                     proto::Stream_Kind kind) const {
+    // TODO
+    return std::unique_ptr<SeekableInputStream>();
+  }
+
   void ReaderImpl::startNextStripe() {
     currentStripeInfo = footer.stripes(static_cast<int>(currentStripe));
-    currentStripeFooter = getStripeFooter(currentStripeInformation);
-
+    currentStripeFooter = getStripeFooter(currentStripeInfo);
+    rowsInCurrentStripe = currentStripeInfo.numberofrows();
+    // TODO
+    proto::StripeFooter stripeFooter;
+    StripeStreamsImpl stripeStreams(*this, stripeFooter);
+    reader = buildReader(*(schema.get()), stripeStreams);
   }
 
   void ReaderImpl::checkOrcVersion() {
@@ -405,6 +495,25 @@ namespace orc {
   }
 
   bool ReaderImpl::next(ColumnVectorBatch& data) {
+    if (currentStripe >= numberOfStripes) {
+      data.numElements = 0;
+      return false;
+    }
+    if (currentRowInStripe == 0) {
+      startNextStripe();
+    }
+    unsigned long rowsToRead = 
+      std::max(data.capacity, rowsInCurrentStripe - currentRowInStripe);
+    data.numElements = rowsToRead;
+    reader->next(data, rowsToRead, 0);
+    // update row number
+    previousRow = firstRowOfStripe.get()[currentStripe] + currentRowInStripe;
+    currentRowInStripe += rowsToRead;
+    if (currentRowInStripe >= rowsInCurrentStripe) {
+      currentStripe += 1;
+      currentRowInStripe = 0;
+    }
+    return rowsToRead != 0;
   }
 
   std::unique_ptr<Reader> createReader(std::unique_ptr<InputStream> stream, 

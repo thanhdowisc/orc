@@ -29,7 +29,6 @@
 namespace orc {
 
   // classes that hold data members so we can maintain binary compatibility
-  class StripeInformationPrivate;
   class ColumnStatisticsPrivate;
   struct ReaderOptionsPrivate;
 
@@ -245,9 +244,6 @@ namespace orc {
   };
 
   class StripeInformation {
-  private:
-    std::unique_ptr<StripeInformationPrivate> privateBits;
-
   public:
     virtual ~StripeInformation();
 
@@ -255,37 +251,37 @@ namespace orc {
      * Get the byte offset of the start of the stripe.
      * @return the bytes from the start of the file
      */
-    virtual unsigned long getOffset() = 0;
+    virtual unsigned long getOffset() const = 0;
 
     /**
      * Get the total length of the stripe in bytes.
      * @return the number of bytes in the stripe
      */
-    virtual unsigned long getLength() = 0;
+    virtual unsigned long getLength() const = 0;
 
     /**
      * Get the length of the stripe's indexes.
      * @return the number of bytes in the index
      */
-    virtual unsigned long getIndexLength() = 0;
+    virtual unsigned long getIndexLength() const = 0;
 
     /**
      * Get the length of the stripe's data.
      * @return the number of bytes in the stripe
      */
-    virtual unsigned long getDataLength() = 0;
+    virtual unsigned long getDataLength()const = 0;
 
     /**
      * Get the length of the stripe's tail section, which contains its index.
      * @return the number of bytes in the tail
      */
-    virtual unsigned long getFooterLength() = 0;
+    virtual unsigned long getFooterLength() const = 0;
 
     /**
      * Get the number of rows in the stripe.
      * @return a count of the number of rows
      */
-    virtual unsigned long getNumberOfRows() = 0;
+    virtual unsigned long getNumberOfRows() const = 0;
   };
 
   /**
@@ -413,10 +409,18 @@ namespace orc {
     virtual unsigned long getRowIndexStride() const = 0;
 
     /**
-     * Get the list of stripes.
-     * @return the information about the stripes in order
+     * Get the number of stripes in the file.
+     * @return the number of stripes
      */
-    virtual const std::list<StripeInformation>& getStripes() const = 0;
+    virtual unsigned long getNumberOfStripes() const = 0;
+
+    /**
+     * Get the information about a stripe.
+     * @param stripeIndex the stripe 0 to N-1 to get information about
+     * @return the information about that stripe
+     */
+    virtual std::unique_ptr<StripeInformation> 
+      getStripe(unsigned long stripeIndex) const = 0;
 
     /**
      * Get the length of the file.
@@ -435,6 +439,11 @@ namespace orc {
      * @return the root type
      */
     virtual const Type& getType() const = 0;
+
+    /**
+     * Get the selected columns of the file.
+     */
+    virtual const bool* getSelectedColumns() const = 0;
 
     /**
      * Read the next row batch from the current position.
