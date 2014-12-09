@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include "Exceptions.hh"
 #include "TypeImpl.hh"
 
 namespace orc {
@@ -183,6 +184,7 @@ namespace orc {
         (new TypeImpl(STRUCT, typeList, fieldList));
     }
     }
+    throw NotImplementedYet("Unknown type kind");
   }
 
 }

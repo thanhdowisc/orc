@@ -603,9 +603,11 @@ namespace orc {
     case LIST:
     case MAP:
     case UNION:
-    case DECIMAL:
-      throw NotImplementedYet("not supported yet");
+    case DECIMAL: {
+      // PASS
     }
+    }
+    throw NotImplementedYet("not supported yet");
   }
 
   std::unique_ptr<ColumnVectorBatch> ReaderImpl::createRowBatch

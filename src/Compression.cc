@@ -32,10 +32,11 @@ namespace orc {
     std::cout << std::hex;
     for(unsigned long line = 0; line < (length + width - 1) / width; ++line) {
       std::cout << std::setfill('0') << std::setw(7) << (line * width);
-      for(unsigned long byte = 0; 
+      for(unsigned long byte = 0;
           byte < width && line * width + byte < length; ++byte) {
-        std::cout << " " << std::setfill('0') << std::setw(2) 
-                  << static_cast<unsigned int>(0xff & buffer[line * width + byte]);
+        std::cout << " " << std::setfill('0') << std::setw(2)
+                  << static_cast<unsigned int>(0xff & buffer[line * width +
+							     byte]);
       }
       std::cout << "\n";
     }
@@ -219,8 +220,10 @@ namespace orc {
       return std::move(input);
     case CompressionKind_LZO:
     case CompressionKind_SNAPPY:
-    case CompressionKind_ZLIB:
-      throw NotImplementedYet("compression codec");
+    case CompressionKind_ZLIB: {
+      // PASS
     }
+    }
+    throw NotImplementedYet("compression codec");
   }
 }

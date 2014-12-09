@@ -351,9 +351,11 @@ namespace orc {
     case DECIMAL:
     case DATE:
     case VARCHAR:
-    case CHAR:
-      throw NotImplementedYet("buildReader unhandled type");
+    case CHAR: {
+      // PASS
     }
+    }
+    throw NotImplementedYet("buildReader unhandled type");
   }
 
 }
