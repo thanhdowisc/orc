@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "ByteRLE.hh"
+#include "Exceptions.hh"
 
 namespace orc {
 
@@ -70,7 +71,7 @@ namespace orc {
     const void* bufferPointer;
     bool result = inputStream->Next(&bufferPointer, &bufferLength);
     if (!result) {
-      throw std::string("bad read in nextBuffer");
+      throw ParseError("bad read in nextBuffer");
     }
     bufferStart = static_cast<const char*>(bufferPointer);
     bufferEnd = bufferStart + bufferLength;
@@ -251,7 +252,7 @@ namespace orc {
     ByteRleDecoderImpl::seek(location);
     unsigned long consumed = location.next();
     if (consumed > 8) {
-      throw std::string("bad position");
+      throw ParseError("bad position");
     }
     if (consumed != 0) {
       remainingBits = 8 - consumed;

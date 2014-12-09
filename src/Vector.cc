@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include "Exceptions.hh"
 #include "orc/Vector.hh"
 
 #include <iostream>
@@ -162,7 +163,7 @@ namespace orc {
     case MAP:
     case UNION:
     case DECIMAL:
-      throw std::string("not supported yet");
+      throw NotImplementedYet("not supported yet");
     }
   }
 }

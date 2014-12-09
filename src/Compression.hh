@@ -28,6 +28,9 @@
 
 namespace orc {
 
+  void printBuffer(const char *buffer,
+                   unsigned long length);
+
   class PositionProvider {
   private:
     std::list<unsigned long>::const_iterator position;
@@ -45,6 +48,7 @@ namespace orc {
   public:
     virtual ~SeekableInputStream();
     virtual void seek(PositionProvider& position) = 0;
+    virtual std::string getName() const = 0;
   };
 
   /**
@@ -64,11 +68,12 @@ namespace orc {
                              unsigned long length,
                              long block_size = -1);
     virtual ~SeekableArrayInputStream();
-    virtual bool Next(const void** data, int*size);
-    virtual void BackUp(int count);
-    virtual bool Skip(int count);
-    virtual google::protobuf::int64 ByteCount() const;
-    virtual void seek(PositionProvider& position);
+    virtual bool Next(const void** data, int*size) override;
+    virtual void BackUp(int count) override;
+    virtual bool Skip(int count) override;
+    virtual google::protobuf::int64 ByteCount() const override;
+    virtual void seek(PositionProvider& position) override;
+    virtual std::string getName() const override;
   };
 
   /**
@@ -96,6 +101,7 @@ namespace orc {
     virtual bool Skip(int count) override;
     virtual google::protobuf::int64 ByteCount() const override;
     virtual void seek(PositionProvider& position) override;
+    virtual std::string getName() const override;
   };
 
   /**

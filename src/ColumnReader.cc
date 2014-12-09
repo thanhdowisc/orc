@@ -18,6 +18,7 @@
 
 #include "ByteRLE.hh"
 #include "ColumnReader.hh"
+#include "Exceptions.hh"
 #include "RLE.hh"
 
 namespace orc {
@@ -112,7 +113,7 @@ namespace orc {
       break;
     case proto::ColumnEncoding_Kind_DICTIONARY:
     case proto::ColumnEncoding_Kind_DICTIONARY_V2:
-      throw std::string("Unknown encoding for IntegerColumnReader");
+      throw ParseError("Unknown encoding for IntegerColumnReader");
     }
   }
 
@@ -158,7 +159,7 @@ namespace orc {
       const void* chunk;
       int length;
       if (!stream->Next(&chunk, &length)) {
-        throw std::string("bad read");
+        throw ParseError("bad read in readFully");
       }
       memcpy(buffer + posn, chunk, static_cast<size_t>(length));
       posn += length;
@@ -179,7 +180,7 @@ namespace orc {
       break;
     case proto::ColumnEncoding_Kind_DIRECT:
     case proto::ColumnEncoding_Kind_DIRECT_V2:
-      throw std::string("Unknown encoding for StringDictionaryColumnReader");
+      throw ParseError("Unknown encoding for StringDictionaryColumnReader");
     }
     dictionaryCount = stripe.getEncoding(columnId).dictionarysize();
     rle = createRleDecoder(stripe.getStream(columnId,
@@ -241,19 +242,28 @@ namespace orc {
   StructColumnReader::StructColumnReader(const Type& type, 
                                          StripeStreams& stripe
                                          ): ColumnReader(type, stripe) {
+    // count the number of selected sub-columns
+    const bool *selectedColumns = stripe.getSelectedColumns();
     subtypeCount = type.getSubtypeCount();
+    for(unsigned int i=0; i < type.getSubtypeCount(); ++i) {
+      if (!selectedColumns[type.getSubtype(i).getColumnId()]) {
+        subtypeCount -= 1;
+      }
+    }
     children.reset(new std::unique_ptr<ColumnReader>[subtypeCount]);
     switch (stripe.getEncoding(columnId).kind()) {
     case proto::ColumnEncoding_Kind_DIRECT:
-      for(unsigned int i=0; i < subtypeCount; ++i) {
-        children.get()[i].reset(buildReader(type.getSubtype(i), stripe
-                                            ).release());
+      for(unsigned int i=0, posn=0; i < type.getSubtypeCount(); ++i) {
+        const Type& child = type.getSubtype(i);
+        if (selectedColumns[child.getColumnId()]) {
+          children.get()[posn++].reset(buildReader(child, stripe).release());
+        }
       }
       break;
     case proto::ColumnEncoding_Kind_DIRECT_V2:
     case proto::ColumnEncoding_Kind_DICTIONARY:
     case proto::ColumnEncoding_Kind_DICTIONARY_V2:
-      throw std::string("Unknown encoding for StructColumnReader");
+      throw ParseError("Unknown encoding for StructColumnReader");
     }
   }
 
@@ -279,6 +289,47 @@ namespace orc {
       children.get()[i].get()->next(*(childBatch[i]), numValues,
                                     rowBatch.hasNulls ? 
                                     rowBatch.notNull.get(): 0);
+    }
+  }
+
+  /**
+   * Create a reader for the given stripe.
+   */
+  std::unique_ptr<ColumnReader> buildReader(const Type& type,
+                                            StripeStreams& stripe) {
+    switch (type.getKind()) {
+    case BYTE:
+    case SHORT:
+    case INT:
+    case LONG:
+      return std::unique_ptr<ColumnReader>(new IntegerColumnReader(type,
+                                                                   stripe));
+    case STRING:
+      switch (stripe.getEncoding(type.getColumnId()).kind()) {
+      case proto::ColumnEncoding_Kind_DICTIONARY:
+      case proto::ColumnEncoding_Kind_DICTIONARY_V2:
+        return std::unique_ptr<ColumnReader>(new StringDictionaryColumnReader
+                                             (type, stripe));
+      case proto::ColumnEncoding_Kind_DIRECT:
+      case proto::ColumnEncoding_Kind_DIRECT_V2:
+        throw NotImplementedYet("buildReader unhandled string encoding");
+      }
+    case STRUCT:
+      return std::unique_ptr<ColumnReader>(new StructColumnReader(type,
+                                                                  stripe));
+    case FLOAT:
+    case DOUBLE:
+    case BINARY:
+    case BOOLEAN:
+    case TIMESTAMP:
+    case LIST:
+    case MAP:
+    case UNION:
+    case DECIMAL:
+    case DATE:
+    case VARCHAR:
+    case CHAR:
+      throw NotImplementedYet("buildReader unhandled type");
     }
   }
 

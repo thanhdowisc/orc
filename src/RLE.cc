@@ -16,11 +16,12 @@
  * limitations under the License.
  */
 
+#include "Exceptions.hh"
+#include "RLE.hh"
+
 #include <algorithm>
 #include <iostream>
 #include <utility>
-
-#include "RLE.hh"
 
 namespace orc {
 
@@ -84,7 +85,7 @@ namespace orc {
       const void* bufferPointer;
       bool result = inputStream->Next(&bufferPointer, &bufferLength);
       if (!result) {
-        throw std::string("bad read in readByte");
+        throw ParseError("bad read in readByte");
       }
       bufferStart = static_cast<const char*>(bufferPointer);
       bufferEnd = bufferStart + bufferLength;
@@ -250,7 +251,7 @@ namespace orc {
     if (version == RleVersion_1) {
       result = new RleDecoderV1(std::move(input), isSigned);
     } else {
-      throw std::string("Not implemented yet");
+      throw NotImplementedYet("Not implemented yet");
     }
     return std::unique_ptr<RleDecoder>(result);
   }

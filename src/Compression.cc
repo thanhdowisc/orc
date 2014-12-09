@@ -16,12 +16,31 @@
  * limitations under the License.
  */
 
-#include <algorithm>
-#include <iostream>
-
 #include "Compression.hh"
+#include "Exceptions.hh"
+
+#include <algorithm>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
 
 namespace orc {
+
+  void printBuffer(const char *buffer,
+                   unsigned long length) {
+    const unsigned long width = 24;
+    std::cout << std::hex;
+    for(unsigned long line = 0; line < (length + width - 1) / width; ++line) {
+      std::cout << std::setfill('0') << std::setw(7) << (line * width);
+      for(unsigned long byte = 0; 
+          byte < width && line * width + byte < length; ++byte) {
+        std::cout << " " << std::setfill('0') << std::setw(2) 
+                  << static_cast<unsigned int>(0xff & buffer[line * width + byte]);
+      }
+      std::cout << "\n";
+    }
+    std::cout << std::dec;
+  }
 
   PositionProvider::PositionProvider(const std::list<unsigned long>& posns) {
     position = posns.cbegin();
@@ -103,6 +122,13 @@ namespace orc {
     position = seekPosition.next();
   }
 
+  std::string SeekableArrayInputStream::getName() const {
+    std::ostringstream result;
+    result << "memory from " << std::hex << data.get() << std::dec 
+           << " for " << length;
+    return result.str();
+  }
+
   SeekableFileInputStream::SeekableFileInputStream(InputStream* _input,
                                                    unsigned long _offset,
                                                    unsigned long _length,
@@ -124,27 +150,30 @@ namespace orc {
 
   bool SeekableFileInputStream::Next(const void** data, int*size) {
     unsigned long bytesRead = std::min(length - position, blockSize);
-    position += bytesRead;
-    *data = buffer.get();
-    // read from the file, skipping over the remainder
-    input->read(buffer.get() + remainder, position + remainder, 
-                bytesRead - remainder);
-    *size = static_cast<int>(bytesRead);
-    remainder = 0;
+    if (bytesRead > 0) {
+      *data = buffer.get();
+      // read from the file, skipping over the remainder
+      input->read(buffer.get() + remainder, offset + position + remainder, 
+                  bytesRead - remainder);
+      position += bytesRead;
+      *size = static_cast<int>(bytesRead);
+      remainder = 0;
+    }
     return bytesRead != 0;
   }
 
   void SeekableFileInputStream::BackUp(int count) {
     if (position == 0 || remainder > 0) {
-      throw std::string("can't backup unless we just called Next");
+      throw std::logic_error("can't backup unless we just called Next");
     }
     if (remainder > blockSize) {
-      throw std::string("can't backup that far");
+      throw std::logic_error("can't backup that far");
     }
     remainder = static_cast<unsigned long>(count);
     memmove(buffer.get(), 
             buffer.get() + blockSize - static_cast<size_t>(count), 
-            static_cast<unsigned long>(count));
+            static_cast<size_t>(count));
+    position -= static_cast<unsigned long>(count);
   }
 
   bool SeekableFileInputStream::Skip(int _count) {
@@ -169,9 +198,16 @@ namespace orc {
   void SeekableFileInputStream::seek(PositionProvider& location) {
     position = location.next();
     if (position > length) {
-      throw std::string("seek too far");
+      throw std::logic_error("seek too far");
     }
     remainder = 0;
+  }
+
+  std::string SeekableFileInputStream::getName() const {
+    std::ostringstream result;
+    result << input->getName() << " from " << offset << " for "
+           << length;
+    return result.str();
   }
 
   std::unique_ptr<SeekableInputStream> 
@@ -184,7 +220,7 @@ namespace orc {
     case CompressionKind_LZO:
     case CompressionKind_SNAPPY:
     case CompressionKind_ZLIB:
-      throw std::string("Not implemented yet");
+      throw NotImplementedYet("compression codec");
     }
   }
 }
