@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Usage: file-dump <filename>\n";
   }
   orc::ReaderOptions opts;
-  opts.include({1});
+  // opts.include({1});
   std::unique_ptr<orc::Reader> reader =
     orc::createReader(orc::readLocalFile(std::string(argv[1])), opts);
   std::unique_ptr<orc::ColumnVectorBatch> batch = 

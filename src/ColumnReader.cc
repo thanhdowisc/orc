@@ -218,8 +218,31 @@ namespace orc {
                                           unsigned long numValues,
                                           char *notNull) {
     ColumnReader::next(rowBatch, numValues, notNull);
-    rle->next(dynamic_cast<LongVectorBatch&>(rowBatch).data.get(),
-              numValues, rowBatch.hasNulls ? rowBatch.notNull.get() : 0);
+    // update the notNull from the parent class
+    notNull = rowBatch.hasNulls ? rowBatch.notNull.get() : 0;
+    ByteVectorBatch& byteBatch = dynamic_cast<ByteVectorBatch&>(rowBatch);
+    char *blob = dictionaryBlob.get();
+    long *dictionaryOffsets = dictionaryOffset.get();
+    char **outputStarts = byteBatch.data.get();
+    long *outputLengths = byteBatch.length.get();
+    rle->next(outputLengths, numValues, notNull);
+    if (notNull) {
+      for(unsigned int i=0; i < numValues; ++i) {
+        if (notNull[i]) {
+          long entry = outputLengths[i];
+          outputStarts[i] = blob + dictionaryOffsets[entry];
+          outputLengths[i] = dictionaryOffsets[entry+1] - 
+            dictionaryOffsets[entry];
+        }
+      }
+    } else {
+      for(unsigned int i=0; i < numValues; ++i) {
+        long entry = outputLengths[i];
+        outputStarts[i] = blob + dictionaryOffsets[entry];
+        outputLengths[i] = dictionaryOffsets[entry+1] - 
+          dictionaryOffsets[entry];
+      }
+    }
   }
 
   class StructColumnReader: public ColumnReader {
