@@ -11,19 +11,22 @@
 # limitations under the License.
 
 configure_file (
-  "${CMAKE_CURRENT_SOURCE_DIR}/orc/orc-config.hh.in"
-  "${CMAKE_BINARY_DIR}/include/orc/orc-config.hh"
-)
-include_directories(${CMAKE_BINARY_DIR}/include)
+  "orc/orc-config.hh.in"
+  "orc/orc-config.hh"
+  )
 
-include_directories(${PROTOBUF_INCLUDE_DIRS} ${CMAKE_BINARY_DIR}/src)
+include_directories (
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${PROTOBUF_INCLUDE_DIRS}
+  )
 
-PROTOBUF_GENERATE_CPP(ProtoSources ProtoHeaders orc_proto.proto)
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS orc_proto.proto)
 
 set (CMAKE_CXX_FLAGS "-O0 ${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
 
-add_library(orc STATIC
-  ${ProtoHeaders}
+add_library (orc STATIC
+  ${PROTO_SRCS}
+  ${PROTO_HDRS}
   wrap/orc-proto-wrapper.cc
   ByteRLE.cc
   ColumnReader.cc
@@ -35,16 +38,17 @@ add_library(orc STATIC
   TypeImpl.cc
   Vector.cc
   ColumnPrinter.cc
-  wrap/orc-proto-wrapper.cc
-)
+  )
 
-add_executable(dump-file
+target_link_libraries (orc
+  ${PROTOBUF_LITE_LIBRARIES}
+  )
+
+add_executable (dump-file
   LocalFileReader.cc
-)
+  )
 
-target_link_libraries(dump-file
+target_link_libraries (dump-file
   orc
   ${PROTOBUF_LIBRARIES}
-)
-
-
+  )
