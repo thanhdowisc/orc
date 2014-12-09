@@ -514,7 +514,6 @@ namespace orc {
   }
 
   void ReaderImpl::startNextStripe() {
-    std::cout << "Starting stripe " << currentStripe << "\n";
     currentStripeInfo = footer.stripes(static_cast<int>(currentStripe));
     currentStripeFooter = getStripeFooter(currentStripeInfo);
     rowsInCurrentStripe = currentStripeInfo.numberofrows();

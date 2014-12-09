@@ -308,7 +308,11 @@ namespace orc {
     }
 
     // fill in the remaining values
-    if (position < numValues) {
+    if (nonNulls == 0) {
+      while (position < numValues) {
+	data[position++] = 0;
+      }
+    } else if (position < numValues) {
       // read the new bytes into the array
       unsigned long bytesRead = (nonNulls + 7) / 8;
       ByteRleDecoderImpl::next(data + position, bytesRead, 0);
