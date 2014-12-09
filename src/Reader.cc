@@ -41,7 +41,7 @@ namespace orc {
     unsigned long dataLength;
     unsigned long tailLocation;
     ReaderOptionsPrivate() {
-      includedColumns.push_back(1);
+      includedColumns.push_back(0);
       dataStart = 0;
       dataLength = std::numeric_limits<unsigned long>::max();
       tailLocation = std::numeric_limits<unsigned long>::max();
@@ -167,6 +167,9 @@ namespace orc {
     void checkOrcVersion();
     void selectTypeParent(int columnId);
     void selectTypeChildren(int columnId);
+    std::unique_ptr<ColumnVectorBatch> createRowBatch(const Type& type, 
+                                                      unsigned long capacity
+                                                      ) const;
 
   public:
     /**
@@ -205,6 +208,9 @@ namespace orc {
     const Type& getType() const override;
 
     const bool* getSelectedColumns() const override;
+
+    std::unique_ptr<ColumnVectorBatch> createRowBatch(unsigned long size
+                                                      ) const override;
 
     bool next(ColumnVectorBatch& data) override;
 
@@ -408,7 +414,7 @@ namespace orc {
     if (!footer.ParseFromZeroCopyStream(pbStream.get())) {
       throw ParseError("bad footer parse");
     }
-    numberOfStripes = footer.stripes_size();
+    numberOfStripes = static_cast<unsigned long>(footer.stripes_size());
   }
 
   std::string printProtobufMessage(const google::protobuf::Message& message) {
@@ -542,6 +548,69 @@ namespace orc {
       currentRowInStripe = 0;
     }
     return rowsToRead != 0;
+  }
+
+  std::unique_ptr<ColumnVectorBatch> ReaderImpl::createRowBatch
+       (const Type& type, unsigned long capacity) const {
+    switch (type.getKind()) {
+    case BOOLEAN:
+    case BYTE:
+    case SHORT:
+    case INT:
+    case LONG:
+    case TIMESTAMP:
+    case DATE:
+      return std::unique_ptr<ColumnVectorBatch>(new LongVectorBatch(capacity));
+
+    case FLOAT:
+    case DOUBLE:
+      return std::unique_ptr<ColumnVectorBatch>
+        (new DoubleVectorBatch(capacity));
+
+    case STRING:
+    case BINARY:
+    case CHAR:
+    case VARCHAR:
+      return std::unique_ptr<StringVectorBatch>
+        (new StringVectorBatch(capacity));
+
+    case STRUCT: {
+      std::unique_ptr<ColumnVectorBatch> result =
+        std::unique_ptr<ColumnVectorBatch>(new StructVectorBatch(capacity));
+
+      StructVectorBatch* structPtr = 
+        dynamic_cast<StructVectorBatch*>(result.get());
+
+      structPtr->numFields = 0;
+      bool* selected = selectedColumns.get();
+      for(unsigned int i=0; i < type.getSubtypeCount(); ++i) {
+        const Type& child = type.getSubtype(i);
+        if (selected[child.getColumnId()]) {
+          structPtr->numFields += 1;
+        }
+      }
+      structPtr->fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
+        (new std::unique_ptr<ColumnVectorBatch>[structPtr->numFields]);
+      unsigned long next = 0;
+      for(unsigned int i=0; i < type.getSubtypeCount(); ++i) {
+        const Type& child = type.getSubtype(i);
+        if (selected[child.getColumnId()]) {
+          structPtr->fields[next++] = createRowBatch(child, capacity);
+        }
+      }
+      return result;
+    }
+    case LIST:
+    case MAP:
+    case UNION:
+    case DECIMAL:
+      throw NotImplementedYet("not supported yet");
+    }
+  }
+
+  std::unique_ptr<ColumnVectorBatch> ReaderImpl::createRowBatch
+       (unsigned long capacity) const {
+    return createRowBatch(*(schema.get()), capacity);
   }
 
   std::unique_ptr<Reader> createReader(std::unique_ptr<InputStream> stream, 

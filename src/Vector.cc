@@ -69,20 +69,20 @@ namespace orc {
     return buffer.str();
   }
 
-  ByteVectorBatch::ByteVectorBatch(unsigned long capacity
-                                   ): ColumnVectorBatch(capacity),
-                                      data(std::unique_ptr<char*[]>
-                                           (new char *[capacity])),
-                                      length(std::unique_ptr<long[]>
-                                             (new long[capacity])) {
+  StringVectorBatch::StringVectorBatch(unsigned long capacity
+                                       ): ColumnVectorBatch(capacity),
+                                          data(std::unique_ptr<char*[]>
+                                               (new char *[capacity])),
+                                          length(std::unique_ptr<long[]>
+                                                 (new long[capacity])) {
     // PASS
   }
 
-  ByteVectorBatch::~ByteVectorBatch() {
+  StringVectorBatch::~StringVectorBatch() {
     // PASS
   }
 
-  std::string ByteVectorBatch::toString() const {
+  std::string StringVectorBatch::toString() const {
     std::ostringstream buffer;
     buffer << "Byte vector <" << numElements << " of " << capacity << ">";
     return buffer.str();
@@ -106,64 +106,5 @@ namespace orc {
     }
     buffer << ">";
     return buffer.str();
-  }
-
-  std::unique_ptr<ColumnVectorBatch> createRowBatch(const Type& type,
-                                                    const bool* selected,
-                                                    unsigned long capacity){
-    switch (type.getKind()) {
-    case BOOLEAN:
-    case BYTE:
-    case SHORT:
-    case INT:
-    case LONG:
-    case TIMESTAMP:
-    case DATE:
-      return std::unique_ptr<ColumnVectorBatch>(new LongVectorBatch(capacity));
-
-    case FLOAT:
-    case DOUBLE:
-      return std::unique_ptr<ColumnVectorBatch>
-        (new DoubleVectorBatch(capacity));
-
-    case STRING:
-    case BINARY:
-    case CHAR:
-    case VARCHAR:
-      return std::unique_ptr<ByteVectorBatch>
-        (new ByteVectorBatch(capacity));
-
-    case STRUCT: {
-      std::unique_ptr<ColumnVectorBatch> result =
-        std::unique_ptr<ColumnVectorBatch>(new StructVectorBatch(capacity));
-
-      StructVectorBatch* structPtr = 
-        dynamic_cast<StructVectorBatch*>(result.get());
-
-      structPtr->numFields = 0;
-      for(unsigned int i=0; i < type.getSubtypeCount(); ++i) {
-        const Type& child = type.getSubtype(i);
-        if (selected[child.getColumnId()]) {
-          structPtr->numFields += 1;
-        }
-      }
-      structPtr->fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
-        (new std::unique_ptr<ColumnVectorBatch>[structPtr->numFields]);
-      unsigned long next = 0;
-      for(unsigned int i=0; i < type.getSubtypeCount(); ++i) {
-        const Type& child = type.getSubtype(i);
-        if (selected[child.getColumnId()]) {
-          structPtr->fields[next++] = 
-            createRowBatch(child, selected, capacity);
-        }
-      }
-      return result;
-    }
-    case LIST:
-    case MAP:
-    case UNION:
-    case DECIMAL:
-      throw NotImplementedYet("not supported yet");
-    }
   }
 }

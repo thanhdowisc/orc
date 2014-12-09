@@ -220,7 +220,7 @@ namespace orc {
     ColumnReader::next(rowBatch, numValues, notNull);
     // update the notNull from the parent class
     notNull = rowBatch.hasNulls ? rowBatch.notNull.get() : 0;
-    ByteVectorBatch& byteBatch = dynamic_cast<ByteVectorBatch&>(rowBatch);
+    StringVectorBatch& byteBatch = dynamic_cast<StringVectorBatch&>(rowBatch);
     char *blob = dictionaryBlob.get();
     long *dictionaryOffsets = dictionaryOffset.get();
     char **outputStarts = byteBatch.data.get();

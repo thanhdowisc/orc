@@ -446,6 +446,14 @@ namespace orc {
     virtual const bool* getSelectedColumns() const = 0;
 
     /**
+     * Create a row batch for reading the selected columns of this file.
+     * @param size the number of rows to read
+     * @return a new ColumnVectorBatch to read into
+     */
+    virtual std::unique_ptr<ColumnVectorBatch> createRowBatch
+      (unsigned long size) const = 0;
+
+    /**
      * Read the next row batch from the current position.
      * Caller must look at numElements in the row batch to determine how
      * many rows were read.
