@@ -104,12 +104,12 @@ namespace orc {
     case proto::ColumnEncoding_Kind_DIRECT:
       rle = createRleDecoder(stripe.getStream(columnId,
                                               proto::Stream_Kind_DATA), 
-                             false, RleVersion_1);
+                             true, RleVersion_1);
       break;
     case proto::ColumnEncoding_Kind_DIRECT_V2:
       rle = createRleDecoder(stripe.getStream(columnId,
                                               proto::Stream_Kind_DATA), 
-                             false, RleVersion_2);
+                             true, RleVersion_2);
       break;
     case proto::ColumnEncoding_Kind_DICTIONARY:
     case proto::ColumnEncoding_Kind_DICTIONARY_V2:

@@ -408,6 +408,7 @@ namespace orc {
     if (!footer.ParseFromZeroCopyStream(pbStream.get())) {
       throw ParseError("bad footer parse");
     }
+    numberOfStripes = footer.stripes_size();
   }
 
   std::string printProtobufMessage(const google::protobuf::Message& message) {
@@ -507,6 +508,7 @@ namespace orc {
   }
 
   void ReaderImpl::startNextStripe() {
+    std::cout << "Starting stripe " << currentStripe << "\n";
     currentStripeInfo = footer.stripes(static_cast<int>(currentStripe));
     currentStripeFooter = getStripeFooter(currentStripeInfo);
     rowsInCurrentStripe = currentStripeInfo.numberofrows();
