@@ -16,24 +16,14 @@ configure_file (
 )
 include_directories(${CMAKE_BINARY_DIR}/include)
 
-include_directories(${PROTOBUF_INCLUDE_DIRS})
+include_directories(${PROTOBUF_INCLUDE_DIRS} ${CMAKE_BINARY_DIR}/src)
 
-set(PROTOC_GENERATED ${CMAKE_BINARY_DIR}/generated)
-
-file(MAKE_DIRECTORY ${PROTOC_GENERATED})
-
-add_custom_command(
-  OUTPUT ${CMAKE_BINARY_DIR}/generated/orc_proto.pb.h
-  COMMAND protoc -I ${CMAKE_CURRENT_SOURCE_DIR}
-                 --cpp_out=${CMAKE_BINARY_DIR}/generated
-                 ${CMAKE_CURRENT_SOURCE_DIR}/orc_proto.proto
-  DEPENDS ${PROTOC_GENERATED}
-)
-include_directories(${PROTOC_GENERATED})
+PROTOBUF_GENERATE_CPP(ProtoSources ProtoHeaders orc_proto.proto)
 
 set (CMAKE_CXX_FLAGS "-O0 ${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
 
 add_library(orc STATIC
+  ${ProtoHeaders}
   wrap/orc-proto-wrapper.cc
   ByteRLE.cc
   ColumnReader.cc
