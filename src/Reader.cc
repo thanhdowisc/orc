@@ -164,14 +164,17 @@ namespace orc {
             long streamLength;
             int columnIx;
 
+            // First, reset all column readers with new encodings.
+            // Each column reader should clear its streams and reset the encoding for the current stripe
+            for (int columnIx=1; columnIx < stripeFooter.columns_size(); columnIx++)
+                columnReaders[columnIx-1]->reset(stripeFooter.columns(columnIx));
+
             for (int streamIx=0; streamIx<stripeFooter.streams_size(); streamIx++) {
                 streamInfo = stripeFooter.streams(streamIx);
                 streamLength = streamInfo.length();
                 columnIx = streamInfo.column();
-                if (streamInfo.kind() == orc::proto::Stream_Kind_DATA && columnIx > 0 ) {
-                    columnReaders[columnIx-1]->reset(
-                            new SeekableArrayInputStream(stripe+(streamStart-stripeStart), streamLength),
-                            stripeFooter.columns(columnIx));
+                if (columnIx > 0 ) {
+                    columnReaders[columnIx-1]->resetStream(stripe+(streamStart-stripeStart), streamLength,streamInfo.kind());
                 }
                 streamStart += streamLength;
             }

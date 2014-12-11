@@ -204,9 +204,60 @@ namespace orc {
     }
   }
 
+  class BooleanRleDecoderImpl: public ByteRleDecoder {
+  private:
+      std::unique_ptr<ByteRleDecoderImpl> rle ;
+      char currentByte;
+      const std::vector<char> masks {128,64,32,16,8,4,2,1} ;
+      unsigned char maskIx ;
+
+      void readNextByte() {
+          char value;
+          rle->next(&value, 1, 0);
+          maskIx = 0;
+      }
+
+  public:
+    ~BooleanRleDecoderImpl() {
+        //PASS
+    }
+
+    BooleanRleDecoderImpl(std::unique_ptr<SeekableInputStream> input) {
+        rle = createByteRleDecoder(std::move(std::unique_ptr<SeekableInputStream> (input)));
+        currentByte = 0;
+        maskIx = 8;
+    }
+
+    void seek(PositionProvider&) {
+        // PASS
+    }
+
+    void skip(unsigned long numValues) {
+        // PASS
+    }
+
+    void next(char* data, unsigned long numValues, char* isNull) {
+        // TODO: check if we cannot read all numValues
+        for (unsigned long i=0; i < numValues; i++) {
+            if (maskIx > 7 || maskIx < 0)
+                readNextByte();
+            data[i] = (char)(currentByte && masks[maskIx]);
+            maskIx++ ;
+        }
+    }
+  };
+
+
+
   std::unique_ptr<ByteRleDecoder> createByteRleDecoder
                                  (std::unique_ptr<SeekableInputStream> input) {
     return std::unique_ptr<ByteRleDecoder>
       (new ByteRleDecoderImpl(std::move(input)));
+  }
+
+  std::unique_ptr<ByteRleDecoder> createBooleanRleDecoder
+                                 (std::unique_ptr<SeekableInputStream> input) {
+    return std::unique_ptr<ByteRleDecoder>
+      (new BooleanRleDecoderImpl(std::move(input)));
   }
 }

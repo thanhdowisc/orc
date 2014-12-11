@@ -112,8 +112,9 @@ static const std::string MAGIC("ORC");
    };
 
     // ORC data types
-    #define ORC_INT int
+    #define ORC_INT long
     #define ORC_STRING std::string
+    #define ORC_BOOL bool
 
 }
 #endif

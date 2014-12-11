@@ -34,11 +34,16 @@ namespace orc {
     virtual ~DataReader();
 
     /**
-     * Setup the reader with an encoded data stream
+     * Reset the reader
      * @return
-     * @throws IOException
      */
-    virtual void reset(SeekableArrayInputStream* stream, orc::proto::ColumnEncoding encoding) = 0;
+    virtual void reset(orc::proto::ColumnEncoding encoding) = 0;
+
+    /**
+     * Setup the reader with an encoded data stream of a specified kind
+     * @return
+     */
+    virtual void resetStream(unsigned char* stream, unsigned int streamLength, orc::proto::Stream_Kind kind) = 0;
 
     /**
      * Seek to the position provided by index.
@@ -78,6 +83,7 @@ namespace orc {
 
   DataReader* createIntegerReader() ;
   DataReader* createStringReader() ;
+  DataReader* createBoolReader() ;
   DataReader* createDummyReader() ;
 }
 
