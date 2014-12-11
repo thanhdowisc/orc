@@ -17,16 +17,22 @@
  */
 
 #include "orc/OrcFile.hh"
-#include "wrap/gtest-wrapper.h"
 #include "TestDriver.hh"
 
+#include "gmock/gmock.h"
+#include "wrap/gtest-wrapper.h"
+
 #include <sstream>
+
+namespace {
+
+using ::testing::IsEmpty;
 
 TEST(Reader, simpleTest) {
   orc::ReaderOptions opts;
   std::ostringstream filename;
   filename << exampleDirectory << "/demo-11-none.orc";
-  std::unique_ptr<orc::Reader> reader = 
+  std::unique_ptr<orc::Reader> reader =
     orc::createReader(orc::readLocalFile(filename.str()), opts);
 
   EXPECT_EQ(orc::CompressionKind_NONE, reader->getCompression());
@@ -36,7 +42,7 @@ TEST(Reader, simpleTest) {
   EXPECT_EQ(10000, reader->getRowIndexStride());
   EXPECT_EQ(5069718, reader->getContentLength());
   EXPECT_EQ(filename.str(), reader->getStreamName());
-  EXPECT_EQ(0, reader->getMetadataKeys().size());
+  EXPECT_THAT(reader->getMetadataKeys(), IsEmpty());
   EXPECT_FALSE(reader->hasMetadataValue("foo"));
   EXPECT_EQ(18446744073709551615UL, reader->getRowNumber());
 
@@ -65,8 +71,8 @@ TEST(Reader, simpleTest) {
   for(unsigned int i=0; i < 9; ++i) {
     EXPECT_EQ(i + 1, rootType.getSubtype(i).getColumnId()) << "fail on " << i;
   }
-  const bool* selected = reader->getSelectedColumns();
-  for(int i=0; i < 10; ++i) {
+  const bool* const selected = reader->getSelectedColumns();
+  for (size_t i = 0; i < 10; ++i) {
     EXPECT_EQ(true, selected[i]) << "fail on " << i;
   }
 
@@ -79,3 +85,5 @@ TEST(Reader, simpleTest) {
   EXPECT_EQ(1920800, rowCount);
   EXPECT_EQ(1920000, reader->getRowNumber());
 }
+
+}  // namespace
