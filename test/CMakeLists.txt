@@ -21,16 +21,17 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
 add_executable(test-orc
   TestByteRle.cc
   TestDriver.cc
+  TestReader.cc
   TestRle.cc
 )
 
 target_link_libraries(test-orc
   ${CMAKE_BINARY_DIR}/src/liborc.a
-  ${PROTOBUF_LITE_LIBRARIES}
+  ${PROTOBUF_LIBRARIES}
   ${GTEST_LIB}
 )
 
-add_test(test-orc test-orc)
+add_test(test-orc test-orc ${EXAMPLE_DIRECTORY})
 
 # Add another target called test-out that prints the results on failure
 if (CMAKE_CONFIGURATION_TYPES)

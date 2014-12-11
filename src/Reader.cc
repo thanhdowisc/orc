@@ -35,6 +35,12 @@
 
 namespace orc {
 
+  std::string printProtobufMessage(const google::protobuf::Message& message) {
+    std::string result;
+    google::protobuf::TextFormat::PrintToString(message, &result);
+    return result;
+  }
+
   struct ReaderOptionsPrivate {
     std::list<int> includedColumns;
     unsigned long dataStart;
@@ -415,12 +421,6 @@ namespace orc {
       throw ParseError("bad footer parse");
     }
     numberOfStripes = static_cast<unsigned long>(footer.stripes_size());
-  }
-
-  std::string printProtobufMessage(const google::protobuf::Message& message) {
-    std::string result;
-    google::protobuf::TextFormat::PrintToString(message, &result);
-    return result;
   }
 
   proto::StripeFooter ReaderImpl::getStripeFooter

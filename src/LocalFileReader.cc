@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
     orc::createReader(orc::readLocalFile(std::string(argv[1])), opts);
   std::unique_ptr<orc::ColumnVectorBatch> batch = reader->createRowBatch(1024);
 
-  while (reader->next(*(batch.get()))) {
+  while (reader->next(*batch)) {
     for(unsigned long i=0; i < batch->numElements; ++i) {
       printRow(batch.get(), i);
     }

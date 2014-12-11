@@ -47,6 +47,8 @@ else(APPLE)
 endif(APPLE)
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 
+set (EXAMPLE_DIRECTORY ${CMAKE_SOURCE_DIR}/examples)
+
 add_subdirectory(libs)
 add_subdirectory(src)
 add_subdirectory(test)
