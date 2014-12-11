@@ -31,7 +31,8 @@ add_library(orc STATIC
   Exceptions.cc
   OrcFile.cc
   Reader.cc
-  RLE.cc
+  RLEv1.cc
+  RLEs.cc
   TypeImpl.cc
   Vector.cc
   wrap/orc-proto-wrapper.cc
