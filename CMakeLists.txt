@@ -22,12 +22,15 @@ if (NOT APPLE)
   list (APPEND LIBUV_LIB pthread rt)
 endif (NOT APPLE)
 
-set (GTEST_VERSION "1.7.0")
-include_directories (${CMAKE_SOURCE_DIR}/libs/gtest-${GTEST_VERSION}/include)
-set (GTEST_LIB "${CMAKE_BINARY_DIR}/libs/gtest-${GTEST_VERSION}/libgtest.a")
-if (NOT APPLE)
-  list (APPEND GTEST_LIB pthread)
-endif (NOT APPLE)
+set (GMOCK_VERSION "1.7.0")
+include_directories(
+  ${CMAKE_SOURCE_DIR}/libs/gmock-${GMOCK_VERSION}/include
+  ${CMAKE_SOURCE_DIR}/libs/gmock-${GMOCK_VERSION}/gtest/include
+  )
+set (GMOCK_LIB "${CMAKE_BINARY_DIR}/libs/gmock-${GMOCK_VERSION}/libgmock_main.a")
+if(NOT APPLE)
+  list (APPEND GMOCK_LIB pthread)
+endif(NOT APPLE)
 enable_testing()
 
 find_package (Protobuf REQUIRED)

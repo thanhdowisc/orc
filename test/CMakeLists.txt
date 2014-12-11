@@ -28,7 +28,7 @@ add_executable (test-orc
 target_link_libraries (test-orc
   orc
   ${PROTOBUF_LIBRARIES}
-  ${GTEST_LIB}
+  ${GMOCK_LIB}
 )
 
 add_test (test-orc test-orc ${EXAMPLE_DIRECTORY})
