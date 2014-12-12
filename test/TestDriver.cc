@@ -16,6 +16,8 @@
  * limitations under the License.
  */
 
+#include <iostream>
+
 #include "orc/orc-config.hh"
 #include "wrap/gtest-wrapper.h"
 #include "TestDriver.hh"
