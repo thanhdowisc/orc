@@ -19,7 +19,7 @@
 #include "ByteRLE.hh"
 #include "ColumnReader.hh"
 #include "Exceptions.hh"
-#include "RLE.hh"
+#include "RLEs.hh"
 
 namespace orc {
 
@@ -98,8 +98,8 @@ namespace orc {
   };
 
   IntegerColumnReader::IntegerColumnReader(const Type& type,
-                                           StripeStreams& stripe
-                                           ): ColumnReader(type, stripe) {
+                                           StripeStreams& stripe)
+      : ColumnReader(type, stripe) {
     switch (stripe.getEncoding(columnId).kind()) {
     case proto::ColumnEncoding_Kind_DIRECT:
       rle = createRleDecoder(stripe.getStream(columnId,

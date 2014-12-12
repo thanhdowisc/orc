@@ -34,7 +34,8 @@ add_library (orc STATIC
   Exceptions.cc
   OrcFile.cc
   Reader.cc
-  RLE.cc
+  RLEv1.cc
+  RLEs.cc
   TypeImpl.cc
   Vector.cc
   ColumnPrinter.cc

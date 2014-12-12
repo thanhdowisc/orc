@@ -37,7 +37,7 @@ TEST(Reader, simpleTest) {
   EXPECT_EQ(5069718, reader->getContentLength());
   EXPECT_EQ(filename.str(), reader->getStreamName());
   EXPECT_EQ(0, reader->getMetadataKeys().size());
-  EXPECT_EQ(false, reader->hasMetadataValue("foo"));
+  EXPECT_FALSE(reader->hasMetadataValue("foo"));
   EXPECT_EQ(18446744073709551615UL, reader->getRowNumber());
 
   const orc::Type& rootType = reader->getType();
