@@ -34,6 +34,7 @@ add_library(orc STATIC
   RLE.cc
   TypeImpl.cc
   Vector.cc
+  ColumnPrinter.cc
   wrap/orc-proto-wrapper.cc
 )
 

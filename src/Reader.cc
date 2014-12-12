@@ -147,6 +147,7 @@ namespace orc {
     // footer
     proto::Footer footer;
     std::unique_ptr<unsigned long[]> firstRowOfStripe;
+//    std::vector<unsigned long> firstRowOfStripe;
     unsigned long numberOfStripes;
     std::unique_ptr<Type> schema;
 
@@ -382,14 +383,8 @@ namespace orc {
 
     ensureOrcFooter(buffer, readSize);
 
-    //read the PostScript
-    std::unique_ptr<SeekableInputStream> pbStream = 
-      std::unique_ptr<SeekableInputStream>(new SeekableArrayInputStream
-                                           (buffer + readSize - 
-                                               (1 + postscriptLength), 
-                                            postscriptLength));
-    if (!postscript.ParseFromZeroCopyStream(pbStream.get())) {
-      throw ParseError("bad postscript parse");
+    if (!postscript.ParseFromArray(buffer+readSize-1-postscriptLength, postscriptLength)) {
+          throw ParseError("bad postscript parse");
     }
     if (postscript.has_compressionblocksize()) {
       blockSize = postscript.compressionblocksize();
@@ -417,6 +412,8 @@ namespace orc {
                                                         (readSize - tailSize),
                                                         footerSize)),
                           blockSize);
+    // TODO: do not SeekableArrayInputStream, rather use an array
+//    if (!footer.ParseFromArray(buffer+readSize-tailSize, footerSize)) {
     if (!footer.ParseFromZeroCopyStream(pbStream.get())) {
       throw ParseError("bad footer parse");
     }
