@@ -19,7 +19,7 @@
 #include "orc/OrcFile.hh"
 #include "TestDriver.hh"
 
-#include "gmock/gmock.h"
+#include "wrap/gmock.h"
 #include "wrap/gtest-wrapper.h"
 
 #include <sstream>

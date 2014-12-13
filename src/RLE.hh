@@ -28,7 +28,7 @@ class SeekableInputStream;
 
 class RleDecoder {
 public:
-  virtual ~RleDecoder() {}
+  virtual ~RleDecoder();
 
   /**
   * Reset the run length decoder.

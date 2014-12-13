@@ -68,8 +68,8 @@ TEST(ByteRle, simpleRuns) {
   for (size_t i = 0; i < 3; ++i) {
     rle->next(data.data(), data.size(), nullptr);
     for (size_t j = 0; j < data.size(); ++j) {
-      EXPECT_EQ(static_cast<char>(-1 - i), data[j]) << "Output wrong at "
-                                                    << (16 * i + j);
+      EXPECT_EQ(static_cast<char>(-1 - static_cast<int>(i)), data[j]) 
+	<< "Output wrong at " << (16 * i + j);
     }
   }
 }
@@ -118,8 +118,8 @@ TEST(ByteRle, splitRuns) {
   for(size_t i = 0; i < 2; ++i) {
     rle->next(data.data(), data.size(), nullptr);
     for(size_t j = 0; j < data.size(); ++j) {
-      EXPECT_EQ(5 * i + j + data.size(), data[j]) << "Output wrong at "
-                                                  << (20 + data.size() * i + j);
+      EXPECT_EQ(5 * i + j + data.size(), data[j]) 
+	<< "Output wrong at " << (20 + data.size() * i + j);
     }
   }
   rle->next(data.data(), 2, nullptr);
@@ -305,7 +305,7 @@ TEST(ByteRle, testSkip) {
   std::vector<char> data(1);
   for (size_t i = 0; i < 2048; i += 10) {
     rle->next(data.data(), data.size(), nullptr);
-    EXPECT_EQ(i < 1024 ? i/16 : static_cast<char>(i & 0xff),
+    EXPECT_EQ(static_cast<char>(i < 1024 ? i/16 : i & 0xff),
               data[0])
         << "Output wrong at " << i;
     if (i < 2038) {
@@ -772,7 +772,7 @@ TEST(BooleanRle, simpleTest) {
   for (size_t i = 0; i < 16; ++i) {
     rle->next(data.data(), data.size(), nullptr);
     for (size_t j = 0; j < data.size(); ++j) {
-      const int bitPosn = 50 * i + j;
+      const int bitPosn = static_cast<int>(50 * i + j);
       EXPECT_EQ((bitPosn & 0x4) == 0 ? 1 : 0,
                 data[j])
           << "Output wrong at " << i << ", " << j;

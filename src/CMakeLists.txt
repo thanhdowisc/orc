@@ -25,7 +25,6 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS orc_proto.proto)
 set (CMAKE_CXX_FLAGS "-O0 ${CMAKE_CXX_FLAGS} -g ${CXX11_FLAGS} ${WARN_FLAGS}")
 
 add_library (orc STATIC
-  ${PROTO_SRCS}
   ${PROTO_HDRS}
   wrap/orc-proto-wrapper.cc
   ByteRLE.cc

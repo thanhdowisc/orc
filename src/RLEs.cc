@@ -22,6 +22,8 @@
 
 namespace orc {
 
+  RleDecoder::~RleDecoder() {}
+
 std::unique_ptr<RleDecoder> createRleDecoder(
     std::unique_ptr<SeekableInputStream> input,
     bool isSigned,
@@ -29,7 +31,8 @@ std::unique_ptr<RleDecoder> createRleDecoder(
   switch (version) {
     case RleVersion_1:
       // We don't have std::make_unique() yet.
-      return std::unique_ptr<RleDecoder>(new RleDecoderV1(std::move(input), isSigned));
+      return std::unique_ptr<RleDecoder>(new RleDecoderV1(std::move(input), 
+                                                          isSigned));
     case RleVersion_2:
     default:
       throw NotImplementedYet("Not implemented yet");

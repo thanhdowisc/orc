@@ -280,7 +280,7 @@ namespace orc {
   }
 
   std::unique_ptr<StripeInformation> 
-      ReaderImpl::getStripe(unsigned long stripeIndex) const {
+      ReaderImpl::getStripe(unsigned long) const {
     // TODO
     return std::unique_ptr<StripeInformation>();
   }
@@ -383,8 +383,9 @@ namespace orc {
 
     ensureOrcFooter(buffer, readSize);
 
-    if (!postscript.ParseFromArray(buffer+readSize-1-postscriptLength, postscriptLength)) {
-          throw ParseError("bad postscript parse");
+    if (!postscript.ParseFromArray(buffer+readSize-1-postscriptLength, 
+                                   static_cast<int>(postscriptLength))) {
+      throw ParseError("bad postscript parse");
     }
     if (postscript.has_compressionblocksize()) {
       blockSize = postscript.compressionblocksize();
@@ -399,7 +400,7 @@ namespace orc {
   }
 
   void ReaderImpl::readFooter(char* buffer, unsigned long readSize,
-                              unsigned long fileLength) {
+                              unsigned long) {
     unsigned long footerSize = postscript.footerlength();
     //check if extra bytes need to be read
     unsigned long tailSize = 1 + postscriptLength + footerSize;
