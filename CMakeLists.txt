@@ -37,6 +37,7 @@ find_package (Protobuf REQUIRED)
 
 set (CXX11_FLAGS "-std=gnu++11")
 if (APPLE)
+  set (COVERAGE_FLAGS "--coverage -g -O0")
   set (CXX11_FLAGS "${CXX11_FLAGS} -stdlib=libc++")
   set (WARN_FLAGS "-Weverything -Wno-c++98-compat -Wno-missing-prototypes")
   set (WARN_FLAGS "${WARN_FLAGS} -Wno-c++98-compat-pedantic -Wno-padded")
@@ -44,7 +45,7 @@ if (APPLE)
 else (APPLE)
   set (WARN_FLAGS "-Wall")
 endif (APPLE)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ${COVERAGE_FLAGS}")
 
 set (EXAMPLE_DIRECTORY ${CMAKE_SOURCE_DIR}/examples)
 

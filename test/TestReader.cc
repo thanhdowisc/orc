@@ -78,8 +78,15 @@ TEST(Reader, simpleTest) {
 
   unsigned long rowCount = 0;
   std::unique_ptr<orc::ColumnVectorBatch> batch = reader->createRowBatch(1024);
+  orc::LongVectorBatch* longVector =
+    dynamic_cast<orc::LongVectorBatch*>
+    (dynamic_cast<orc::StructVectorBatch&>(*batch).fields[0].get());
+  long* idCol = longVector->data.get();
   while (reader->next(*batch)) {
     EXPECT_EQ(rowCount, reader->getRowNumber());
+    for(unsigned int i=0; i < batch->numElements; ++i) {
+      EXPECT_EQ(rowCount + i + 1, idCol[i]) << "Bad id for " << i;
+    }
     rowCount += batch->numElements;
   }
   EXPECT_EQ(1920800, rowCount);
