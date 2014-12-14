@@ -18,4 +18,4 @@
 
 #include <string>
 
-extern char* exampleDirectory;
+extern const char* exampleDirectory;

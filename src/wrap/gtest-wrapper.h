@@ -22,6 +22,7 @@
   #pragma clang diagnostic ignored "-Wexit-time-destructors"
   #pragma clang diagnostic ignored "-Wglobal-constructors"
   #pragma clang diagnostic ignored "-Wsign-compare"
+  #pragma clang diagnostic ignored "-Wused-but-marked-unused"
 
   #pragma clang diagnostic push
   #pragma clang diagnostic ignored "-Wdeprecated"

@@ -22,14 +22,16 @@
 #include "wrap/gtest-wrapper.h"
 #include "TestDriver.hh"
 
-char *exampleDirectory = nullptr;
+const char *exampleDirectory = 0;
 
 GTEST_API_ int main(int argc, char **argv) {
   std::cout << "ORC version: " << ORC_VERSION << "\n";
   if (argc == 2) {
-    std::cout << "example dir = " << argv[1] << "\n";
     exampleDirectory = argv[1];
+  } else {
+    exampleDirectory = "../examples";
   }
+  std::cout << "example dir = " << exampleDirectory << "\n";
   argc -= 1;
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

@@ -26,21 +26,22 @@
 
 namespace orc {
 
-  void printBuffer(const char *buffer,
+  void printBuffer(std::ostream& out,
+                   const char *buffer,
                    unsigned long length) {
     const unsigned long width = 24;
-    std::cout << std::hex;
+    out << std::hex;
     for(unsigned long line = 0; line < (length + width - 1) / width; ++line) {
-      std::cout << std::setfill('0') << std::setw(7) << (line * width);
+      out << std::setfill('0') << std::setw(7) << (line * width);
       for(unsigned long byte = 0;
           byte < width && line * width + byte < length; ++byte) {
-        std::cout << " " << std::setfill('0') << std::setw(2)
+        out << " " << std::setfill('0') << std::setw(2)
                   << static_cast<unsigned int>(0xff & buffer[line * width +
-							     byte]);
+                                                             byte]);
       }
-      std::cout << "\n";
+      out << "\n";
     }
-    std::cout << std::dec;
+    out << std::dec;
   }
 
   PositionProvider::PositionProvider(const std::list<unsigned long>& posns) {
@@ -63,10 +64,9 @@ namespace orc {
 
   SeekableArrayInputStream::SeekableArrayInputStream
      (std::initializer_list<unsigned char> values,
-      long blkSize) {
+      long blkSize): ownedData(values.size()), data(0) {
     length = values.size();
-    data = std::unique_ptr<char[]>(new char[length]);
-    char *ptr = data.get();
+    char *ptr = ownedData.data();
     for(unsigned char ch: values) {
       *(ptr++) = static_cast<char>(ch);
     }
@@ -75,11 +75,11 @@ namespace orc {
   }
 
   SeekableArrayInputStream::SeekableArrayInputStream(char* values, 
-                                                     unsigned long size, 
-                                                     long blkSize) {
+                                                     unsigned long size,
+                                                     long blkSize
+                                                     ): ownedData(0),
+                                                        data(values) {
     length = size;
-    data = std::unique_ptr<char[]>(new char[length]);
-    memcpy(data.get(), values, length);
     position = 0;
     blockSize = blkSize == -1 ? length : static_cast<unsigned long>(blkSize);
   }
@@ -87,11 +87,12 @@ namespace orc {
   bool SeekableArrayInputStream::Next(const void** buffer, int*size) {
     unsigned long currentSize = std::min(length - position, blockSize);
     if (currentSize > 0) {
-      *buffer = data.get() + position;
+      *buffer = (data ? data : ownedData.data()) + position;
       *size = static_cast<int>(currentSize);
       position += currentSize;
       return true;
     }
+    *size = 0;
     return false;
   }
 
@@ -100,6 +101,8 @@ namespace orc {
       unsigned long unsignedCount = static_cast<unsigned long>(count);
       if (unsignedCount <= blockSize && unsignedCount <= position) {
         position -= unsignedCount;
+      } else {
+        throw std::logic_error("Can't backup that much!");
       }
     }
   }
@@ -110,6 +113,8 @@ namespace orc {
       if (unsignedCount + position <= length) {
         position += unsignedCount;
         return true;
+      } else {
+        position = length;
       }
     }
     return false;
@@ -125,8 +130,8 @@ namespace orc {
 
   std::string SeekableArrayInputStream::getName() const {
     std::ostringstream result;
-    result << "memory from " << std::hex << data.get() << std::dec 
-           << " for " << length;
+    result << "memory from " << std::hex << (data ? data : ownedData.data())
+           << std::dec << " for " << length;
     return result.str();
   }
 
@@ -157,9 +162,9 @@ namespace orc {
       input->read(buffer.get() + remainder, offset + position + remainder, 
                   bytesRead - remainder);
       position += bytesRead;
-      *size = static_cast<int>(bytesRead);
       remainder = 0;
     }
+    *size = static_cast<int>(bytesRead);
     return bytesRead != 0;
   }
 
@@ -167,25 +172,30 @@ namespace orc {
     if (position == 0 || remainder > 0) {
       throw std::logic_error("can't backup unless we just called Next");
     }
-    if (remainder > blockSize) {
+    if (static_cast<unsigned long>(count) > blockSize) {
       throw std::logic_error("can't backup that far");
     }
     remainder = static_cast<unsigned long>(count);
+    position -= remainder;
     memmove(buffer.get(), 
             buffer.get() + blockSize - static_cast<size_t>(count), 
             static_cast<size_t>(count));
-    position -= static_cast<unsigned long>(count);
   }
 
   bool SeekableFileInputStream::Skip(int _count) {
+    if (_count < 0) {
+      return false;
+    }
     unsigned long count = static_cast<unsigned long>(_count);
     position += count;
     if (position > length) {
       position = length;
+      remainder = 0;
       return false;
     }
     if (remainder > count) {
       remainder -= count;
+      memmove(buffer.get(), buffer.get() + count, remainder);
     } else {
       remainder = 0;
     }
@@ -199,6 +209,7 @@ namespace orc {
   void SeekableFileInputStream::seek(PositionProvider& location) {
     position = location.next();
     if (position > length) {
+      position = length;
       throw std::logic_error("seek too far");
     }
     remainder = 0;

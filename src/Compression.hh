@@ -28,7 +28,8 @@
 
 namespace orc {
 
-  void printBuffer(const char *buffer,
+  void printBuffer(std::ostream& out,
+                   const char *buffer,
                    unsigned long length);
 
   class PositionProvider {
@@ -56,7 +57,8 @@ namespace orc {
    */
   class SeekableArrayInputStream: public SeekableInputStream {
   private:
-    std::unique_ptr<char[]> data;
+    std::vector<char> ownedData;
+    char* data;
     unsigned long length;
     unsigned long position;
     unsigned long blockSize;
