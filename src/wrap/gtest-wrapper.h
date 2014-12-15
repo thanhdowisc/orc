@@ -33,6 +33,7 @@
   #pragma clang diagnostic ignored "-Wused-but-marked-unused"
   #pragma clang diagnostic ignored "-Wweak-vtables"
 #else
+  #pragma GCC diagnostic ignored "-Wconversion-null"
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wsign-compare"
 #endif
