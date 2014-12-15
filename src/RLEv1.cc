@@ -86,18 +86,11 @@ void RleDecoderV1::readHeader() {
 
 RleDecoderV1::RleDecoderV1(std::unique_ptr<SeekableInputStream> input,
                            bool hasSigned)
-    : isSigned(hasSigned) {
-  reset(std::move(input));
-}
-
-void RleDecoderV1::reset(std::unique_ptr<SeekableInputStream> stream) {
-  inputStream = std::move(stream);
-  repeating = false;
-  remainingValues = 0;
-  value = 0;
-  delta = 0;
-  bufferStart = 0;
-  bufferEnd = 0;
+    : inputStream(std::move(input)),
+      isSigned(hasSigned),
+      remainingValues(0),
+      bufferStart(nullptr),
+      bufferEnd(bufferStart) {
 }
 
 void RleDecoderV1::seek(PositionProvider& location) {
