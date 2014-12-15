@@ -22,8 +22,6 @@
 
 namespace orc {
 
-  RleDecoder::~RleDecoder() {}
-
 std::unique_ptr<RleDecoder> createRleDecoder(
     std::unique_ptr<SeekableInputStream> input,
     bool isSigned,
