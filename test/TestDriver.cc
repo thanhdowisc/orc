@@ -16,15 +16,19 @@
  * limitations under the License.
  */
 
-#include <iostream>
 
 #include "orc/orc-config.hh"
 #include "wrap/gtest-wrapper.h"
 #include "TestDriver.hh"
 
+#include <google/protobuf/message.h>
+
+#include <iostream>
+
 const char *exampleDirectory = 0;
 
 GTEST_API_ int main(int argc, char **argv) {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
   std::cout << "ORC version: " << ORC_VERSION << "\n";
   if (argc == 2) {
     exampleDirectory = argv[1];
@@ -32,7 +36,7 @@ GTEST_API_ int main(int argc, char **argv) {
     exampleDirectory = "../examples";
   }
   std::cout << "example dir = " << exampleDirectory << "\n";
-  argc -= 1;
   testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  int result = RUN_ALL_TESTS();
+  return result;
 }
