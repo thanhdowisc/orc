@@ -35,16 +35,17 @@ enable_testing()
 
 find_package (Protobuf REQUIRED)
 
-set (CXX11_FLAGS "-std=gnu++11")
-if (APPLE)
+set (CXX11_FLAGS "-std=c++11")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  #  -stdlib=libc++
   set (COVERAGE_FLAGS "--coverage -g -O0")
-  set (CXX11_FLAGS "${CXX11_FLAGS} -stdlib=libc++")
+  set (CXX11_FLAGS "${CXX11_FLAGS}")
   set (WARN_FLAGS "-Weverything -Wno-c++98-compat -Wno-missing-prototypes")
   set (WARN_FLAGS "${WARN_FLAGS} -Wno-c++98-compat-pedantic -Wno-padded")
   set (WARN_FLAGS "${WARN_FLAGS} -Wno-covered-switch-default")
-else (APPLE)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   set (WARN_FLAGS "-Wall")
-endif (APPLE)
+endif ()
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 
 set (EXAMPLE_DIRECTORY ${CMAKE_SOURCE_DIR}/examples)

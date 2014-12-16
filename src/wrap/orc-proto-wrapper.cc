@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-#ifdef __APPLE__
+#ifdef __clang__
   #pragma clang diagnostic ignored "-Wpadded"
   #pragma clang diagnostic ignored "-Wsign-conversion"
   #pragma clang diagnostic ignored "-Wweak-vtables"

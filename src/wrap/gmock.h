@@ -18,7 +18,7 @@
 // we need to disable a whole set of warnings as we include gtest.h
 // restore most of the warnings after the file is loaded.
 
-#ifdef __APPLE__
+#ifdef __clang__
   #pragma clang diagnostic push
   #pragma clang diagnostic ignored "-Wdeprecated"
   #pragma clang diagnostic ignored "-Wmissing-noreturn"
@@ -35,7 +35,7 @@
 
 #include "gmock/gmock.h"
 
-#ifdef __APPLE__
+#ifdef __clang__
   #pragma clang diagnostic pop
 #else
   #pragma GCC diagnostic pop

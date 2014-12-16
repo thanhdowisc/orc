@@ -15,7 +15,7 @@
 #ifndef ORC_PROTO_WRAPPER_HH
 #define ORC_PROTO_WRAPPER_HH
 
-#ifdef __APPLE__
+#ifdef __clang__
   #pragma clang diagnostic push
   #pragma clang diagnostic ignored "-Wdeprecated"
   #pragma clang diagnostic ignored "-Wshorten-64-to-32"
@@ -29,7 +29,7 @@
 
 #include "orc_proto.pb.h"
 
-#ifdef __APPLE__
+#ifdef __clang__
   #pragma clang diagnostic pop
 #else
   #pragma GCC diagnostic pop

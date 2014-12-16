@@ -18,7 +18,7 @@
 // we need to disable a whole set of warnings as we include gtest.h
 // restore most of the warnings after the file is loaded.
 
-#ifdef __APPLE__
+#ifdef __clang__
   #pragma clang diagnostic ignored "-Wexit-time-destructors"
   #pragma clang diagnostic ignored "-Wglobal-constructors"
   #pragma clang diagnostic ignored "-Wsign-compare"
@@ -40,7 +40,7 @@
 
 #include "gtest/gtest.h"
 
-#ifdef __APPLE__
+#ifdef __clang__
   #pragma clang diagnostic pop
 #else
   #pragma GCC diagnostic pop

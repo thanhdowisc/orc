@@ -15,7 +15,7 @@
 #ifndef ZERO_COPY_STREAM_WRAPPER_HH
 #define ZERO_COPY_STREAM_WRAPPER_HH
 
-#ifdef __APPLE__
+#ifdef __clang__
   #pragma clang diagnostic push
   #pragma clang diagnostic ignored "-Wpadded"
   #pragma clang diagnostic ignored "-Wdeprecated"
@@ -25,7 +25,7 @@
 
 #include <google/protobuf/io/zero_copy_stream.h>
 
-#ifdef __APPLE__
+#ifdef __clang__
   #pragma clang diagnostic pop
 #else
 #endif
