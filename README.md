@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/seh/orc.svg?branch=master)](https://travis-ci.org/seh/orc)
+[![Build Status](https://travis-ci.org/hortonworks/orc.svg?branch=c%2B%2B)](https://travis-ci.org/hortonworks/orc)
 
 # ORC File C++ Library
 
