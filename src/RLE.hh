@@ -31,11 +31,6 @@ public:
   virtual ~RleDecoder() = default;
 
   /**
-  * Reset the run length decoder.
-  */
-  virtual void reset(std::unique_ptr<SeekableInputStream> stream) = 0;
-
-  /**
   * Seek to a particular spot.
   */
   virtual void seek(PositionProvider&) = 0;

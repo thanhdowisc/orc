@@ -31,11 +31,6 @@ public:
                  bool isSigned);
 
     /**
-    * Reset the run length decoder.
-    */
-    void reset(std::unique_ptr<SeekableInputStream> stream) override;
-
-    /**
     * Seek to a particular spot.
     */
     void seek(PositionProvider&) override;
@@ -59,8 +54,8 @@ private:
 
     inline void skipLongs(unsigned long numValues);
 
+    const std::unique_ptr<SeekableInputStream> inputStream;
     const bool isSigned;
-    std::unique_ptr<SeekableInputStream> inputStream;
     unsigned long remainingValues;
     long value;
     const char *bufferStart;

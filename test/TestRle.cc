@@ -57,7 +57,7 @@ TEST(RLEv1, signedNullLiteralTest) {
   std::vector<char> notNull(8, 1);
   rle->next(data.data(), 8, notNull.data());
 
-  for(size_t i = 0; i < 8; ++i) {
+  for (size_t i = 0; i < 8; ++i) {
     EXPECT_EQ(i % 2 == 0 ? i/2 : -((i+1)/2),
               data[i]);
   }
@@ -72,13 +72,13 @@ TEST(RLEv1, splitHeader) {
   std::vector<long> data(200);
   rle->next(data.data(), 3, nullptr);
 
-  for(size_t i = 0; i < 3; ++i) {
+  for (size_t i = 0; i < 3; ++i) {
     EXPECT_EQ(247864668, data[i]) << "Output wrong at " << i;
   }
 }
 
 TEST(RLEv1, splitRuns) {
-  SeekableInputStream* stream =
+  SeekableInputStream* const stream =
       new SeekableArrayInputStream({0x7d, 0x01, 0xff, 0x01, 0xfb, 0x01,
                                     0x02, 0x03, 0x04, 0x05});
   std::unique_ptr<RleDecoder> rle =
@@ -89,24 +89,24 @@ TEST(RLEv1, splitRuns) {
   for (size_t i = 0; i < 42; ++i) {
     rle->next(data.data(), 3, nullptr);
     for (size_t j = 0; j < 3; ++j) {
-      EXPECT_EQ(255 + i * 3 + j, data[j]) << "Wrong output at " << i
-          << ", " << j;
+      EXPECT_EQ(255 + i * 3 + j, data[j])
+      << "Wrong output at " << i << ", " << j;
     }
   }
-  rle->next(data.data(), 3, 0);
+  rle->next(data.data(), 3, nullptr);
   EXPECT_EQ(381, data[0]);
   EXPECT_EQ(382, data[1]);
   EXPECT_EQ(1, data[2]);
-  rle->next(data.data(), 3, 0);
+  rle->next(data.data(), 3, nullptr);
   EXPECT_EQ(2, data[0]);
   EXPECT_EQ(3, data[1]);
   EXPECT_EQ(4, data[2]);
-  rle->next(data.data(), 1, 0);
+  rle->next(data.data(), 1, nullptr);
   EXPECT_EQ(5, data[0]);
 }
 
 TEST(RLEv1, testSigned) {
-  SeekableInputStream* stream =
+  SeekableInputStream* const stream =
       new SeekableArrayInputStream({0x7f, 0xff, 0x20});
   std::unique_ptr<RleDecoder> rle =
       createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
@@ -125,7 +125,7 @@ TEST(RLEv1, testSigned) {
 }
 
 TEST(RLEv1, testNull) {
-  SeekableInputStream* stream =
+  SeekableInputStream* const stream =
       new SeekableArrayInputStream({0x75, 0x02, 0x00});
   std::unique_ptr<RleDecoder> rle =
       createRleDecoder(std::move(std::unique_ptr<SeekableInputStream>
@@ -152,7 +152,7 @@ TEST(RLEv1, testNull) {
 }
 
 TEST(RLEv1, testAllNulls) {
-  SeekableInputStream* stream =
+  SeekableInputStream* const stream =
       new SeekableArrayInputStream({0xf0,
                                        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                                        0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
