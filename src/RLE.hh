@@ -28,7 +28,8 @@ class SeekableInputStream;
 
 class RleDecoder {
 public:
-  virtual ~RleDecoder() = default;
+  // must be non-inline!
+  virtual ~RleDecoder();
 
   /**
   * Seek to a particular spot.

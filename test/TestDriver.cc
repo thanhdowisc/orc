@@ -18,10 +18,11 @@
 
 
 #include "orc/orc-config.hh"
-#include "wrap/gtest-wrapper.h"
 #include "TestDriver.hh"
 
-#include <google/protobuf/message.h>
+#include "wrap/orc-proto-wrapper.hh"
+#include "wrap/gtest-wrapper.h"
+
 
 #include <iostream>
 
