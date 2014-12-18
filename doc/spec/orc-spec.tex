@@ -117,7 +117,7 @@ information as described in this section.
 message Footer {
   // the length of the file header in bytes (always 3)
   optional uint64 headerLength = 1;
-  // the length of the file body in bytes
+  // the length of the file header and body in bytes
   optional uint64 contentLength = 2;
   // the information about the stripes
   repeated StripeInformation stripes = 3;
@@ -551,41 +551,45 @@ repeat count of 5 (2) as [0x0a, 0x27, 0x10].
 The direct encoding is used for integer sequences whose values have a
 relatively constant bit width. It encodes the values directly using a
 fixed width big endian encoding.  The width of the values is encoded
-using the following table:
+using table~\ref{RleV2WidthTable}.
 
-\vspace{10pt}
-\begin{tabular}{| c | c | c |}
-\hline
-Width in Bits & Encoded Value & Notes\\
-\hline
-0 & 0 & for delta encoding \\
-1 & 0 & for non-delta encoding \\
-2 & 1 & \\
-4 & 3 & \\
-8 & 7 & \\
-16 & 15 & \\
-24 & 23 & \\
-32 & 27 & \\
-40 & 28 & \\
-48 & 29 & \\
-56 & 30 & \\
-64 & 31 & \\
-\hline
-3 & 2 & deprecated \\
-$5 \leq X \leq 7$ & $X - 1$ & deprecated \\
-$9 \leq X \leq 15$ & $X - 1$ & deprecated \\
-$17 \leq X \leq 21$ & $X - 1$ & deprecated \\
-26 & 24 & deprecated \\
-28 & 25 & deprecated \\
-30 & 26 & deprecated \\
-\hline
-\end{tabular}
+\begin{table}[htb]
+  \begin{tabular}{| c | c | c |}
+  \hline
+  Width in Bits & Encoded Value & Notes\\
+  \hline
+  0 & 0 & for delta encoding \\
+  1 & 0 & for non-delta encoding \\
+  2 & 1 & \\
+  4 & 3 & \\
+  8 & 7 & \\
+  16 & 15 & \\
+  24 & 23 & \\
+  32 & 27 & \\
+  40 & 28 & \\
+  48 & 29 & \\
+  56 & 30 & \\
+  64 & 31 & \\
+  \hline
+  3 & 2 & deprecated \\
+  $5 \leq X \leq 7$ & $X - 1$ & deprecated \\
+  $9 \leq X \leq 15$ & $X - 1$ & deprecated \\
+  $17 \leq X \leq 21$ & $X - 1$ & deprecated \\
+  26 & 24 & deprecated \\
+  28 & 25 & deprecated \\
+  30 & 26 & deprecated \\
+  \hline
+  \end{tabular}
+  \caption{The 5 bit width encoding for RLEv2}
+  \label{RleV2WidthTable}
+\end{table}
 
 \begin{itemize}
 \item 2 bytes header
   \begin{itemize}
   \item 2 bits for encoding type (1)
-  \item 5 bits for encoded width (W) of values (1 to 64 bits)
+  \item 5 bits for encoded width (W) of values (1 to 64 bits) using
+    table~\ref{RleV2WidthTable}
   \item 9 bits for length (L) (1 to 512 values)
   \end{itemize}
 \item $W * L$ bits encoded in big endian format, which is
@@ -612,9 +616,11 @@ the index values and the additional value bits.
   \begin{itemize}
   \item 2 bits for encoding type (2)
   \item 5 bits for encoded width (W) of values (1 to 64 bits)
+        using table~\ref{RleV2WidthTable}
   \item 9 bits for length (L) (1 to 512 values)
   \item 3 bits for base value width (BW) (1 to 8 bytes)
   \item 5 bits for patch width (PW) (1 to 64 bits)
+        using table~\ref{RleV2WidthTable}
   \item 3 bits for patch gap width (PGW) (1 to 8 bits)
   \item 5 bits for patch list length (PLL) (0 to 31 patches)
   \end{itemize}
@@ -655,6 +661,7 @@ if the series is increasing or decreasing.
   \begin{itemize}
   \item 2 bits for encoding type (3)
   \item 5 bits for encoded width (W) of deltas (0 to 64 bits)
+        using table~\ref{RleV2WidthTable}
   \item 9 bits for run length (L) (1 to 512 values)
   \end{itemize}
 \item Base value - encoded as (signed or unsigned) varint
