@@ -46,8 +46,9 @@ namespace orc {
     if (decoder) {
       // page through the values that we want to skip
       // and count how many are non-null
-      unsigned long bufferSize = std::min(32768UL, numValues);
-      char* buffer = new char[bufferSize];
+      const size_t MAX_BUFFER_SIZE = 32768;
+      unsigned long bufferSize = std::min(MAX_BUFFER_SIZE, numValues);
+      char buffer[MAX_BUFFER_SIZE];
       unsigned long remaining = numValues;
       while (remaining > 0) {
         unsigned long chunkSize = std::min(remaining, bufferSize);
@@ -286,6 +287,7 @@ namespace orc {
     case proto::ColumnEncoding_Kind_DIRECT_V2:
     case proto::ColumnEncoding_Kind_DICTIONARY:
     case proto::ColumnEncoding_Kind_DICTIONARY_V2:
+    default:
       throw ParseError("Unknown encoding for StructColumnReader");
     }
   }
@@ -327,7 +329,9 @@ namespace orc {
     case LONG:
       return std::unique_ptr<ColumnReader>(new IntegerColumnReader(type,
                                                                    stripe));
+    case CHAR:
     case STRING:
+    case VARCHAR:
       switch (stripe.getEncoding(type.getColumnId()).kind()) {
       case proto::ColumnEncoding_Kind_DICTIONARY:
       case proto::ColumnEncoding_Kind_DICTIONARY_V2:
@@ -335,8 +339,10 @@ namespace orc {
                                              (type, stripe));
       case proto::ColumnEncoding_Kind_DIRECT:
       case proto::ColumnEncoding_Kind_DIRECT_V2:
+      default:
         throw NotImplementedYet("buildReader unhandled string encoding");
       }
+
     case STRUCT:
       return std::unique_ptr<ColumnReader>(new StructColumnReader(type,
                                                                   stripe));
@@ -350,12 +356,9 @@ namespace orc {
     case UNION:
     case DECIMAL:
     case DATE:
-    case VARCHAR:
-    case CHAR: {
-      // PASS
+    default:
+      throw NotImplementedYet("buildReader unhandled type");
     }
-    }
-    throw NotImplementedYet("buildReader unhandled type");
   }
 
 }

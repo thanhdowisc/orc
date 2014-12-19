@@ -53,8 +53,9 @@ namespace orc {
     subtypeCount = 0;
   }
 
-  TypeImpl::TypeImpl(TypeKind _kind, std::vector<Type*> types,
-                     std::vector<std::string> _fieldNames) {
+  TypeImpl::TypeImpl(TypeKind _kind,
+                     const std::vector<Type*>& types,
+                     const std::vector<std::string>& _fieldNames) {
     columnId = 0;
     kind = _kind;
     maxLength = 0;
@@ -69,7 +70,7 @@ namespace orc {
     }
   }
 
-  TypeImpl::TypeImpl(TypeKind _kind, std::vector<Type*> types) {
+  TypeImpl::TypeImpl(TypeKind _kind, const std::vector<Type*>& types) {
     columnId = 0;
     kind = _kind;
     maxLength = 0;
@@ -128,6 +129,67 @@ namespace orc {
     return scale;
   }
 
+  std::unique_ptr<Type> createPrimitiveType(TypeKind kind) {
+    return std::unique_ptr<Type>(new TypeImpl(kind));
+  }
+
+  std::unique_ptr<Type> createCharType(TypeKind kind,
+                                       unsigned int maxLength) {
+    return std::unique_ptr<Type>(new TypeImpl(kind, maxLength));
+  }
+
+  std::unique_ptr<Type> createDecimalType(unsigned int precision,
+                                          unsigned int scale) {
+    return std::unique_ptr<Type>(new TypeImpl(DECIMAL, precision, scale));
+  }
+
+  std::unique_ptr<Type>
+      createStructType(std::initializer_list<std::unique_ptr<Type> > types,
+                       std::initializer_list<std::string> fieldNames) {
+    std::vector<Type*> typeVector(types.size());
+    std::vector<std::string> fieldVector(types.size());
+    auto currentType = types.begin();
+    auto endType = types.end();
+    size_t current = 0;
+    while (currentType != endType) {
+      typeVector[current++] =
+        const_cast<std::unique_ptr<Type>*>(currentType)->release();
+      ++currentType;
+    }
+    fieldVector.insert(fieldVector.end(), fieldNames.begin(),
+                       fieldNames.end());
+    return std::unique_ptr<Type>(new TypeImpl(STRUCT, typeVector,
+                                              fieldVector));
+  }
+
+  std::unique_ptr<Type> createListType(std::unique_ptr<Type> elements) {
+    std::vector<Type*> subtypes(1);
+    subtypes[0] = elements.release();
+    return std::unique_ptr<Type>(new TypeImpl(LIST, subtypes));
+  }
+
+  std::unique_ptr<Type> createMapType(std::unique_ptr<Type> key,
+                                      std::unique_ptr<Type> value) {
+    std::vector<Type*> subtypes(2);
+    subtypes[0] = key.release();
+    subtypes[1] = value.release();
+    return std::unique_ptr<Type>(new TypeImpl(MAP, subtypes));
+  }
+
+  std::unique_ptr<Type>
+      createUnionType(std::initializer_list<std::unique_ptr<Type> > types) {
+    std::vector<Type*> typeVector(types.size());
+    auto currentType = types.begin();
+    auto endType = types.end();
+    size_t current = 0;
+    while (currentType != endType) {
+      typeVector[current++] =
+        const_cast<std::unique_ptr<Type>*>(currentType)->release();
+      ++currentType;
+    }
+    return std::unique_ptr<Type>(new TypeImpl(UNION, typeVector));
+  }
+
   std::unique_ptr<Type> convertType(const proto::Type& type,
                                     const proto::Footer& footer) {
     switch (type.kind()) {
@@ -162,7 +224,7 @@ namespace orc {
       unsigned long size = static_cast<unsigned long>(type.subtypes_size());
       std::vector<Type*> typeList(size);
       for(int i=0; i < type.subtypes_size(); ++i) {
-        typeList[static_cast<unsigned int>(i)] = 
+        typeList[static_cast<unsigned int>(i)] =
           convertType(footer.types(static_cast<int>(type.subtypes(i))),
                       footer).release();
       }
@@ -175,7 +237,7 @@ namespace orc {
       std::vector<Type*> typeList(size);
       std::vector<std::string> fieldList(size);
       for(int i=0; i < type.subtypes_size(); ++i) {
-        typeList[static_cast<unsigned int>(i)] = 
+        typeList[static_cast<unsigned int>(i)] =
           convertType(footer.types(static_cast<int>(type.subtypes(i))),
                       footer).release();
         fieldList[static_cast<unsigned int>(i)] = type.fieldnames(i);

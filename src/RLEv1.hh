@@ -43,7 +43,8 @@ public:
     /**
     * Read a number of values into the batch.
     */
-    void next(long* data, unsigned long numValues, const char* notNull) override;
+    void next(long* data, unsigned long numValues,
+	      const char* notNull) override;
 
 private:
     inline signed char readByte();

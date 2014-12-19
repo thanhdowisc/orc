@@ -25,6 +25,7 @@
   #pragma clang diagnostic ignored "-Wpadded"
   #pragma clang diagnostic ignored "-Wshift-sign-overflow"
   #pragma clang diagnostic ignored "-Wsign-compare"
+  #pragma clang diagnostic ignored "-Wsign-conversion"
   #pragma clang diagnostic ignored "-Wundef"
   #pragma clang diagnostic ignored "-Wused-but-marked-unused"
   #pragma clang diagnostic ignored "-Wweak-vtables"
