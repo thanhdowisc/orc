@@ -66,18 +66,19 @@ namespace orc {
   const int DEFAULT_DECIMAL_PRECISION = 38;
 
   std::unique_ptr<Type> createPrimitiveType(TypeKind kind);
-  std::unique_ptr<Type> createCharType(bool isVarchar,
-                                       int maxLength);
-  std::unique_ptr<Type> 
-                createDecimalType(int precision=DEFAULT_DECIMAL_PRECISION,
-                                  int scale=DEFAULT_DECIMAL_SCALE);
-  std::unique_ptr<Type> 
+  std::unique_ptr<Type> createCharType(TypeKind kind,
+                                       unsigned int maxLength);
+  std::unique_ptr<Type>
+                createDecimalType(unsigned int precision=
+                                    DEFAULT_DECIMAL_PRECISION,
+                                  unsigned int scale=DEFAULT_DECIMAL_SCALE);
+  std::unique_ptr<Type>
     createStructType(std::initializer_list<std::unique_ptr<Type> > types,
                       std::initializer_list<std::string> fieldNames);
   std::unique_ptr<Type> createListType(std::unique_ptr<Type> elements);
   std::unique_ptr<Type> createMapType(std::unique_ptr<Type> key,
                                       std::unique_ptr<Type> value);
-  std::unique_ptr<Type> 
+  std::unique_ptr<Type>
     createUnionType(std::initializer_list<std::unique_ptr<Type> > types);
 
   struct ColumnVectorBatch {

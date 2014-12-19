@@ -52,19 +52,20 @@ namespace orc {
     /**
      * Create decimal type.
      */
-    TypeImpl(TypeKind kind, unsigned int precision, 
+    TypeImpl(TypeKind kind, unsigned int precision,
              unsigned int scale);
 
     /**
      * Create struct type.
      */
-    TypeImpl(TypeKind kind, std::vector<Type*> types,
-             std::vector<std::string> fieldNames);
+    TypeImpl(TypeKind kind,
+             const std::vector<Type*>& types,
+             const std::vector<std::string>& fieldNames);
 
     /**
      * Create list, map, and union type.
      */
-    TypeImpl(TypeKind kind, std::vector<Type*> types);
+    TypeImpl(TypeKind kind, const std::vector<Type*>& types);
 
     virtual ~TypeImpl();
 
