@@ -286,6 +286,7 @@ namespace orc {
     case proto::ColumnEncoding_Kind_DIRECT_V2:
     case proto::ColumnEncoding_Kind_DICTIONARY:
     case proto::ColumnEncoding_Kind_DICTIONARY_V2:
+    default:
       throw ParseError("Unknown encoding for StructColumnReader");
     }
   }

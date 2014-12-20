@@ -201,22 +201,30 @@ namespace orc {
     directEncoding.set_kind(proto::ColumnEncoding_Kind_DIRECT);
     EXPECT_CALL(streams, getEncoding(0))
       .WillRepeatedly(testing::Return(directEncoding));
-    proto::ColumnEncoding dictionaryEncoding;
-    dictionaryEncoding.set_kind(proto::ColumnEncoding_Kind_DICTIONARY);
-    dictionaryEncoding.set_dictionarysize(2);
-    EXPECT_CALL(streams, getEncoding(testing::Ge(1)))
-      .WillRepeatedly(testing::Return(dictionaryEncoding));
+
+    proto::ColumnEncoding dictionary2Encoding;
+    dictionary2Encoding.set_kind(proto::ColumnEncoding_Kind_DICTIONARY);
+    dictionary2Encoding.set_dictionarysize(2);
+    EXPECT_CALL(streams, getEncoding(1))
+      .WillRepeatedly(testing::Return(dictionary2Encoding));
+
+    proto::ColumnEncoding dictionary0Encoding;
+    dictionary0Encoding.set_kind(proto::ColumnEncoding_Kind_DICTIONARY);
+    dictionary0Encoding.set_dictionarysize(0);
+    EXPECT_CALL(streams, getEncoding(testing::Ge(2)))
+      .WillRepeatedly(testing::Return(dictionary0Encoding));
 
     // set getStream
     EXPECT_CALL(streams, getStreamProxy(0, proto::Stream_Kind_PRESENT))
       .WillRepeatedly(testing::Return(nullptr));
+
     EXPECT_CALL(streams, getStreamProxy(1, proto::Stream_Kind_PRESENT))
       .WillRepeatedly(testing::Return(new SeekableArrayInputStream
-                                      ({0x19, 0xf0})));
+                                      ({0x16, 0xff})));
     EXPECT_CALL(streams, getStreamProxy(1, proto::Stream_Kind_DATA))
       .WillRepeatedly(testing::Return(new SeekableArrayInputStream
-                                      ({0x2f, 0x00, 0x00,
-                                          0x2f, 0x00, 0x01})));
+                                      ({0x61, 0x00, 0x01,
+                                          0x61, 0x00, 0x00})));
     EXPECT_CALL(streams, getStreamProxy(1, proto::Stream_Kind_DICTIONARY_DATA))
       .WillRepeatedly(testing::Return(new SeekableArrayInputStream
                                       ({0x4f, 0x52, 0x43, 0x4f, 0x77,
@@ -224,6 +232,19 @@ namespace orc {
     EXPECT_CALL(streams, getStreamProxy(1, proto::Stream_Kind_LENGTH))
       .WillRepeatedly(testing::Return(new SeekableArrayInputStream
                                       ({0x02, 0x01, 0x03})));
+
+    EXPECT_CALL(streams, getStreamProxy(2, proto::Stream_Kind_PRESENT))
+      .WillRepeatedly(testing::Return(new SeekableArrayInputStream
+                                      ({0x16, 0x00})));
+    EXPECT_CALL(streams, getStreamProxy(2, proto::Stream_Kind_DATA))
+      .WillRepeatedly(testing::Return(new SeekableArrayInputStream
+                                      ({})));
+    EXPECT_CALL(streams, getStreamProxy(2, proto::Stream_Kind_DICTIONARY_DATA))
+      .WillRepeatedly(testing::Return(new SeekableArrayInputStream
+                                      ({})));
+    EXPECT_CALL(streams, getStreamProxy(2, proto::Stream_Kind_LENGTH))
+      .WillRepeatedly(testing::Return(new SeekableArrayInputStream
+                                      ({})));
 
     // create the row type
     std::unique_ptr<Type> rowType =
@@ -233,34 +254,36 @@ namespace orc {
         {"col0", "col1", "col2"});
     rowType->assignIds(0);
 
-
     std::unique_ptr<ColumnReader> reader =
       buildReader(*rowType, streams);
     StructVectorBatch batch(1024);
-    batch.numFields = 1;
+    batch.numFields = 2;
     batch.fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
-      (new std::unique_ptr<ColumnVectorBatch>[1]);
-    batch.fields.get()[0] = std::unique_ptr<ColumnVectorBatch>
-      (new StringVectorBatch(1024));
+	(new std::unique_ptr<ColumnVectorBatch>[2]);
+    for(size_t i=0; i < 2 ; ++i) {
+      batch.fields.get()[i] = std::unique_ptr<ColumnVectorBatch>
+	(new StringVectorBatch(1024));
+    }
     StringVectorBatch *stringBatch =
       dynamic_cast<StringVectorBatch*>(batch.fields.get()[0].get());
+    StringVectorBatch *nullBatch =
+      dynamic_cast<StringVectorBatch*>(batch.fields.get()[1].get());
     reader->next(batch, 200, 0);
     ASSERT_EQ(200, batch.numElements);
     ASSERT_EQ(false, batch.hasNulls);
     ASSERT_EQ(200, stringBatch->numElements);
-    ASSERT_EQ(true, stringBatch->hasNulls);
+    ASSERT_EQ(false, stringBatch->hasNulls);
+    ASSERT_EQ(200, nullBatch->numElements);
+    ASSERT_EQ(true, nullBatch->hasNulls);
     for(size_t i=0; i < batch.numElements; ++i) {
-      if (i & 4) {
-        EXPECT_EQ(0, stringBatch->notNull.get()[i]);
-      } else {
-        EXPECT_EQ(1, stringBatch->notNull.get()[i]);
-        const char* expected = i < 98 ? "ORC" : "Owen";
-        ASSERT_EQ(strlen(expected), stringBatch->length.get()[i])
-            << "Wrong length at " << i;
-        for(size_t letter = 0; letter < strlen(expected); ++letter) {
-          EXPECT_EQ(expected[letter], stringBatch->data.get()[i][letter])
-            << "Wrong contents at " << i << ", " << letter;
-        }
+      EXPECT_EQ(true, stringBatch->notNull.get()[i]);
+      EXPECT_EQ(false, nullBatch->notNull.get()[i]);
+      const char* expected = i < 100 ? "Owen" : "ORC";
+      ASSERT_EQ(strlen(expected), stringBatch->length.get()[i])
+	<< "Wrong length at " << i;
+      for(size_t letter = 0; letter < strlen(expected); ++letter) {
+	EXPECT_EQ(expected[letter], stringBatch->data.get()[i][letter])
+	  << "Wrong contents at " << i << ", " << letter;
       }
     }
   };
