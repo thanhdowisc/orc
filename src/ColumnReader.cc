@@ -327,7 +327,9 @@ namespace orc {
     case LONG:
       return std::unique_ptr<ColumnReader>(new IntegerColumnReader(type,
                                                                    stripe));
+    case CHAR:
     case STRING:
+    case VARCHAR:
       switch (stripe.getEncoding(type.getColumnId()).kind()) {
       case proto::ColumnEncoding_Kind_DICTIONARY:
       case proto::ColumnEncoding_Kind_DICTIONARY_V2:
@@ -335,8 +337,10 @@ namespace orc {
                                              (type, stripe));
       case proto::ColumnEncoding_Kind_DIRECT:
       case proto::ColumnEncoding_Kind_DIRECT_V2:
+      default:
         throw NotImplementedYet("buildReader unhandled string encoding");
       }
+
     case STRUCT:
       return std::unique_ptr<ColumnReader>(new StructColumnReader(type,
                                                                   stripe));
@@ -350,12 +354,9 @@ namespace orc {
     case UNION:
     case DECIMAL:
     case DATE:
-    case VARCHAR:
-    case CHAR: {
-      // PASS
+    default:
+      throw NotImplementedYet("buildReader unhandled type");
     }
-    }
-    throw NotImplementedYet("buildReader unhandled type");
   }
 
 }

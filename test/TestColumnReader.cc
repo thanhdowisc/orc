@@ -17,6 +17,7 @@
  */
 
 #include "ColumnReader.hh"
+#include "Exceptions.hh"
 
 #include "wrap/orc-proto-wrapper.hh"
 #include "wrap/gtest-wrapper.h"
@@ -184,5 +185,159 @@ namespace orc {
     }
   };
 
+  TEST(TestColumnReader, testVarcharDictionaryWithNulls) {
+    MockStripeStreams streams;
+
+    // set getSelectedColumns()
+    std::unique_ptr<bool[]> selectedColumns =
+      std::unique_ptr<bool[]>(new bool(4));
+    memset(selectedColumns.get(), true, 3);
+    selectedColumns.get()[3] = false;
+    EXPECT_CALL(streams, getSelectedColumns())
+      .WillRepeatedly(testing::Return(selectedColumns.get()));
+
+    // set getEncoding
+    proto::ColumnEncoding directEncoding;
+    directEncoding.set_kind(proto::ColumnEncoding_Kind_DIRECT);
+    EXPECT_CALL(streams, getEncoding(0))
+      .WillRepeatedly(testing::Return(directEncoding));
+    proto::ColumnEncoding dictionaryEncoding;
+    dictionaryEncoding.set_kind(proto::ColumnEncoding_Kind_DICTIONARY);
+    dictionaryEncoding.set_dictionarysize(2);
+    EXPECT_CALL(streams, getEncoding(testing::Ge(1)))
+      .WillRepeatedly(testing::Return(dictionaryEncoding));
+
+    // set getStream
+    EXPECT_CALL(streams, getStreamProxy(0, proto::Stream_Kind_PRESENT))
+      .WillRepeatedly(testing::Return(nullptr));
+    EXPECT_CALL(streams, getStreamProxy(1, proto::Stream_Kind_PRESENT))
+      .WillRepeatedly(testing::Return(new SeekableArrayInputStream
+                                      ({0x19, 0xf0})));
+    EXPECT_CALL(streams, getStreamProxy(1, proto::Stream_Kind_DATA))
+      .WillRepeatedly(testing::Return(new SeekableArrayInputStream
+                                      ({0x2f, 0x00, 0x00,
+                                          0x2f, 0x00, 0x01})));
+    EXPECT_CALL(streams, getStreamProxy(1, proto::Stream_Kind_DICTIONARY_DATA))
+      .WillRepeatedly(testing::Return(new SeekableArrayInputStream
+                                      ({0x4f, 0x52, 0x43, 0x4f, 0x77,
+                                          0x65, 0x6e})));
+    EXPECT_CALL(streams, getStreamProxy(1, proto::Stream_Kind_LENGTH))
+      .WillRepeatedly(testing::Return(new SeekableArrayInputStream
+                                      ({0x02, 0x01, 0x03})));
+
+    // create the row type
+    std::unique_ptr<Type> rowType =
+      createStructType({createPrimitiveType(VARCHAR),
+                        createPrimitiveType(CHAR),
+                        createPrimitiveType(STRING)},
+        {"col0", "col1", "col2"});
+    rowType->assignIds(0);
+
+
+    std::unique_ptr<ColumnReader> reader =
+      buildReader(*rowType, streams);
+    StructVectorBatch batch(1024);
+    batch.numFields = 1;
+    batch.fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
+      (new std::unique_ptr<ColumnVectorBatch>[1]);
+    batch.fields.get()[0] = std::unique_ptr<ColumnVectorBatch>
+      (new StringVectorBatch(1024));
+    StringVectorBatch *stringBatch =
+      dynamic_cast<StringVectorBatch*>(batch.fields.get()[0].get());
+    reader->next(batch, 200, 0);
+    ASSERT_EQ(200, batch.numElements);
+    ASSERT_EQ(false, batch.hasNulls);
+    ASSERT_EQ(200, stringBatch->numElements);
+    ASSERT_EQ(true, stringBatch->hasNulls);
+    for(size_t i=0; i < batch.numElements; ++i) {
+      if (i & 4) {
+        EXPECT_EQ(0, stringBatch->notNull.get()[i]);
+      } else {
+        EXPECT_EQ(1, stringBatch->notNull.get()[i]);
+        const char* expected = i < 98 ? "ORC" : "Owen";
+        ASSERT_EQ(strlen(expected), stringBatch->length.get()[i])
+            << "Wrong length at " << i;
+        for(size_t letter = 0; letter < strlen(expected); ++letter) {
+          EXPECT_EQ(expected[letter], stringBatch->data.get()[i][letter])
+            << "Wrong contents at " << i << ", " << letter;
+        }
+      }
+    }
+  };
+
+  TEST(TestColumnReader, testUnimplementedTypes) {
+    MockStripeStreams streams;
+
+    // set getSelectedColumns()
+    std::unique_ptr<bool[]> selectedColumns =
+      std::unique_ptr<bool[]>(new bool(2));
+    memset(selectedColumns.get(), true, 2);
+    EXPECT_CALL(streams, getSelectedColumns())
+      .WillRepeatedly(testing::Return(selectedColumns.get()));
+
+    // set getEncoding
+    proto::ColumnEncoding directEncoding;
+    directEncoding.set_kind(proto::ColumnEncoding_Kind_DIRECT);
+    EXPECT_CALL(streams, getEncoding(testing::_))
+      .WillRepeatedly(testing::Return(directEncoding));
+
+    // set getStream
+    EXPECT_CALL(streams, getStreamProxy(0, proto::Stream_Kind_PRESENT))
+      .WillRepeatedly(testing::Return(nullptr));
+
+    // create the row type
+    std::unique_ptr<Type> rowType =
+      createStructType({createPrimitiveType(FLOAT)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(DOUBLE)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(BINARY)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(BOOLEAN)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(TIMESTAMP)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(LIST)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(MAP)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(UNION)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(DECIMAL)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(DATE)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(VARCHAR)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(VARCHAR)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+
+    rowType = createStructType({createPrimitiveType(CHAR)}, {"col0"});
+    rowType->assignIds(0);
+    EXPECT_THROW(buildReader(*rowType, streams), NotImplementedYet);
+  };
 
 }  // namespace orc
