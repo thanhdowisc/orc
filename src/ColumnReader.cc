@@ -46,8 +46,9 @@ namespace orc {
     if (decoder) {
       // page through the values that we want to skip
       // and count how many are non-null
-      unsigned long bufferSize = std::min(32768UL, numValues);
-      char* buffer = new char[bufferSize];
+      const size_t MAX_BUFFER_SIZE = 32768;
+      unsigned long bufferSize = std::min(MAX_BUFFER_SIZE, numValues);
+      char buffer[MAX_BUFFER_SIZE];
       unsigned long remaining = numValues;
       while (remaining > 0) {
         unsigned long chunkSize = std::min(remaining, bufferSize);
