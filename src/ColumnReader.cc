@@ -47,7 +47,7 @@ namespace orc {
       // page through the values that we want to skip
       // and count how many are non-null
       const size_t MAX_BUFFER_SIZE = 32768;
-      unsigned long bufferSize = std::min(MAX_BUFFER_SIZE, numValues);
+      unsigned long bufferSize = std::min(MAX_BUFFER_SIZE, (size_t) numValues);
       char buffer[MAX_BUFFER_SIZE];
       unsigned long remaining = numValues;
       while (remaining > 0) {

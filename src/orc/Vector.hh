@@ -84,8 +84,6 @@ namespace orc {
 
   struct ColumnVectorBatch {
     ColumnVectorBatch(unsigned long capacity);
-    ColumnVectorBatch(const ColumnVectorBatch&) = delete;
-    ColumnVectorBatch& operator=(const ColumnVectorBatch&) = delete;
     virtual ~ColumnVectorBatch();
 
     // the number of slots available
@@ -98,6 +96,10 @@ namespace orc {
     bool hasNulls;
 
     virtual std::string toString() const = 0;
+
+  private:
+    ColumnVectorBatch(const ColumnVectorBatch&) {}
+    ColumnVectorBatch& operator=(const ColumnVectorBatch&) {}
   };
 
   struct LongVectorBatch: public ColumnVectorBatch {

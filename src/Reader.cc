@@ -83,7 +83,7 @@ namespace orc {
 
   ReaderOptions& ReaderOptions::include(const std::list<int>& include) {
     privateBits->includedColumns.clear();
-    for(int columnId: include) {
+    for each (int columnId in include) {
       privateBits->includedColumns.push_back(columnId);
     }
     return *this;
@@ -91,7 +91,7 @@ namespace orc {
 
   ReaderOptions& ReaderOptions::include(std::initializer_list<int> include) {
     privateBits->includedColumns.clear();
-    for(int columnId: include) {
+    for each(int columnId in include) {
       privateBits->includedColumns.push_back(columnId);
     }
     return *this;
@@ -258,13 +258,13 @@ namespace orc {
     selectedColumns.reset(new bool[footer.types_size()]);
     memset(selectedColumns.get(), 0, 
            static_cast<std::size_t>(footer.types_size()));
-    for(int columnId: options.getInclude()) {
+    for each (int columnId in options.getInclude()) {
       selectTypeParent(columnId);
       selectTypeChildren(columnId);
     }
     schema = convertType(footer.types(0), footer);
     schema->assignIds(0);
-    previousRow = std::numeric_limits<unsigned long>::max();
+    previousRow = (std::numeric_limits<unsigned long>::max)();
   }
                          
   CompressionKind ReaderImpl::getCompression() const { 
@@ -330,7 +330,7 @@ namespace orc {
   void ReaderImpl::selectTypeParent(int columnId) {
     bool* selectedColumnArray = selectedColumns.get();
     for(int parent=0; parent < columnId; ++parent) {
-      for(unsigned int child: footer.types(parent).subtypes()) {
+      for each (unsigned int child in footer.types(parent).subtypes()) {
         if (static_cast<int>(child) == columnId) {
           if (!selectedColumnArray[parent]) {
             selectedColumnArray[parent] = true;
@@ -346,7 +346,7 @@ namespace orc {
     bool* selectedColumnArray = selectedColumns.get();
     if (!selectedColumnArray[columnId]) {
       selectedColumnArray[columnId] = true;
-      for(unsigned int child: footer.types(columnId).subtypes()) {
+      for each(unsigned int child in footer.types(columnId).subtypes()) {
         selectTypeChildren(static_cast<int>(child));
       }
     }

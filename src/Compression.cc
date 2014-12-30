@@ -67,7 +67,7 @@ namespace orc {
       long blkSize): ownedData(values.size()), data(0) {
     length = values.size();
     char *ptr = ownedData.data();
-    for(unsigned char ch: values) {
+    for each(unsigned char ch in values) {
       *(ptr++) = static_cast<char>(ch);
     }
     position = 0;

@@ -126,7 +126,7 @@ namespace orc {
       if (remainingValues == 0) {
         readHeader();
       }
-      size_t count = std::min(numValues, remainingValues);
+      size_t count = std::min(numValues, (unsigned long)remainingValues);
       remainingValues -= count;
       numValues -= count;
       // for literals we need to skip over count bytes, which may involve
@@ -137,7 +137,7 @@ namespace orc {
           if (bufferStart == bufferEnd) {
             nextBuffer();
           }
-          unsigned long skipSize = std::min(consumedBytes,
+          unsigned long skipSize = std::min((unsigned long)consumedBytes,
                           static_cast<unsigned long>(bufferEnd - bufferStart));
           bufferStart += skipSize;
           consumedBytes -= skipSize;
@@ -159,7 +159,8 @@ namespace orc {
         readHeader();
       }
       // how many do we read out of this block?
-      unsigned long count = std::min(numValues - position, remainingValues);
+      unsigned long count = std::min(numValues - position,
+		  (unsigned long) remainingValues);
       unsigned long consumed = 0;
       if (repeating) {
         if (notNull) {

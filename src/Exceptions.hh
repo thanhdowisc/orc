@@ -28,7 +28,8 @@ namespace orc {
   public:
     explicit NotImplementedYet(const std::string& what_arg);
     explicit NotImplementedYet(const char* what_arg);
-    NotImplementedYet(const NotImplementedYet&) = default;
+    NotImplementedYet(const NotImplementedYet&)
+      : std::logic_error("Not Implemented Yet") {}
     virtual ~NotImplementedYet();
   };
 
@@ -36,7 +37,7 @@ namespace orc {
   public:
     explicit ParseError(const std::string& what_arg);
     explicit ParseError(const char* what_arg);
-    ParseError(const ParseError&) = default;
+    ParseError(const ParseError&): std::runtime_error("Parse Error") {}
     virtual ~ParseError();
   };
 }
