@@ -578,21 +578,11 @@ namespace orc {
       StructVectorBatch* structPtr = 
         dynamic_cast<StructVectorBatch*>(result.get());
 
-      structPtr->numFields = 0;
       bool* selected = selectedColumns.get();
       for(unsigned int i=0; i < type.getSubtypeCount(); ++i) {
         const Type& child = type.getSubtype(i);
         if (selected[child.getColumnId()]) {
-          structPtr->numFields += 1;
-        }
-      }
-      structPtr->fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
-        (new std::unique_ptr<ColumnVectorBatch>[structPtr->numFields]);
-      unsigned long next = 0;
-      for(unsigned int i=0; i < type.getSubtypeCount(); ++i) {
-        const Type& child = type.getSubtype(i);
-        if (selected[child.getColumnId()]) {
-          structPtr->fields[next++] = createRowBatch(child, capacity);
+          structPtr->fields.push_back(createRowBatch(child, capacity));
         }
       }
       return result;

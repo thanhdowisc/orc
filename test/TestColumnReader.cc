@@ -84,14 +84,9 @@ namespace orc {
 
     std::unique_ptr<ColumnReader> reader =
       buildReader(*rowType, streams);
+    LongVectorBatch *longBatch = new LongVectorBatch(1024);
     StructVectorBatch batch(1024);
-    batch.numFields = 1;
-    batch.fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
-      (new std::unique_ptr<ColumnVectorBatch>[1]);
-    batch.fields.get()[0] = std::unique_ptr<ColumnVectorBatch>
-      (new LongVectorBatch(1024));
-    LongVectorBatch *longBatch =
-      dynamic_cast<LongVectorBatch*>(batch.fields.get()[0].get());
+    batch.fields.push_back(std::unique_ptr<ColumnVectorBatch>(longBatch));
     reader->next(batch, 200, 0);
     ASSERT_EQ(200, batch.numElements);
     ASSERT_EQ(false, batch.hasNulls);
@@ -100,10 +95,10 @@ namespace orc {
     long next = 0;
     for(size_t i=0; i < batch.numElements; ++i) {
       if (i & 4) {
-        EXPECT_EQ(0, longBatch->notNull.get()[i]);
+        EXPECT_EQ(0, longBatch->notNull[i]);
       } else {
-        EXPECT_EQ(1, longBatch->notNull.get()[i]);
-        EXPECT_EQ(next++, longBatch->data.get()[i]);
+        EXPECT_EQ(1, longBatch->notNull[i]);
+        EXPECT_EQ(next++, longBatch->data[i]);
       }
     }
   };
@@ -155,14 +150,9 @@ namespace orc {
 
     std::unique_ptr<ColumnReader> reader =
       buildReader(*rowType, streams);
+    StringVectorBatch *stringBatch = new StringVectorBatch(1024);
     StructVectorBatch batch(1024);
-    batch.numFields = 1;
-    batch.fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
-      (new std::unique_ptr<ColumnVectorBatch>[1]);
-    batch.fields.get()[0] = std::unique_ptr<ColumnVectorBatch>
-      (new StringVectorBatch(1024));
-    StringVectorBatch *stringBatch =
-      dynamic_cast<StringVectorBatch*>(batch.fields.get()[0].get());
+    batch.fields.push_back(std::unique_ptr<ColumnVectorBatch>(stringBatch));
     reader->next(batch, 200, 0);
     ASSERT_EQ(200, batch.numElements);
     ASSERT_EQ(false, batch.hasNulls);
@@ -170,14 +160,14 @@ namespace orc {
     ASSERT_EQ(true, stringBatch->hasNulls);
     for(size_t i=0; i < batch.numElements; ++i) {
       if (i & 4) {
-        EXPECT_EQ(0, stringBatch->notNull.get()[i]);
+        EXPECT_EQ(0, stringBatch->notNull[i]);
       } else {
-        EXPECT_EQ(1, stringBatch->notNull.get()[i]);
+        EXPECT_EQ(1, stringBatch->notNull[i]);
         const char* expected = i < 98 ? "ORC" : "Owen";
-        ASSERT_EQ(strlen(expected), stringBatch->length.get()[i])
+        ASSERT_EQ(strlen(expected), stringBatch->length[i])
             << "Wrong length at " << i;
         for(size_t letter = 0; letter < strlen(expected); ++letter) {
-          EXPECT_EQ(expected[letter], stringBatch->data.get()[i][letter])
+          EXPECT_EQ(expected[letter], stringBatch->data[i][letter])
             << "Wrong contents at " << i << ", " << letter;
         }
       }
@@ -256,17 +246,10 @@ namespace orc {
     std::unique_ptr<ColumnReader> reader =
       buildReader(*rowType, streams);
     StructVectorBatch batch(1024);
-    batch.numFields = 2;
-    batch.fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
-        (new std::unique_ptr<ColumnVectorBatch>[2]);
-    for(size_t i=0; i < 2 ; ++i) {
-      batch.fields.get()[i] = std::unique_ptr<ColumnVectorBatch>
-        (new StringVectorBatch(1024));
-    }
-    StringVectorBatch *stringBatch =
-      dynamic_cast<StringVectorBatch*>(batch.fields.get()[0].get());
-    StringVectorBatch *nullBatch =
-      dynamic_cast<StringVectorBatch*>(batch.fields.get()[1].get());
+    StringVectorBatch *stringBatch = new StringVectorBatch(1024);
+    StringVectorBatch *nullBatch = new StringVectorBatch(1024);
+    batch.fields.push_back(std::unique_ptr<ColumnVectorBatch>(stringBatch));
+    batch.fields.push_back(std::unique_ptr<ColumnVectorBatch>(nullBatch));
     reader->next(batch, 200, 0);
     ASSERT_EQ(200, batch.numElements);
     ASSERT_EQ(false, batch.hasNulls);
@@ -275,13 +258,13 @@ namespace orc {
     ASSERT_EQ(200, nullBatch->numElements);
     ASSERT_EQ(true, nullBatch->hasNulls);
     for(size_t i=0; i < batch.numElements; ++i) {
-      EXPECT_EQ(true, stringBatch->notNull.get()[i]);
-      EXPECT_EQ(false, nullBatch->notNull.get()[i]);
+      EXPECT_EQ(true, stringBatch->notNull[i]);
+      EXPECT_EQ(false, nullBatch->notNull[i]);
       const char* expected = i < 100 ? "Owen" : "ORC";
-      ASSERT_EQ(strlen(expected), stringBatch->length.get()[i])
+      ASSERT_EQ(strlen(expected), stringBatch->length[i])
         << "Wrong length at " << i;
       for(size_t letter = 0; letter < strlen(expected); ++letter) {
-        EXPECT_EQ(expected[letter], stringBatch->data.get()[i][letter])
+        EXPECT_EQ(expected[letter], stringBatch->data[i][letter])
           << "Wrong contents at " << i << ", " << letter;
       }
     }
@@ -335,21 +318,12 @@ namespace orc {
     std::unique_ptr<ColumnReader> reader = buildReader(*rowType, streams);
 
     StructVectorBatch batch(1024);
-    batch.numFields = 1;
-    batch.fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
-        (new std::unique_ptr<ColumnVectorBatch>[1]);
     StructVectorBatch *middle = new StructVectorBatch(1024);
-    middle->numFields = 1;
-    middle->fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
-        (new std::unique_ptr<ColumnVectorBatch>[1]);
     StructVectorBatch *inner = new StructVectorBatch(1024);
-    inner->numFields = 1;
-    inner->fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
-        (new std::unique_ptr<ColumnVectorBatch>[1]);
     LongVectorBatch *longs = new LongVectorBatch(1024);
-    batch.fields.get()[0] = std::unique_ptr<ColumnVectorBatch>(middle);
-    middle->fields.get()[0] = std::unique_ptr<ColumnVectorBatch>(inner);
-    inner->fields.get()[0] = std::unique_ptr<ColumnVectorBatch>(longs);
+    batch.fields.push_back(std::unique_ptr<ColumnVectorBatch>(middle));
+    middle->fields.push_back(std::unique_ptr<ColumnVectorBatch>(inner));
+    inner->fields.push_back(std::unique_ptr<ColumnVectorBatch>(longs));
     reader->next(batch, 200, 0);
     ASSERT_EQ(200, batch.numElements);
     ASSERT_EQ(false, batch.hasNulls);
@@ -364,23 +338,23 @@ namespace orc {
     long longCount = 0;
     for(size_t i=0; i < batch.numElements; ++i) {
       if (i & 4) {
-        EXPECT_EQ(true, middle->notNull.get()[i]) << "Wrong at " << i;
+        EXPECT_EQ(true, middle->notNull[i]) << "Wrong at " << i;
         if (middleCount++ & 1) {
-          EXPECT_EQ(true, inner->notNull.get()[i]) << "Wrong at " << i;
+          EXPECT_EQ(true, inner->notNull[i]) << "Wrong at " << i;
           if (innerCount++ & 4) {
-            EXPECT_EQ(false, longs->notNull.get()[i]) << "Wrong at " << i;
+            EXPECT_EQ(false, longs->notNull[i]) << "Wrong at " << i;
           } else {
-            EXPECT_EQ(true, longs->notNull.get()[i]) << "Wrong at " << i;
-            EXPECT_EQ(longCount++, longs->data.get()[i]) << "Wrong at " << i;
+            EXPECT_EQ(true, longs->notNull[i]) << "Wrong at " << i;
+            EXPECT_EQ(longCount++, longs->data[i]) << "Wrong at " << i;
           }
         } else {
-          EXPECT_EQ(false, inner->notNull.get()[i]) << "Wrong at " << i;
-          EXPECT_EQ(false, longs->notNull.get()[i]) << "Wrong at " << i;
+          EXPECT_EQ(false, inner->notNull[i]) << "Wrong at " << i;
+          EXPECT_EQ(false, longs->notNull[i]) << "Wrong at " << i;
         }
       } else {
-        EXPECT_EQ(false, middle->notNull.get()[i]) << "Wrong at " << i;
-        EXPECT_EQ(false, inner->notNull.get()[i]) << "Wrong at " << i;
-        EXPECT_EQ(false, longs->notNull.get()[i]) << "Wrong at " << i;
+        EXPECT_EQ(false, middle->notNull[i]) << "Wrong at " << i;
+        EXPECT_EQ(false, inner->notNull[i]) << "Wrong at " << i;
+        EXPECT_EQ(false, longs->notNull[i]) << "Wrong at " << i;
       }
     }
   };
@@ -449,13 +423,10 @@ namespace orc {
     std::unique_ptr<ColumnReader> reader =
       buildReader(*rowType, streams);
     StructVectorBatch batch(100);
-    batch.numFields = 2;
-    batch.fields = std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]>
-      (new std::unique_ptr<ColumnVectorBatch>[2]);
     LongVectorBatch *longBatch = new LongVectorBatch(100);
     StringVectorBatch *stringBatch = new StringVectorBatch(100);
-    batch.fields.get()[0] = std::unique_ptr<ColumnVectorBatch>(longBatch);
-    batch.fields.get()[1] = std::unique_ptr<ColumnVectorBatch>(stringBatch);
+    batch.fields.push_back(std::unique_ptr<ColumnVectorBatch>(longBatch));
+    batch.fields.push_back(std::unique_ptr<ColumnVectorBatch>(stringBatch));
     reader->next(batch, 20, 0);
     ASSERT_EQ(20, batch.numElements);
     ASSERT_EQ(20, longBatch->numElements);
@@ -464,8 +435,8 @@ namespace orc {
     ASSERT_EQ(true, longBatch->hasNulls);
     ASSERT_EQ(true, stringBatch->hasNulls);
     for(size_t i=0; i < 20; ++i) {
-      EXPECT_EQ(false, longBatch->notNull.get()[i]) << "Wrong at " << i;
-      EXPECT_EQ(false, stringBatch->notNull.get()[i]) << "Wrong at " << i;
+      EXPECT_EQ(false, longBatch->notNull[i]) << "Wrong at " << i;
+      EXPECT_EQ(false, stringBatch->notNull[i]) << "Wrong at " << i;
     }
     reader->skip(30);
     reader->next(batch, 100, 0);
@@ -476,11 +447,11 @@ namespace orc {
     for(size_t i=0; i < 10; ++i) {
       for(size_t j=0; j < 10; ++j) {
 	size_t k = 10 * i + j;
-	EXPECT_EQ(1, longBatch->notNull.get()[k]) << "Wrong at " << k;
-	ASSERT_EQ(2, stringBatch->length.get()[k]) << "Wrong at " << k;
-	EXPECT_EQ('0' + static_cast<char>(i), stringBatch->data.get()[k][0])
+	EXPECT_EQ(1, longBatch->notNull[k]) << "Wrong at " << k;
+	ASSERT_EQ(2, stringBatch->length[k]) << "Wrong at " << k;
+	EXPECT_EQ('0' + static_cast<char>(i), stringBatch->data[k][0])
 	  << "Wrong at " << k;
-	EXPECT_EQ('0' + static_cast<char>(j), stringBatch->data.get()[k][1])
+	EXPECT_EQ('0' + static_cast<char>(j), stringBatch->data[k][1])
 	  << "Wrong at " << k;
       }
     }

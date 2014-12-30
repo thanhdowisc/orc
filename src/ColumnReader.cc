@@ -70,7 +70,7 @@ namespace orc {
     rowBatch.numElements = numValues;
     ByteRleDecoder* decoder = notNullDecoder.get();
     if (decoder) {
-      char* notNullArray = rowBatch.notNull.get();
+      char* notNullArray = rowBatch.notNull.data();
       decoder->next(notNullArray, numValues, incomingMask);
       // check to see if there are nulls in this batch
       for(unsigned long i=0; i < numValues; ++i) {
@@ -132,8 +132,8 @@ namespace orc {
                                  unsigned long numValues,
                                  char *notNull) {
     ColumnReader::next(rowBatch, numValues, notNull);
-    rle->next(dynamic_cast<LongVectorBatch&>(rowBatch).data.get(),
-              numValues, rowBatch.hasNulls ? rowBatch.notNull.get() : 0);
+    rle->next(dynamic_cast<LongVectorBatch&>(rowBatch).data.data(),
+              numValues, rowBatch.hasNulls ? rowBatch.notNull.data() : 0);
   }
 
   class StringDictionaryColumnReader: public ColumnReader {
@@ -220,12 +220,12 @@ namespace orc {
                                           char *notNull) {
     ColumnReader::next(rowBatch, numValues, notNull);
     // update the notNull from the parent class
-    notNull = rowBatch.hasNulls ? rowBatch.notNull.get() : 0;
+    notNull = rowBatch.hasNulls ? rowBatch.notNull.data() : 0;
     StringVectorBatch& byteBatch = dynamic_cast<StringVectorBatch&>(rowBatch);
     char *blob = dictionaryBlob.get();
     long *dictionaryOffsets = dictionaryOffset.get();
-    char **outputStarts = byteBatch.data.get();
-    long *outputLengths = byteBatch.length.get();
+    char **outputStarts = byteBatch.data.data();
+    long *outputLengths = byteBatch.length.data();
     rle->next(outputLengths, numValues, notNull);
     if (notNull) {
       for(unsigned int i=0; i < numValues; ++i) {
@@ -248,8 +248,7 @@ namespace orc {
 
   class StructColumnReader: public ColumnReader {
   private:
-    std::unique_ptr<std::unique_ptr<ColumnReader>[]> children;
-    unsigned int subtypeCount;
+    std::vector<std::unique_ptr<ColumnReader> > children;
 
   public:
     StructColumnReader(const Type& type,
@@ -268,19 +267,12 @@ namespace orc {
                                          ): ColumnReader(type, stripe) {
     // count the number of selected sub-columns
     const bool *selectedColumns = stripe.getSelectedColumns();
-    subtypeCount = type.getSubtypeCount();
-    for(unsigned int i=0; i < type.getSubtypeCount(); ++i) {
-      if (!selectedColumns[type.getSubtype(i).getColumnId()]) {
-        subtypeCount -= 1;
-      }
-    }
-    children.reset(new std::unique_ptr<ColumnReader>[subtypeCount]);
     switch (stripe.getEncoding(columnId).kind()) {
     case proto::ColumnEncoding_Kind_DIRECT:
-      for(unsigned int i=0, posn=0; i < type.getSubtypeCount(); ++i) {
+      for(unsigned int i=0; i < type.getSubtypeCount(); ++i) {
         const Type& child = type.getSubtype(i);
         if (selectedColumns[child.getColumnId()]) {
-          children.get()[posn++].reset(buildReader(child, stripe).release());
+          children.push_back(buildReader(child, stripe));
         }
       }
       break;
@@ -298,8 +290,8 @@ namespace orc {
 
   unsigned long StructColumnReader::skip(unsigned long numValues) {
     numValues = ColumnReader::skip(numValues);
-    for(unsigned int i=0; i < subtypeCount; ++i) {
-      children.get()[i].get()->skip(numValues);
+    for(auto ptr=children.cbegin(); ptr != children.cend(); ++ptr) {
+      ptr->get()->skip(numValues);
     }
     return numValues;
   }
@@ -309,11 +301,11 @@ namespace orc {
                                 char *notNull) {
     ColumnReader::next(rowBatch, numValues, notNull);
     std::unique_ptr<ColumnVectorBatch> *childBatch = 
-      dynamic_cast<StructVectorBatch&>(rowBatch).fields.get();
-    for(unsigned int i=0; i < subtypeCount; ++i) {
-      children.get()[i].get()->next(*(childBatch[i]), numValues,
-                                    rowBatch.hasNulls ? 
-                                    rowBatch.notNull.get(): 0);
+      dynamic_cast<StructVectorBatch&>(rowBatch).fields.data();
+    unsigned int i=0;
+    for(auto ptr=children.cbegin(); ptr != children.cend(); ++ptr, ++i) {
+      ptr->get()->next(*(childBatch[i]), numValues,
+		       rowBatch.hasNulls ? rowBatch.notNull.data(): 0);
     }
   }
 

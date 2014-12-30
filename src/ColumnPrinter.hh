@@ -28,22 +28,24 @@
 
 namespace orc {
 
-    class ColumnPrinter {
-    public:
-      virtual void printRow(unsigned long rowId) = 0;
-      virtual ~ColumnPrinter();
-    };
+  class ColumnPrinter {
+  public:
+    virtual ~ColumnPrinter();
+    virtual void printRow(unsigned long rowId) = 0;
+    // should be called once at the start of each batch of rows
+    virtual void reset(const ColumnVectorBatch& batch) = 0;
+  };
 
 
-    class StructColumnPrinter: public ColumnPrinter {
-    private:
-      ColumnPrinter** fields;
-      unsigned long numFields;
-    public:
-      StructColumnPrinter(const ColumnVectorBatch& batch);
-      virtual ~StructColumnPrinter() = default;
-      void printRow(unsigned long rowId) override;
-    };
+  class StructColumnPrinter: public ColumnPrinter {
+  private:
+    std::vector<std::unique_ptr<ColumnPrinter> > fields;
+  public:
+    StructColumnPrinter(const ColumnVectorBatch& batch);
+    virtual ~StructColumnPrinter() = default;
+    void printRow(unsigned long rowId) override;
+    void reset(const ColumnVectorBatch& batch) override;
+  };
 }
 #endif
 

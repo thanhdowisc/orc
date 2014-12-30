@@ -24,6 +24,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace orc {
 
@@ -83,6 +84,8 @@ namespace orc {
 
   struct ColumnVectorBatch {
     ColumnVectorBatch(unsigned long capacity);
+    ColumnVectorBatch(const ColumnVectorBatch&) = delete;
+    ColumnVectorBatch& operator=(const ColumnVectorBatch&) = delete;
     virtual ~ColumnVectorBatch();
 
     // the number of slots available
@@ -90,7 +93,7 @@ namespace orc {
     // the number of current occupied slots
     unsigned long numElements;
     // an array of capacity length marking non-null values
-    std::unique_ptr<char[]> notNull;
+    std::vector<char> notNull;
     // whether there are any null values
     bool hasNulls;
 
@@ -100,7 +103,7 @@ namespace orc {
   struct LongVectorBatch: public ColumnVectorBatch {
     LongVectorBatch(unsigned long capacity);
     virtual ~LongVectorBatch();
-    std::unique_ptr<long[]> data;
+    std::vector<long> data;
     std::string toString() const;
   };
 
@@ -109,7 +112,7 @@ namespace orc {
     virtual ~DoubleVectorBatch();
     std::string toString() const;
 
-    std::unique_ptr<double[]> data;
+    std::vector<double> data;
   };
 
   struct StringVectorBatch: public ColumnVectorBatch {
@@ -117,8 +120,10 @@ namespace orc {
     virtual ~StringVectorBatch();
     std::string toString() const;
 
-    std::unique_ptr<char*([])> data;
-    std::unique_ptr<long[]> length;
+    // pointers to the start of each string
+    std::vector<char*> data;
+    // the length of each string
+    std::vector<long> length;
   };
 
   struct StructVectorBatch: public ColumnVectorBatch {
@@ -126,8 +131,7 @@ namespace orc {
     virtual ~StructVectorBatch();
     std::string toString() const;
 
-    unsigned long numFields;
-    std::unique_ptr<std::unique_ptr<ColumnVectorBatch>[]> fields;
+    std::vector<std::unique_ptr<ColumnVectorBatch> > fields;
   };
 
   struct Decimal {

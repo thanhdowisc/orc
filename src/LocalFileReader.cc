@@ -37,6 +37,7 @@ int main(int argc, char* argv[]) {
   orc::StructColumnPrinter printer(*batch);
 
   while (reader->next(*batch)) {
+    printer.reset(*batch);
     for(unsigned long i=0; i < batch->numElements; ++i) {
       printer.printRow(i);
     }

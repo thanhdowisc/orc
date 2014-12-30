@@ -20,92 +20,117 @@
 
 namespace orc {
 
-    class LongColumnPrinter: public ColumnPrinter {
-    private:
-      const long* data;
-    public:
-      LongColumnPrinter(const ColumnVectorBatch& batch);
-      ~LongColumnPrinter() = default;
-      void printRow(unsigned long rowId) override;
-    };
+  class LongColumnPrinter: public ColumnPrinter {
+  private:
+    const long* data;
+  public:
+    LongColumnPrinter(const ColumnVectorBatch& batch);
+    ~LongColumnPrinter() = default;
+    void printRow(unsigned long rowId) override;
+    void reset(const ColumnVectorBatch& batch) override;
+  };
 
-    class DoubleColumnPrinter: public ColumnPrinter {
-    private:
-      const double* data;
-    public:
-      DoubleColumnPrinter(const ColumnVectorBatch& batch);
-      virtual ~DoubleColumnPrinter() = default;
-      void printRow(unsigned long rowId) override;
-    };
+  class DoubleColumnPrinter: public ColumnPrinter {
+  private:
+    const double* data;
+  public:
+    DoubleColumnPrinter(const ColumnVectorBatch& batch);
+    virtual ~DoubleColumnPrinter() = default;
+    void printRow(unsigned long rowId) override;
+    void reset(const ColumnVectorBatch& batch) override;
+  };
 
-    class StringColumnPrinter: public ColumnPrinter {
-    private:
-      char** start;
-      long* length;
-    public:
-      StringColumnPrinter(const ColumnVectorBatch& batch);
-      virtual ~StringColumnPrinter() = default;
-      void printRow(unsigned long rowId) override;
-    };
+  class StringColumnPrinter: public ColumnPrinter {
+  private:
+    const char* const * start;
+    const long* length;
+  public:
+    StringColumnPrinter(const ColumnVectorBatch& batch);
+    virtual ~StringColumnPrinter() = default;
+    void printRow(unsigned long rowId) override;
+    void reset(const ColumnVectorBatch& batch) override;
+  };
 
-    ColumnPrinter::~ColumnPrinter() {
-    }
+  ColumnPrinter::~ColumnPrinter() {
+    // PASS
+  }
 
-    LongColumnPrinter::LongColumnPrinter(const  ColumnVectorBatch& batch) {
-      data = dynamic_cast<const  LongVectorBatch&>(batch).data.get();
-    }
+  LongColumnPrinter::LongColumnPrinter(const  ColumnVectorBatch& batch) {
+    reset(batch);
+  }
 
-    void LongColumnPrinter::printRow(unsigned long rowId) {
-      std::cout << data[rowId];
-    }
+  void LongColumnPrinter::reset(const  ColumnVectorBatch& batch) {
+    data = dynamic_cast<const LongVectorBatch&>(batch).data.data();
+  }
 
-    DoubleColumnPrinter::DoubleColumnPrinter(const  ColumnVectorBatch& batch) {
-      data = dynamic_cast<const  DoubleVectorBatch&>(batch).data.get();
-    }
+  void LongColumnPrinter::printRow(unsigned long rowId) {
+    std::cout << data[rowId];
+  }
 
-    void DoubleColumnPrinter::printRow(unsigned long rowId) {
-      std::cout << data[rowId];
-    }
+  DoubleColumnPrinter::DoubleColumnPrinter(const  ColumnVectorBatch& batch) {
+    reset(batch);
+  }
 
-    StringColumnPrinter::StringColumnPrinter(const  ColumnVectorBatch& batch) {
-      start = dynamic_cast<const  StringVectorBatch&>(batch).data.get();
-      length = dynamic_cast<const  StringVectorBatch&>(batch).length.get();
-    }
+  void DoubleColumnPrinter::reset(const  ColumnVectorBatch& batch) {
+    data = dynamic_cast<const DoubleVectorBatch&>(batch).data.data();
+  }
 
-    void StringColumnPrinter::printRow(unsigned long rowId) {
-      std::cout.write(start[rowId], length[rowId]);
-    }
+  void DoubleColumnPrinter::printRow(unsigned long rowId) {
+    std::cout << data[rowId];
+  }
 
-    StructColumnPrinter::StructColumnPrinter(const ColumnVectorBatch& batch) {
-      const StructVectorBatch& structBatch =
-          dynamic_cast<const StructVectorBatch&>(batch);
-      numFields = structBatch.numFields;
-      fields = new ColumnPrinter*[numFields];
-      for(unsigned int i=0; i < numFields; ++i) {
-        const  ColumnVectorBatch& subBatch = *(structBatch.fields.get()[i]);
-        if (typeid(subBatch) == typeid(LongVectorBatch)) {
-          fields[i] = new LongColumnPrinter(subBatch);
-        } else if (typeid(subBatch) == typeid(DoubleVectorBatch)) {
-          fields[i] = new DoubleColumnPrinter(subBatch);
-        } else if (typeid(subBatch) == typeid(StringVectorBatch)) {
-          fields[i] = new StringColumnPrinter(subBatch);
-        } else if (typeid(subBatch) == typeid(StructVectorBatch)) {
-          fields[i] = new StructColumnPrinter(subBatch);
-        } else {
-          throw std::logic_error("unknown batch type");
-        }
+  StringColumnPrinter::StringColumnPrinter(const ColumnVectorBatch& batch) {
+    reset(batch);
+  }
+
+  void StringColumnPrinter::reset(const ColumnVectorBatch& batch) {
+    start = dynamic_cast<const StringVectorBatch&>(batch).data.data();
+    length = dynamic_cast<const StringVectorBatch&>(batch).length.data();
+  }
+
+  void StringColumnPrinter::printRow(unsigned long rowId) {
+    std::cout.write(start[rowId], length[rowId]);
+  }
+
+  StructColumnPrinter::StructColumnPrinter(const ColumnVectorBatch& batch) {
+    const StructVectorBatch& structBatch =
+      dynamic_cast<const StructVectorBatch&>(batch);
+    for(auto ptr=structBatch.fields.cbegin();
+        ptr != structBatch.fields.cend(); ++ptr) {
+      if (typeid(*ptr) == typeid(LongVectorBatch)) {
+        fields.push_back(std::unique_ptr<ColumnPrinter>
+                         (new LongColumnPrinter(*(ptr->get()))));
+      } else if (typeid(*ptr) == typeid(DoubleVectorBatch)) {
+        fields.push_back(std::unique_ptr<ColumnPrinter>
+                         (new DoubleColumnPrinter(*(ptr->get()))));
+      } else if (typeid(*ptr) == typeid(StringVectorBatch)) {
+        fields.push_back(std::unique_ptr<ColumnPrinter>
+                         (new StringColumnPrinter(*(ptr->get()))));
+      } else if (typeid(*ptr) == typeid(StructVectorBatch)) {
+        fields.push_back(std::unique_ptr<ColumnPrinter>
+                         (new StructColumnPrinter(*(ptr->get()))));
+      } else {
+        throw std::logic_error("unknown batch type");
       }
     }
+  }
 
-    void StructColumnPrinter::printRow(unsigned long rowId) {
-      if (numFields > 0) {
-        fields[0]->printRow(rowId);
-        for (unsigned long i=1; i < numFields; ++i) {
-          std::cout << "\t";
-          fields[i]->printRow(rowId);
-        }
-        std::cout << "\n";
-      }
+  void StructColumnPrinter::reset(const ColumnVectorBatch& batch) {
+    const StructVectorBatch& structBatch =
+      dynamic_cast<const StructVectorBatch&>(batch);
+    for(size_t i=0; i < fields.size(); ++i) {
+      fields[i].get()->reset(*(structBatch.fields[i].get()));
     }
+  }
+
+  void StructColumnPrinter::printRow(unsigned long rowId) {
+    if (fields.size() > 0) {
+      fields[0]->printRow(rowId);
+      for (auto ptr = fields.cbegin(); ptr != fields.cend(); ++ptr) {
+        std::cout << "\t";
+        ptr->get()->printRow(rowId);
+      }
+      std::cout << "\n";
+    }
+  }
 }
-

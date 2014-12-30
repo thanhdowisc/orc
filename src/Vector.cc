@@ -25,7 +25,7 @@
 namespace orc {
 
   ColumnVectorBatch::ColumnVectorBatch(unsigned long cap
-                                       ): notNull(new char[cap]) {
+                                       ): notNull(cap) {
     capacity = cap;
     numElements = 0;
     hasNulls = false;
@@ -37,8 +37,7 @@ namespace orc {
 
   LongVectorBatch::LongVectorBatch(unsigned long capacity
                                    ): ColumnVectorBatch(capacity),
-                                      data(std::unique_ptr<long[]>
-                                           (new long[capacity])){
+                                      data(capacity) {
     // PASS
   }
 
@@ -54,8 +53,7 @@ namespace orc {
 
   DoubleVectorBatch::DoubleVectorBatch(unsigned long capacity
                                        ): ColumnVectorBatch(capacity),
-                                          data(std::unique_ptr<double[]>
-                                           (new double[capacity])){
+                                          data(capacity) {
     // PASS
   }
 
@@ -71,10 +69,8 @@ namespace orc {
 
   StringVectorBatch::StringVectorBatch(unsigned long capacity
                                        ): ColumnVectorBatch(capacity),
-                                          data(std::unique_ptr<char*[]>
-                                               (new char *[capacity])),
-                                          length(std::unique_ptr<long[]>
-                                                 (new long[capacity])) {
+                                          data(capacity),
+                                          length(capacity) {
     // PASS
   }
 
@@ -101,8 +97,8 @@ namespace orc {
     std::ostringstream buffer;
     buffer << "Struct vector <" << numElements << " of " << capacity 
            << "; ";
-    for(unsigned int i=0; i < numFields; ++i) {
-      buffer << fields[i]->toString() << "; ";
+    for(auto ptr=fields.cbegin(); ptr != fields.cend(); ++ptr) {
+      buffer << ptr->get()->toString() << "; ";
     }
     buffer << ">";
     return buffer.str();
