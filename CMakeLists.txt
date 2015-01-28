@@ -36,7 +36,7 @@ endif(MSVC)
 
 if(NOT APPLE AND NOT MSVC)
   list (APPEND GMOCK_LIB pthread)
-endif(NOT APPLE)
+endif(NOT APPLE AND NOT MSVC)
 enable_testing()
 
 find_package (Protobuf REQUIRED)
