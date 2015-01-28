@@ -13,9 +13,15 @@
 cmake_minimum_required (VERSION 2.6)
 
 project(ORC)
-set (ORC_VERSION "1.0.0")
 
+set (ORC_VERSION "1.0.0")
 set (LIBUV_VERSION "0.11.29")
+set (PROTOBUF_VERSION "2.6.0")
+
+set (CMAKE_LIBRARY_PATH ${CMAKE_SOURCE_DIR}/libs/binary/x86)
+set (CMAKE_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/include)
+set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH};${CMAKE_SOURCE_DIR}/bin)
+
 include_directories(${CMAKE_SOURCE_DIR}/libs/libuv-${LIBUV_VERSION}/include)
 set (LIBUV_LIB "${CMAKE_BINARY_DIR}/libs/libuv-${LIBUV_VERSION}/libuv.a")
 if (NOT APPLE)
@@ -68,4 +74,4 @@ set (EXAMPLE_DIRECTORY ${CMAKE_SOURCE_DIR}/examples)
 
 add_subdirectory(libs)
 add_subdirectory(src)
-add_subdirectory(test)
+# add_subdirectory(test)
