@@ -10,6 +10,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if (MSVC)
+  add_subdirectory(protobuf-${PROTOBUF_VERSION})
+  add_subdirectory(zlib-${ZLIB_VERSION})
+endif (MSVC)
+
 add_subdirectory(gmock-${GMOCK_VERSION})
-# add_subdirectory(protobuf-${PROTOBUF_VERSION})
 # add_subdirectory(libuv-${LIBUV_VERSION})
