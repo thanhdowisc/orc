@@ -12,7 +12,7 @@
 
 if (MSVC)
   add_subdirectory(protobuf-${PROTOBUF_VERSION})
-  #add_subdirectory(zlib-${ZLIB_VERSION})
+  add_subdirectory(zlib-${ZLIB_VERSION})
 endif (MSVC)
 
 add_subdirectory(gmock-${GMOCK_VERSION})
